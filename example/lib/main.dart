@@ -12,7 +12,7 @@ class NodeEditorExampleApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Node Editor Example',
-      theme: ThemeData(primarySwatch: Colors.blue),
+      theme: ThemeData.dark(),
       home: const NodeEditorExampleScreen(),
     );
   }
@@ -29,8 +29,10 @@ class NodeEditorExampleScreen extends StatelessWidget {
       ),
       body: const Center(
         child: NodeEditorWidget(
-          expandToParent: false,
-          fixedSize: Size(1280, 720),
+          expandToParent: true,
+          style: NodeEditorStyle(
+            gridPainterStyle: GridPainterStyle(),
+          ),
         ),
       ),
     );

@@ -2,20 +2,54 @@ import 'package:flutter/material.dart';
 
 import 'package:gap/gap.dart';
 
-import 'dotted_grid.dart';
+import 'package:fl_nodes/src/utils/grid_painter.dart';
+
+import 'grid.dart';
+
+enum ControlPosition {
+  topLeft,
+  topRight,
+  bottomLeft,
+  bottomRight,
+  topCenter,
+  bottomCenter,
+}
+
+class NodeEditorStyle {
+  final Color backgroundColor;
+  final Color borderColor;
+  final double borderWidth;
+  final BorderRadius borderRadius;
+  final ControlPosition controlPosition;
+  final double controlSize;
+  final Color controlColor;
+  final double controlPadding;
+  final GridPainterStyle gridPainterStyle;
+
+  const NodeEditorStyle({
+    this.backgroundColor = Colors.transparent,
+    this.borderColor = Colors.transparent,
+    this.borderWidth = 0.0,
+    this.borderRadius = BorderRadius.zero,
+    this.controlPosition = ControlPosition.topRight,
+    this.controlSize = 1,
+    this.controlColor = Colors.blue,
+    this.controlPadding = 8.0,
+    required this.gridPainterStyle,
+  });
+}
 
 class NodeEditorWidget extends StatefulWidget {
+  final NodeEditorStyle style;
   final bool expandToParent;
   final Size? fixedSize;
 
   const NodeEditorWidget({
     super.key,
+    required this.style,
     this.expandToParent = true,
     this.fixedSize,
-  }) : assert(
-          expandToParent || fixedSize != null,
-          'If expandToParent is false, a fixedSize must be provided.',
-        );
+  });
 
   @override
   State<NodeEditorWidget> createState() => _NodeEditorWidgetState();
@@ -69,8 +103,8 @@ class _NodeEditorWidgetState extends State<NodeEditorWidget>
   }
 
   void _zoomIn() {
-    final initialScale = _zoom; // Save current scale
-    final targetScale = _zoom * 1.5; // Define target scale
+    final initialScale = _zoom;
+    final targetScale = _zoom * 1.5;
 
     _animationController.reset();
     _animationController.duration = const Duration(milliseconds: 200);
@@ -85,7 +119,7 @@ class _NodeEditorWidgetState extends State<NodeEditorWidget>
       ),
     )..addListener(() {
         setState(() {
-          _zoom = _zoomAnimation.value; // Update scale during animation
+          _zoom = _zoomAnimation.value;
         });
       });
 
@@ -93,8 +127,8 @@ class _NodeEditorWidgetState extends State<NodeEditorWidget>
   }
 
   void _zoomOut() {
-    final initialScale = _zoom; // Save current scale
-    final targetScale = _zoom / 1.5; // Define target scale
+    final initialScale = _zoom;
+    final targetScale = _zoom / 1.5;
 
     _animationController.reset();
     _animationController.duration = const Duration(milliseconds: 200);
@@ -109,7 +143,7 @@ class _NodeEditorWidgetState extends State<NodeEditorWidget>
       ),
     )..addListener(() {
         setState(() {
-          _zoom = _zoomAnimation.value; // Update scale during animation
+          _zoom = _zoomAnimation.value;
         });
       });
 
@@ -120,9 +154,12 @@ class _NodeEditorWidgetState extends State<NodeEditorWidget>
   Widget build(BuildContext context) {
     final Widget editor = Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: Colors.grey),
-        borderRadius: BorderRadius.circular(8),
+        color: widget.style.backgroundColor,
+        border: Border.all(
+          color: widget.style.borderColor,
+          width: widget.style.borderWidth,
+        ),
+        borderRadius: widget.style.borderRadius,
       ),
       child: Padding(
         padding: const EdgeInsets.all(8.0),
@@ -142,71 +179,74 @@ class _NodeEditorWidgetState extends State<NodeEditorWidget>
           child: ClipRect(
             child: Stack(
               children: [
-                DottedGridWidget(
+                GridWidget(
                   offset: _gridOffset,
                   scale: _zoom,
-                  dotColor: Colors.grey[300]!,
+                  style: widget.style.gridPainterStyle,
                 ),
-                Column(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.purple[300],
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: IconButton(
-                        onPressed: () {},
-                        icon: const Icon(
-                          Icons.add,
-                          color: Colors.white,
+                Transform.scale(
+                  scale: widget.style.controlSize,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Container(
+                        decoration: BoxDecoration(
+                          color: widget.style.controlColor,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: IconButton(
+                          onPressed: () {},
+                          icon: const Icon(
+                            Icons.add,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
-                    ),
-                    const Spacer(),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.purple[300],
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: IconButton(
-                        onPressed: _centerGrid,
-                        icon: const Icon(
-                          Icons.center_focus_strong,
-                          color: Colors.white,
+                      const Spacer(),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: widget.style.controlColor,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: IconButton(
+                          onPressed: _centerGrid,
+                          icon: const Icon(
+                            Icons.center_focus_strong,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
-                    ),
-                    const Gap(8),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.purple[300],
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: IconButton(
-                        onPressed: _zoomIn,
-                        icon: const Icon(
-                          Icons.zoom_in,
-                          color: Colors.white,
+                      const Gap(8),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: widget.style.controlColor,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: IconButton(
+                          onPressed: _zoomIn,
+                          icon: const Icon(
+                            Icons.zoom_in,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
-                    ),
-                    const Gap(8),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.purple[300],
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: IconButton(
-                        onPressed: _zoomOut,
-                        icon: const Icon(
-                          Icons.zoom_out,
-                          color: Colors.white,
+                      const Gap(8),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: widget.style.controlColor,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: IconButton(
+                          onPressed: _zoomOut,
+                          icon: const Icon(
+                            Icons.zoom_out,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
                 Positioned(
                   top: 0,
@@ -218,8 +258,8 @@ class _NodeEditorWidgetState extends State<NodeEditorWidget>
                       Text(
                         'X: ${_gridOffset.dx.toStringAsFixed(2)}, Y: ${_gridOffset.dy.toStringAsFixed(2)}',
                         textAlign: TextAlign.left,
-                        style: const TextStyle(
-                          color: Colors.purple,
+                        style: TextStyle(
+                          color: widget.style.controlColor,
                           fontSize: 16,
                         ),
                       ),
@@ -227,8 +267,8 @@ class _NodeEditorWidgetState extends State<NodeEditorWidget>
                       Text(
                         'Zoom: ${_zoom.toStringAsFixed(2)}',
                         textAlign: TextAlign.right,
-                        style: const TextStyle(
-                          color: Colors.purple,
+                        style: TextStyle(
+                          color: widget.style.controlColor,
                           fontSize: 16,
                         ),
                       ),
