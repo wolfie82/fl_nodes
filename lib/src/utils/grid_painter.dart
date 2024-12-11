@@ -53,19 +53,21 @@ class GridPainter extends CustomPainter {
             style.intersectionType == IntersectionType.none) {
       return;
     }
+    canvas.translate(size.width / 2, size.height / 2);
+    canvas.scale(scale);
 
-    final visibleRect = Rect.fromLTWH(
-      -offset.dx,
-      -offset.dy,
-      size.width,
-      size.height,
+    // We're faking the viewport size to account for the scaling operation on the canvas.
+    final viewport = Rect.fromLTWH(
+      -size.width / scale / 2 - offset.dx,
+      -size.height / scale / 2 - offset.dy,
+      size.width / scale,
+      size.height / scale,
     );
 
-    final spacingX = style.gridSpacingX * scale;
-    final spacingY = style.gridSpacingY * scale;
-
-    final startX = (visibleRect.left / spacingX).floor() * spacingX;
-    final startY = (visibleRect.top / spacingY).floor() * spacingY;
+    final startX =
+        (viewport.left / style.gridSpacingX).floor() * style.gridSpacingX;
+    final startY =
+        (viewport.top / style.gridSpacingY).floor() * style.gridSpacingY;
 
     if (style.lineType != LineType.none) {
       final linePaint = Paint()
@@ -75,18 +77,22 @@ class GridPainter extends CustomPainter {
 
       switch (style.lineType) {
         case LineType.solid:
-          for (double x = startX; x <= visibleRect.right; x += spacingX) {
+          for (double x = startX;
+              x <= viewport.right;
+              x += style.gridSpacingX) {
             canvas.drawLine(
-              Offset(x + offset.dx, visibleRect.top + offset.dy),
-              Offset(x + offset.dx, visibleRect.bottom + offset.dy),
+              Offset(x + offset.dx, viewport.top + offset.dy),
+              Offset(x + offset.dx, viewport.bottom + offset.dy),
               linePaint,
             );
           }
 
-          for (double y = startY; y <= visibleRect.bottom; y += spacingY) {
+          for (double y = startY;
+              y <= viewport.bottom;
+              y += style.gridSpacingY) {
             canvas.drawLine(
-              Offset(visibleRect.left + offset.dx, y + offset.dy),
-              Offset(visibleRect.right + offset.dx, y + offset.dy),
+              Offset(viewport.left + offset.dx, y + offset.dy),
+              Offset(viewport.right + offset.dx, y + offset.dy),
               linePaint,
             );
           }
@@ -104,10 +110,14 @@ class GridPainter extends CustomPainter {
 
       switch (style.intersectionType) {
         case IntersectionType.rectangle:
-          final intersectionSize = style.intersectionSize! * scale;
+          final intersectionSize = style.intersectionSize!;
 
-          for (double x = startX; x <= visibleRect.right; x += spacingX) {
-            for (double y = startY; y <= visibleRect.bottom; y += spacingY) {
+          for (double x = startX;
+              x <= viewport.right;
+              x += style.gridSpacingX) {
+            for (double y = startY;
+                y <= viewport.bottom;
+                y += style.gridSpacingY) {
               canvas.drawRect(
                 Rect.fromLTWH(
                   x + offset.dx - intersectionSize.width / 2,
@@ -122,10 +132,14 @@ class GridPainter extends CustomPainter {
 
           break;
         case IntersectionType.circle:
-          final intersectionRadius = style.intersectionRadius! * scale;
+          final intersectionRadius = style.intersectionRadius!;
 
-          for (double x = startX; x <= visibleRect.right; x += spacingX) {
-            for (double y = startY; y <= visibleRect.bottom; y += spacingY) {
+          for (double x = startX;
+              x <= viewport.right;
+              x += style.gridSpacingX) {
+            for (double y = startY;
+                y <= viewport.bottom;
+                y += style.gridSpacingY) {
               canvas.drawCircle(
                 Offset(x + offset.dx, y + offset.dy),
                 intersectionRadius,
