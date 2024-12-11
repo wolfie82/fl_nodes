@@ -10,8 +10,14 @@ dependencies:
   flutter:
     sdk: flutter
   gap: ^3.0.1
+  uuid: ^4.5.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
+
+assets:
+  - lib/src/core/utils/platform_stub.dart
+  - lib/src/core/utils/platform_native.dart
+  - lib/src/core/utils/platform_web.dart
