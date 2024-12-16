@@ -1,8 +1,44 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../models/node.dart';
 
-class NodeEditorController extends ChangeNotifier {
+class NodeEditorEvent {}
+
+class OffsetEvent extends NodeEditorEvent {
+  final Offset offset;
+  final bool animate;
+
+  OffsetEvent(this.offset, {this.animate = true});
+}
+
+class ZoomEvent extends NodeEditorEvent {
+  final double zoom;
+  final bool animate;
+
+  ZoomEvent(this.zoom, {this.animate = true});
+}
+
+class NodeEditorEventBus {
+  final _streamController = StreamController<NodeEditorEvent>.broadcast();
+
+  Stream<NodeEditorEvent> get events => _streamController.stream;
+
+  void emit(NodeEditorEvent event) {
+    _streamController.add(event);
+  }
+
+  void dispose() {
+    _streamController.close();
+  }
+}
+
+class NodeEditorController {
+  // Event bus
+  final eventBus = NodeEditorEventBus();
+
+  // Node data
   final Map<String, Node Function()> _nodeTypes = {};
   final List<Node> _nodes = [];
 
@@ -16,18 +52,12 @@ class NodeEditorController extends ChangeNotifier {
     _nodeTypes.remove(type);
   }
 
-  Node createNode(String type) {
-    final node = _nodeTypes[type]!();
-    _nodes.add(node);
-    return node;
+  void setOffset(Offset offset, {bool animate = true}) {
+    eventBus.emit(OffsetEvent(offset));
   }
 
-  void deleteNode(Node node) {
-    _nodes.remove(node);
-  }
-
-  void clear() {
-    _nodes.clear();
+  void setZoom(double zoom, {bool animate = true}) {
+    eventBus.emit(ZoomEvent(zoom));
   }
 
   List<Node> get nodes => _nodes;
