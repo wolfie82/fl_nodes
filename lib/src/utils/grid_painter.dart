@@ -48,15 +48,36 @@ class GridPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (size.isEmpty ||
-        style.lineType == LineType.none &&
-            style.intersectionType == IntersectionType.none) {
-      return;
+    if (_shouldSkipPainting(size)) return;
+
+    _prepareCanvas(canvas, size);
+
+    final viewport = _calculateViewport(canvas, size);
+    final startX = _calculateStart(viewport.left, style.gridSpacingX);
+    final startY = _calculateStart(viewport.top, style.gridSpacingY);
+
+    if (style.lineType != LineType.none) {
+      _drawGridLines(canvas, viewport, startX, startY);
     }
+
+    if (style.intersectionType != IntersectionType.none) {
+      _drawIntersections(canvas, viewport, startX, startY);
+    }
+  }
+
+  bool _shouldSkipPainting(Size size) {
+    return size.isEmpty ||
+        (style.lineType == LineType.none &&
+            style.intersectionType == IntersectionType.none);
+  }
+
+  void _prepareCanvas(Canvas canvas, Size size) {
     canvas.translate(size.width / 2, size.height / 2);
     canvas.scale(scale);
+    canvas.translate(offset.dx, offset.dy);
+  }
 
-    // We're faking the viewport size to account for the scaling operation on the canvas.
+  Rect _calculateViewport(Canvas canvas, Size size) {
     final viewport = Rect.fromLTWH(
       -size.width / scale / 2 - offset.dx,
       -size.height / scale / 2 - offset.dy,
@@ -64,93 +85,100 @@ class GridPainter extends CustomPainter {
       size.height / scale,
     );
 
-    final startX =
-        (viewport.left / style.gridSpacingX).floor() * style.gridSpacingX;
-    final startY =
-        (viewport.top / style.gridSpacingY).floor() * style.gridSpacingY;
+    canvas.clipRect(viewport);
 
-    if (style.lineType != LineType.none) {
-      final linePaint = Paint()
-        ..color = style.lineColor
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = style.lineWidth;
+    return viewport;
+  }
 
-      switch (style.lineType) {
-        case LineType.solid:
-          for (double x = startX;
-              x <= viewport.right;
-              x += style.gridSpacingX) {
-            canvas.drawLine(
-              Offset(x + offset.dx, viewport.top + offset.dy),
-              Offset(x + offset.dx, viewport.bottom + offset.dy),
-              linePaint,
-            );
-          }
+  double _calculateStart(double viewportEdge, double gridSpacing) {
+    return (viewportEdge / gridSpacing).floor() * gridSpacing;
+  }
 
-          for (double y = startY;
-              y <= viewport.bottom;
-              y += style.gridSpacingY) {
-            canvas.drawLine(
-              Offset(viewport.left + offset.dx, y + offset.dy),
-              Offset(viewport.right + offset.dx, y + offset.dy),
-              linePaint,
-            );
-          }
+  void _drawGridLines(
+      Canvas canvas, Rect viewport, double startX, double startY) {
+    final linePaint = Paint()
+      ..color = style.lineColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = style.lineWidth;
 
-          break;
-        default:
-          throw Exception('Invalid line type');
+    if (style.lineType == LineType.solid) {
+      _drawVerticalLines(canvas, viewport, startX, linePaint);
+      _drawHorizontalLines(canvas, viewport, startY, linePaint);
+    } else {
+      throw Exception('Invalid line type');
+    }
+  }
+
+  void _drawVerticalLines(
+      Canvas canvas, Rect viewport, double startX, Paint linePaint) {
+    for (double x = startX; x <= viewport.right; x += style.gridSpacingX) {
+      canvas.drawLine(
+        Offset(x, viewport.top),
+        Offset(x, viewport.bottom),
+        linePaint,
+      );
+    }
+  }
+
+  void _drawHorizontalLines(
+      Canvas canvas, Rect viewport, double startY, Paint linePaint) {
+    for (double y = startY; y <= viewport.bottom; y += style.gridSpacingY) {
+      canvas.drawLine(
+        Offset(viewport.left, y),
+        Offset(viewport.right, y),
+        linePaint,
+      );
+    }
+  }
+
+  void _drawIntersections(
+      Canvas canvas, Rect viewport, double startX, double startY) {
+    final intersectionPaint = Paint()
+      ..color = style.intersectionColor
+      ..style = PaintingStyle.fill;
+
+    switch (style.intersectionType) {
+      case IntersectionType.rectangle:
+        _drawRectangles(canvas, viewport, startX, startY, intersectionPaint);
+        break;
+      case IntersectionType.circle:
+        _drawCircles(canvas, viewport, startX, startY, intersectionPaint);
+        break;
+      default:
+        throw Exception('Invalid intersection type');
+    }
+  }
+
+  void _drawRectangles(
+      Canvas canvas, Rect viewport, double startX, double startY, Paint paint) {
+    final intersectionSize = style.intersectionSize!;
+
+    for (double x = startX; x <= viewport.right; x += style.gridSpacingX) {
+      for (double y = startY; y <= viewport.bottom; y += style.gridSpacingY) {
+        canvas.drawRect(
+          Rect.fromLTWH(
+            x - intersectionSize.width / 2,
+            y - intersectionSize.height / 2,
+            intersectionSize.width,
+            intersectionSize.height,
+          ),
+          paint,
+        );
       }
     }
+  }
 
-    if (style.intersectionType != IntersectionType.none) {
-      final intersectionPaint = Paint()
-        ..color = style.intersectionColor
-        ..style = PaintingStyle.fill;
+  void _drawCircles(
+      Canvas canvas, Rect viewport, double startX, double startY, Paint paint) {
+    final intersectionRadius = style.intersectionRadius!;
 
-      switch (style.intersectionType) {
-        case IntersectionType.rectangle:
-          final intersectionSize = style.intersectionSize!;
-
-          for (double x = startX;
-              x <= viewport.right;
-              x += style.gridSpacingX) {
-            for (double y = startY;
-                y <= viewport.bottom;
-                y += style.gridSpacingY) {
-              canvas.drawRect(
-                Rect.fromLTWH(
-                  x + offset.dx - intersectionSize.width / 2,
-                  y + offset.dy - intersectionSize.height / 2,
-                  intersectionSize.width,
-                  intersectionSize.height,
-                ),
-                intersectionPaint,
-              );
-            }
-          }
-
-          break;
-        case IntersectionType.circle:
-          final intersectionRadius = style.intersectionRadius!;
-
-          for (double x = startX;
-              x <= viewport.right;
-              x += style.gridSpacingX) {
-            for (double y = startY;
-                y <= viewport.bottom;
-                y += style.gridSpacingY) {
-              canvas.drawCircle(
-                Offset(x + offset.dx, y + offset.dy),
-                intersectionRadius,
-                intersectionPaint,
-              );
-            }
-          }
-
-          break;
-        default:
-          throw Exception('Invalid intersection type');
+    for (double x = startX; x <= viewport.right; x += style.gridSpacingX) {
+      for (double y = startY; y <= viewport.bottom; y += style.gridSpacingY) {
+        canvas.drawCircle(
+          Offset(x, y),
+          intersectionRadius,
+          paint,
+        );
       }
     }
   }

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:gap/gap.dart';
+
 import 'package:fl_nodes/fl_nodes.dart';
 
 void main() {
@@ -60,84 +62,83 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Node Editor Example'),
+        title: const Text(
+          'Node Editor Example',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        backgroundColor: Colors.blue,
       ),
       body: Center(
         child: NodeEditorWidget(
           controller: _nodeEditorController,
           expandToParent: true,
-          content: const [
-            // Column(
-            //   mainAxisAlignment: MainAxisAlignment.end,
-            //   crossAxisAlignment: CrossAxisAlignment.center,
-            //   children: [
-            //     PopupMenuButton(
-            //       child: Container(
-            //         padding: const EdgeInsets.all(8),
-            //         decoration: BoxDecoration(
-            //           color: Colors.blue,
-            //           borderRadius: BorderRadius.circular(8),
-            //         ),
-            //         child: const Icon(
-            //           Icons.add,
-            //           color: Colors.white,
-            //         ),
-            //       ),
-            //       onSelected: (value) => {},
-            //       itemBuilder: (BuildContext context) =>
-            //           _nodeEditorController.nodeTypes.keys.map(
-            //         (key) {
-            //           return PopupMenuItem<String>(
-            //             value: key,
-            //             child: Text(key),
-            //           );
-            //         },
-            //       ).toList(),
-            //     ),
-            //     Container(
-            //       decoration: BoxDecoration(
-            //         color: Colors.blue,
-            //         borderRadius: BorderRadius.circular(8),
-            //       ),
-            //       child: IconButton(
-            //         onPressed: _centerGrid,
-            //         icon: const Icon(
-            //           Icons.center_focus_strong,
-            //           color: Colors.white,
-            //         ),
-            //       ),
-            //     ),
-            //     const Gap(8),
-            //     Container(
-            //       decoration: BoxDecoration(
-            //         color: Colors.blue,
-            //         borderRadius: BorderRadius.circular(8),
-            //       ),
-            //       child: IconButton(
-            //         onPressed: _zoomIn,
-            //         icon: const Icon(
-            //           Icons.zoom_in,
-            //           color: Colors.white,
-            //         ),
-            //       ),
-            //     ),
-            //     const Gap(8),
-            //     Container(
-            //       decoration: BoxDecoration(
-            //         color: Colors.blue,
-            //         borderRadius: BorderRadius.circular(8),
-            //       ),
-            //       child: IconButton(
-            //         onPressed: _zoomOut,
-            //         icon: const Icon(
-            //           Icons.zoom_out,
-            //           color: Colors.white,
-            //         ),
-            //       ),
-            //     ),
-            //   ],
-            // ),
-          ],
+          style: const NodeEditorStyle(
+            gridPainterStyle: GridPainterStyle(
+              lineType: LineType.solid,
+              lineWidth: 1,
+              intersectionType: IntersectionType.circle,
+              intersectionRadius: 2,
+            ),
+          ),
+          content: (offset, zoom) {
+            return [
+              Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.blue,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: IconButton(
+                      onPressed: () =>
+                          _nodeEditorController.setOffset(Offset.zero),
+                      icon: const Icon(
+                        Icons.center_focus_strong,
+                        size: 32,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                  const Gap(8),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.blue,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: IconButton(
+                      onPressed: () => _nodeEditorController.setZoom(zoom * 2),
+                      icon: const Icon(
+                        Icons.zoom_in,
+                        size: 32,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                  const Gap(8),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.blue,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: IconButton(
+                      onPressed: () => _nodeEditorController.setZoom(zoom / 2),
+                      icon: const Icon(
+                        Icons.zoom_out,
+                        size: 32,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ];
+          },
         ),
       ),
     );
