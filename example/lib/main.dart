@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:gap/gap.dart';
+import 'package:uuid/uuid.dart';
 
 import 'package:fl_nodes/fl_nodes.dart';
 
@@ -30,7 +31,7 @@ class NodeEditorExampleScreen extends StatefulWidget {
 }
 
 class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
-  final NodeEditorController _nodeEditorController = NodeEditorController();
+  final FlNodeEditorController _nodeEditorController = FlNodeEditorController();
 
   @override
   void initState() {
@@ -38,7 +39,7 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
 
     _nodeEditorController.registerNodeType('add', () {
       return Node(
-        id: 'add',
+        id: const Uuid().v4(),
         name: 'Add',
         inputs: [
           Port(id: 'a', name: 'A', data: 0, color: Colors.red),
@@ -53,9 +54,11 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
           return [(a + b).toString()];
         },
         color: Colors.blue,
-        offset: const Offset(100, 100),
+        offset: const Offset(0, 0),
       );
     });
+
+    _nodeEditorController.addNode('add');
   }
 
   @override
@@ -73,11 +76,11 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
         backgroundColor: Colors.blue,
       ),
       body: Center(
-        child: NodeEditorWidget(
+        child: FlNodeEditorWidget(
           controller: _nodeEditorController,
           expandToParent: true,
           style: const NodeEditorStyle(
-            gridPainterStyle: GridPainterStyle(
+            gridPainterStyle: GridStyle(
               lineType: LineType.solid,
               lineWidth: 1,
               intersectionType: IntersectionType.circle,

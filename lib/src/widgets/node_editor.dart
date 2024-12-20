@@ -5,65 +5,24 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import 'package:fl_nodes/src/core/controllers/node_editor.dart';
+import 'package:fl_nodes/src/core/models/styles.dart';
 import 'package:fl_nodes/src/core/utils/platform.dart';
-import 'package:fl_nodes/src/utils/grid_painter.dart';
+import 'package:fl_nodes/src/widgets/node_view.dart';
 
-import 'grid.dart';
-
-class NodeEditorBehavior {
-  final double zoomSensitivity;
-  final double minZoom;
-  final double maxZoom;
-  final double panSensitivity;
-  final double maxPanX;
-  final double maxPanY;
-  final bool enableKineticScrolling;
-
-  const NodeEditorBehavior({
-    this.zoomSensitivity = 0.1,
-    this.minZoom = 0.1,
-    this.maxZoom = 10.0,
-    this.panSensitivity = 1.0,
-    this.maxPanX = 10000.0,
-    this.maxPanY = 10000.0,
-    this.enableKineticScrolling = true,
-  });
-}
-
-class NodeEditorStyle {
-  final Color backgroundColor;
-  final DecorationImage? backgroundImage;
-  final Color borderColor;
-  final double borderWidth;
-  final BorderRadius borderRadius;
-  final double contentPadding;
-  final GridPainterStyle gridPainterStyle;
-
-  const NodeEditorStyle({
-    this.backgroundColor = Colors.transparent,
-    this.backgroundImage,
-    this.borderColor = Colors.transparent,
-    this.borderWidth = 0.0,
-    this.borderRadius = BorderRadius.zero,
-    this.contentPadding = 8.0,
-    required this.gridPainterStyle,
-  });
-}
-
-class NodeEditorWidget extends StatefulWidget {
-  final NodeEditorController controller;
+class FlNodeEditorWidget extends StatefulWidget {
+  final FlNodeEditorController controller;
   final NodeEditorBehavior behavior;
   final NodeEditorStyle style;
   final bool expandToParent;
   final Size? fixedSize;
   final List<Widget> Function(Offset, double) content;
 
-  const NodeEditorWidget({
+  const FlNodeEditorWidget({
     super.key,
     required this.controller,
     this.behavior = const NodeEditorBehavior(),
     this.style = const NodeEditorStyle(
-      gridPainterStyle: GridPainterStyle(),
+      gridPainterStyle: GridStyle(),
     ),
     this.expandToParent = true,
     this.fixedSize,
@@ -71,13 +30,13 @@ class NodeEditorWidget extends StatefulWidget {
   });
 
   @override
-  State<NodeEditorWidget> createState() => _NodeEditorWidgetState();
+  State<FlNodeEditorWidget> createState() => _FlNodeEditorWidgetState();
 }
 
-class _NodeEditorWidgetState extends State<NodeEditorWidget>
+class _FlNodeEditorWidgetState extends State<FlNodeEditorWidget>
     with TickerProviderStateMixin {
   // Core state
-  Offset _gridOffset = Offset.zero;
+  Offset _offset = Offset.zero;
   double _zoom = 1.0;
 
   // Interaction state
@@ -147,7 +106,7 @@ class _NodeEditorWidgetState extends State<NodeEditorWidget>
 
       final Offset adjustedKineticEnergy = _kineticEnergy / _zoom;
 
-      _setOffset(_gridOffset + adjustedKineticEnergy, animate: false);
+      _setOffset(_offset + adjustedKineticEnergy, animate: false);
 
       _kineticEnergy *= decayFactor;
 
@@ -166,7 +125,7 @@ class _NodeEditorWidgetState extends State<NodeEditorWidget>
   void _setOffsetFromRawInput(Offset delta) {
     final Offset offsetFactor = delta * widget.behavior.panSensitivity / _zoom;
 
-    final Offset targetOffset = _gridOffset + offsetFactor;
+    final Offset targetOffset = _offset + offsetFactor;
 
     _setOffset(targetOffset, animate: false);
   }
@@ -192,7 +151,7 @@ class _NodeEditorWidgetState extends State<NodeEditorWidget>
   }
 
   void _setOffset(Offset targetOffset, {bool animate = true}) {
-    if (_gridOffset == targetOffset) return;
+    if (_offset == targetOffset) return;
 
     final Offset clampedOffset = Offset(
       targetOffset.dx.clamp(
@@ -208,7 +167,7 @@ class _NodeEditorWidgetState extends State<NodeEditorWidget>
     if (animate) {
       _offsetAnimationController.reset();
 
-      final distance = (_gridOffset - clampedOffset).distance;
+      final distance = (_offset - clampedOffset).distance;
 
       final durationFactor = (distance / 1000).clamp(0.5, 3.0);
       _offsetAnimationController.duration = Duration(
@@ -216,7 +175,7 @@ class _NodeEditorWidgetState extends State<NodeEditorWidget>
       );
 
       _offsetAnimation = Tween<Offset>(
-        begin: _gridOffset,
+        begin: _offset,
         end: clampedOffset,
       ).animate(
         CurvedAnimation(
@@ -225,14 +184,14 @@ class _NodeEditorWidgetState extends State<NodeEditorWidget>
         ),
       )..addListener(() {
           setState(() {
-            _gridOffset = _offsetAnimation.value;
+            _offset = _offsetAnimation.value;
           });
         });
 
       _offsetAnimationController.forward();
     } else {
       setState(() {
-        _gridOffset = clampedOffset;
+        _offset = clampedOffset;
       });
     }
   }
@@ -273,43 +232,51 @@ class _NodeEditorWidgetState extends State<NodeEditorWidget>
 
   @override
   Widget build(BuildContext context) {
-    final Widget editorContent = Stack(
-      children: [
-        GridWidget(
-          offset: _gridOffset,
-          scale: _zoom,
-          style: widget.style.gridPainterStyle,
-        ),
-        ...widget.content(_gridOffset, _zoom),
-        if (kDebugMode)
-          Positioned(
-            top: 0,
-            right: 0,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  'X: ${_gridOffset.dx.toStringAsFixed(2)}, Y: ${_gridOffset.dy.toStringAsFixed(2)}',
-                  textAlign: TextAlign.left,
-                  style: const TextStyle(
-                    color: Colors.blue,
-                    fontSize: 16,
-                  ),
-                ),
-                Text(
-                  'Zoom: ${_zoom.toStringAsFixed(2)}',
-                  textAlign: TextAlign.right,
-                  style: const TextStyle(
-                    color: Colors.blue,
-                    fontSize: 16,
-                  ),
-                ),
-              ],
-            ),
-          ),
-      ],
-    );
+    Widget controlsWrapper(Widget child) {
+      return isMobile()
+          ? GestureDetector(
+              onDoubleTap: () => _setOffset(Offset.zero, animate: false),
+              onScaleStart: (details) => _onDragStart(),
+              onScaleUpdate: (details) {
+                setState(() {
+                  _isDragging = true;
+                });
+
+                if (widget.behavior.zoomSensitivity > 0) {
+                  _setZoomFromRawInput(details.scale);
+                }
+
+                if (widget.behavior.panSensitivity > 0) {
+                  _setOffsetFromRawInput(details.focalPointDelta);
+                }
+              },
+              onScaleEnd: (details) => _onDragEnd(),
+              child: child,
+            )
+          : Listener(
+              onPointerDown: (event) => setState(() {
+                _isDragging = true;
+                _onDragStart();
+              }),
+              onPointerMove: (event) {
+                if (widget.behavior.panSensitivity > 0 && _isDragging) {
+                  _setOffsetFromRawInput(event.delta);
+                  _onDragUpdate(event.delta);
+                }
+              },
+              onPointerSignal: (event) {
+                if (widget.behavior.zoomSensitivity > 0 &&
+                    event is PointerScrollEvent) {
+                  _setZoomFromRawInput(event.scrollDelta.dy);
+                }
+              },
+              onPointerUp: (event) => setState(() {
+                _isDragging = false;
+                _onDragEnd();
+              }),
+              child: child,
+            );
+    }
 
     final Widget editor = Container(
       decoration: BoxDecoration(
@@ -321,51 +288,53 @@ class _NodeEditorWidgetState extends State<NodeEditorWidget>
         ),
         borderRadius: widget.style.borderRadius,
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: isMobile()
-            ? GestureDetector(
-                onDoubleTap: () => _setOffset(Offset.zero, animate: false),
-                onScaleStart: (details) => _onDragStart(),
-                onScaleUpdate: (details) {
-                  setState(() {
-                    _isDragging = true;
-                  });
-
-                  if (widget.behavior.zoomSensitivity > 0) {
-                    _setZoomFromRawInput(details.scale);
-                  }
-
-                  if (widget.behavior.panSensitivity > 0) {
-                    _setOffsetFromRawInput(details.focalPointDelta);
-                  }
-                },
-                onScaleEnd: (details) => _onDragEnd(),
-                child: editorContent,
-              )
-            : Listener(
-                onPointerDown: (event) => setState(() {
-                  _isDragging = true;
-                  _onDragStart();
-                }),
-                onPointerMove: (event) {
-                  if (widget.behavior.panSensitivity > 0 && _isDragging) {
-                    _setOffsetFromRawInput(event.delta);
-                    _onDragUpdate(event.delta);
-                  }
-                },
-                onPointerSignal: (event) {
-                  if (widget.behavior.zoomSensitivity > 0 &&
-                      event is PointerScrollEvent) {
-                    _setZoomFromRawInput(event.scrollDelta.dy);
-                  }
-                },
-                onPointerUp: (event) => setState(() {
-                  _isDragging = false;
-                  _onDragEnd();
-                }),
-                child: editorContent,
+      child: controlsWrapper(
+        Stack(
+          children: [
+            Positioned(
+              top: 0,
+              right: 0,
+              bottom: 0,
+              left: 0,
+              child: RepaintBoundary(
+                child: NodeViewWidget(
+                  style: widget.style.gridPainterStyle,
+                  offset: _offset,
+                  zoom: _zoom,
+                  nodes: widget.controller.nodes,
+                ),
               ),
+            ),
+            ...widget.content(_offset, _zoom),
+            if (kDebugMode)
+              Positioned(
+                top: 0,
+                right: 0,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      'X: ${_offset.dx.toStringAsFixed(2)}, Y: ${_offset.dy.toStringAsFixed(2)}',
+                      textAlign: TextAlign.left,
+                      style: const TextStyle(
+                        color: Colors.blue,
+                        fontSize: 16,
+                      ),
+                    ),
+                    Text(
+                      'Zoom: ${_zoom.toStringAsFixed(2)}',
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(
+                        color: Colors.blue,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
       ),
     );
 

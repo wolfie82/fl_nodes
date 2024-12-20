@@ -34,7 +34,7 @@ class NodeEditorEventBus {
   }
 }
 
-class NodeEditorController {
+class FlNodeEditorController {
   // Event bus
   final eventBus = NodeEditorEventBus();
 
@@ -42,7 +42,7 @@ class NodeEditorController {
   final Map<String, Node Function()> _nodeTypes = {};
   final List<Node> _nodes = [];
 
-  NodeEditorController();
+  FlNodeEditorController();
 
   void registerNodeType(String type, Node Function() node) {
     _nodeTypes[type] = node;
@@ -50,6 +50,15 @@ class NodeEditorController {
 
   void unregisterNodeType(String type) {
     _nodeTypes.remove(type);
+  }
+
+  void addNode(String type) {
+    final node = _nodeTypes[type]!();
+    _nodes.add(node);
+  }
+
+  void removeNode(String id) {
+    _nodes.removeWhere((node) => node.id == id);
   }
 
   void setOffset(Offset offset, {bool animate = true}) {
