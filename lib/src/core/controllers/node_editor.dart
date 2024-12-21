@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import 'package:uuid/uuid.dart';
+
 import '../models/node.dart';
 
 class NodeEditorEvent {}
@@ -39,22 +41,27 @@ class FlNodeEditorController {
   final eventBus = NodeEditorEventBus();
 
   // Node data
-  final Map<String, Node Function()> _nodeTypes = {};
+  final Map<String, NodePrototype Function()> _nodePrototypes = {};
   final List<Node> _nodes = [];
 
   FlNodeEditorController();
 
-  void registerNodeType(String type, Node Function() node) {
-    _nodeTypes[type] = node;
+  void registerNodePrototype(String type, NodePrototype Function() node) {
+    _nodePrototypes[type] = node;
   }
 
-  void unregisterNodeType(String type) {
-    _nodeTypes.remove(type);
+  void unregisterNodePrototype(String type) {
+    _nodePrototypes.remove(type);
   }
 
-  void addNode(String type) {
-    final node = _nodeTypes[type]!();
-    _nodes.add(node);
+  void addNode(String type, {Offset? offset}) {
+    _nodes.add(
+      Node(
+        prototype: _nodePrototypes[type]!(),
+        id: const Uuid().v4(),
+        offset: offset ?? Offset.zero,
+      ),
+    );
   }
 
   void removeNode(String id) {
@@ -70,5 +77,5 @@ class FlNodeEditorController {
   }
 
   List<Node> get nodes => _nodes;
-  Map<String, Node Function()> get nodeTypes => _nodeTypes;
+  Map<String, NodePrototype Function()> get nodePrototypes => _nodePrototypes;
 }

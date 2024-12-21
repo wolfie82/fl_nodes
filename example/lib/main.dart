@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import 'package:gap/gap.dart';
-import 'package:uuid/uuid.dart';
 
 import 'package:fl_nodes/fl_nodes.dart';
 
@@ -37,9 +36,9 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
   void initState() {
     super.initState();
 
-    _nodeEditorController.registerNodeType('add', () {
-      return Node(
-        id: const Uuid().v4(),
+    _nodeEditorController.registerNodePrototype(
+      'add',
+      () => NodePrototype(
         name: 'Add',
         inputs: [
           Port(id: 'a', name: 'A', data: 0, color: Colors.red),
@@ -48,15 +47,18 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
         outputs: [
           Port(id: 'result', name: 'Result', data: 0, color: Colors.blue),
         ],
+        fields: [
+          Field(id: 'a', name: 'A', data: 0, color: Colors.red),
+          Field(id: 'b', name: 'B', data: 0, color: Colors.green),
+        ],
         onExecute: (inputIds) {
           final a = int.parse(inputIds[0]);
           final b = int.parse(inputIds[1]);
           return [(a + b).toString()];
         },
         color: Colors.blue,
-        offset: const Offset(0, 0),
-      );
-    });
+      ),
+    );
 
     _nodeEditorController.addNode('add');
   }

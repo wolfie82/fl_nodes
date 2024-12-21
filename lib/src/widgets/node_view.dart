@@ -26,14 +26,25 @@ class NodeViewWidget extends MultiChildRenderObjectWidget {
           children: nodes
               .map(
                 (node) => Container(
-                  width: 64,
-                  height: 64,
                   decoration: BoxDecoration(
-                    color: node.color,
+                    borderRadius: BorderRadius.circular(4),
                     border: Border.all(
-                      color: node.color.withOpacity(0.5),
+                      color: node.prototype.color,
                       width: 2,
                     ),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        node.prototype.name,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               )
