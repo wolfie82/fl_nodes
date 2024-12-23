@@ -2,8 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import 'package:uuid/uuid.dart';
-
 import '../models/node.dart';
 
 class NodeEditorEvent {}
@@ -56,10 +54,9 @@ class FlNodeEditorController {
 
   void addNode(String type, {Offset? offset}) {
     _nodes.add(
-      Node(
-        prototype: _nodePrototypes[type]!(),
-        id: const Uuid().v4(),
-        offset: offset ?? Offset.zero,
+      createNode(
+        _nodePrototypes[type]!(),
+        offset: offset,
       ),
     );
   }
