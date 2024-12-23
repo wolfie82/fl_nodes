@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:fl_nodes/src/core/utils/renderbox.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -10,6 +9,8 @@ import 'package:fl_nodes/src/core/controllers/node_editor.dart';
 import 'package:fl_nodes/src/core/models/styles.dart';
 import 'package:fl_nodes/src/core/utils/platform.dart';
 import 'package:fl_nodes/src/widgets/node_editor.dart';
+
+import '../core/utils/keys.dart';
 
 class FlNodeEditor extends StatefulWidget {
   final FlNodeEditorController controller;
@@ -241,12 +242,6 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
 
   @override
   Widget build(BuildContext context) {
-    for (final node in widget.controller.nodes) {
-      debugPrint(
-        'Key: ${node.key} - Size: ${getSizeFromGlobalKey(node.key).toString()} - Offset: ${getOffsetFromGlobalKey(node.key).toString()}',
-      );
-    }
-
     Widget controlsWrapper(Widget child) {
       return isMobile()
           ? GestureDetector(
@@ -313,6 +308,7 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
               left: 0,
               child: RepaintBoundary(
                 child: NodeEditorWidget(
+                  key: nodeEditorWidgetKey,
                   style: widget.style.gridPainterStyle,
                   offset: _offset,
                   zoom: _zoom,

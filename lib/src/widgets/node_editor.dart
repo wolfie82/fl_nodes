@@ -6,6 +6,7 @@ import 'package:fl_nodes/src/utils/grid.dart';
 import 'package:fl_nodes/src/widgets/node.dart';
 
 import '../core/models/node.dart';
+import '../core/utils/renderbox.dart';
 
 class NodeParentData extends ContainerBoxParentData<RenderBox> {
   Offset nodeOffset = Offset.zero;
@@ -152,6 +153,8 @@ class NodeEditorRenderBox extends RenderBox
         parentUsesSize: true,
       );
 
+      childParentData.offset = childParentData.nodeOffset;
+
       child = childParentData.nextSibling;
     }
   }
@@ -168,6 +171,37 @@ class NodeEditorRenderBox extends RenderBox
     final startY = _calculateStart(viewport.top, style.gridSpacingY);
 
     paintGrid(style, canvas, viewport, startX, startY);
+
+    if (childCount > 1) {
+      final NodeParentData firstNodeData =
+          firstChild!.parentData! as NodeParentData;
+      final NodeParentData lastNodeData =
+          lastChild!.parentData! as NodeParentData;
+
+      final Offset startPoint = Offset(
+        firstNodeData.nodeOffset.dx + 56,
+        firstNodeData.nodeOffset.dy,
+      );
+      final Offset endPoint = lastNodeData.nodeOffset;
+
+      final Paint paint = Paint()
+        ..color = Colors.blue
+        ..strokeWidth = 2.0
+        ..style = PaintingStyle.stroke;
+
+      final Path path = Path()
+        ..moveTo(startPoint.dx, startPoint.dy)
+        ..cubicTo(
+          startPoint.dx + 100,
+          startPoint.dy,
+          endPoint.dx - 100,
+          endPoint.dy,
+          endPoint.dx,
+          endPoint.dy,
+        );
+
+      canvas.drawPath(path, paint);
+    }
 
     RenderBox? child = firstChild;
     while (child != null) {
