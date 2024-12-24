@@ -4,21 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../models/node.dart';
 
-class NodeEditorEvent {}
-
-class OffsetEvent extends NodeEditorEvent {
-  final Offset offset;
-  final bool animate;
-
-  OffsetEvent(this.offset, {this.animate = true});
-}
-
-class ZoomEvent extends NodeEditorEvent {
-  final double zoom;
-  final bool animate;
-
-  ZoomEvent(this.zoom, {this.animate = true});
-}
+import 'node_editor_events.dart';
 
 class NodeEditorEventBus {
   final _streamController = StreamController<NodeEditorEvent>.broadcast();
@@ -39,10 +25,20 @@ class FlNodeEditorController {
   final eventBus = NodeEditorEventBus();
 
   // Node data
+  Offset offset = Offset.zero;
+  double zoom = 1.0;
   final Map<String, NodePrototype Function()> _nodePrototypes = {};
-  final List<Node> _nodes = [];
+  final Map<String, Node> _nodes = {};
+  List<String> _selectedNodeIds = [];
+  Rect _selectionArea = Rect.zero;
 
   FlNodeEditorController();
+
+  void dispose() {
+    eventBus.dispose();
+  }
+
+  // Controllet to UI communication
 
   void registerNodePrototype(String type, NodePrototype Function() node) {
     _nodePrototypes[type] = node;
@@ -53,26 +49,72 @@ class FlNodeEditorController {
   }
 
   void addNode(String type, {Offset? offset}) {
-    _nodes.add(
-      createNode(
-        _nodePrototypes[type]!(),
-        offset: offset,
-      ),
+    final node = createNode(
+      _nodePrototypes[type]!(),
+      offset: offset,
+    );
+
+    _nodes.putIfAbsent(
+      node.id,
+      () => node,
     );
   }
 
   void removeNode(String id) {
-    _nodes.removeWhere((node) => node.id == id);
+    _nodes.remove(id);
   }
 
-  void setOffset(Offset offset, {bool animate = true}) {
-    eventBus.emit(OffsetEvent(offset));
+  void setViewportOffset(Offset coords, {bool animate = true}) {
+    offset = coords;
+    eventBus.emit(ViewportOffsetEvent(offset));
   }
 
-  void setZoom(double zoom, {bool animate = true}) {
-    eventBus.emit(ZoomEvent(zoom));
+  void setViewportZoom(double amount, {bool animate = true}) {
+    zoom = amount;
+    eventBus.emit(ViewportZoomEvent(zoom));
   }
 
-  List<Node> get nodes => _nodes;
+  void setNodeOffset(String id, Offset offset) {
+    final node = _nodes[id];
+    node?.offset = offset;
+  }
+
+  void dragNode(String id, Offset offset) {
+    final node = _nodes[id];
+    node?.offset += offset;
+    eventBus.emit(DragNodeEvent(id));
+  }
+
+  void collapseNode(String id) {
+    final node = _nodes[id];
+    node?.state.isCollapsed = !node.state.isCollapsed;
+    eventBus.emit(CollapseNodeEvent(id));
+  }
+
+  void selectNodesById(List<String> ids) {
+    for (final id in _selectedNodeIds) {
+      final node = _nodes[id];
+      node?.state.isSelected = false;
+    }
+
+    _selectedNodeIds = ids;
+
+    for (final id in _selectedNodeIds) {
+      final node = _nodes[id];
+      node?.state.isSelected = true;
+    }
+
+    eventBus.emit(SelectNodeEvent(ids));
+  }
+
+  void selectNodesByArea(Rect area) {
+    _selectionArea = area;
+  }
+
+  // Getters
+
   Map<String, NodePrototype Function()> get nodePrototypes => _nodePrototypes;
+  List<Node> get nodesAsList => _nodes.values.toList();
+  List<String> get selectedNodeIds => _selectedNodeIds;
+  Rect get selectionArea => _selectionArea;
 }

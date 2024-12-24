@@ -8,8 +8,10 @@ import 'package:flutter/scheduler.dart';
 import 'package:fl_nodes/src/core/controllers/node_editor.dart';
 import 'package:fl_nodes/src/core/models/styles.dart';
 import 'package:fl_nodes/src/core/utils/platform.dart';
+import 'package:fl_nodes/src/utils/improved_listener.dart';
 import 'package:fl_nodes/src/widgets/node_editor.dart';
 
+import '../core/controllers/node_editor_events.dart';
 import '../core/utils/keys.dart';
 
 class FlNodeEditor extends StatefulWidget {
@@ -18,7 +20,7 @@ class FlNodeEditor extends StatefulWidget {
   final NodeEditorStyle style;
   final bool expandToParent;
   final Size? fixedSize;
-  final List<Widget> Function(Offset, double) overaly;
+  final List<Widget> Function() overaly;
 
   const FlNodeEditor({
     super.key,
@@ -43,12 +45,14 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
   double _zoom = 1.0;
 
   // Interaction state
-  bool _isDragging = true;
+  bool _isDragging = false;
+  bool _isSelecting = false;
 
   // Interaction kinematics
-  Offset _lastFocalDelta = Offset.zero;
+  Offset _lastPositionDelta = Offset.zero;
   Offset _kineticEnergy = Offset.zero;
   Timer? _kineticTimer;
+  Offset _selectionStart = Offset.zero;
 
   // Animation controllers and animations
   late AnimationController _offsetAnimationController;
@@ -80,26 +84,71 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
 
   void _handleControllerEvents() {
     widget.controller.eventBus.events.listen((event) {
-      if (event is OffsetEvent) {
+      if (event is ViewportOffsetEvent) {
         _setOffset(event.offset, animate: event.animate);
-      } else if (event is ZoomEvent) {
+      } else if (event is ViewportZoomEvent) {
         _setZoom(event.zoom, animate: event.animate);
+      } else if (event is DragNodeEvent) {
+        _onNodeDrag();
+      } else {
+        setState(() {});
       }
     });
   }
 
   void _onDragStart() {
+    _isDragging = true;
     _offsetAnimationController.stop();
     _startKineticTimer();
   }
 
   void _onDragUpdate(Offset delta) {
-    _lastFocalDelta = delta;
-    _resetKineticTimer();
-    _setOffsetFromRawInput(delta);
+    setState(() {
+      _lastPositionDelta = delta;
+      _resetKineticTimer();
+      _setOffsetFromRawInput(delta);
+    });
   }
 
-  void _onDragEnd() => _kineticEnergy = _lastFocalDelta;
+  void _onDragEnd() {
+    setState(() {
+      _isDragging = false;
+      _kineticEnergy = _lastPositionDelta;
+      _kineticTimer?.cancel();
+    });
+  }
+
+  void _onSelectStart(Offset position) {
+    setState(() {
+      _isSelecting = true;
+      _selectionStart = position;
+    });
+  }
+
+  void _onSelectUpdate(Offset position) {
+    setState(() {
+      widget.controller.selectNodesByArea(
+        Rect.fromPoints(_selectionStart, position),
+      );
+    });
+  }
+
+  void _onSelectEnd() {
+    setState(() {
+      _isSelecting = false;
+      widget.controller.selectNodesByArea(Rect.zero);
+    });
+  }
+
+  void _onNodeDrag() {
+    setState(() {
+      if (_isDragging) {
+        _onDragEnd();
+      } else if (_isSelecting) {
+        _onSelectEnd();
+      }
+    });
+  }
 
   void _startKineticTimer() {
     const duration = Duration(milliseconds: 16); // ~60 FPS
@@ -109,7 +158,7 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
     _kineticTimer?.cancel();
 
     _kineticTimer = Timer.periodic(duration, (timer) {
-      if (_lastFocalDelta == Offset.zero) {
+      if (_lastPositionDelta == Offset.zero) {
         timer.cancel();
         return;
       }
@@ -195,6 +244,7 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
       )..addListener(() {
           setState(() {
             _offset = _offsetAnimation.value;
+            widget.controller.offset = _offset;
           });
         });
 
@@ -202,6 +252,7 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
     } else {
       setState(() {
         _offset = clampedOffset;
+        widget.controller.offset = _offset;
       });
     }
   }
@@ -229,6 +280,7 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
       )..addListener(() {
           setState(() {
             _zoom = _zoomAnimation.value;
+            widget.controller.zoom = _zoom;
           });
         });
 
@@ -236,6 +288,7 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
     } else {
       setState(() {
         _zoom = clampedZoom;
+        widget.controller.zoom = _zoom;
       });
     }
   }
@@ -245,46 +298,57 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
     Widget controlsWrapper(Widget child) {
       return isMobile()
           ? GestureDetector(
-              onDoubleTap: () => _setOffset(Offset.zero, animate: false),
+              onDoubleTap: () => widget.controller.selectNodesById([]),
               onScaleStart: (details) => _onDragStart(),
               onScaleUpdate: (details) {
-                setState(() {
-                  _isDragging = true;
-                });
-
-                if (widget.behavior.zoomSensitivity > 0) {
+                if (widget.behavior.zoomSensitivity > 0 &&
+                    details.scale.abs() > 0.01) {
                   _setZoomFromRawInput(details.scale);
                 }
 
-                if (widget.behavior.panSensitivity > 0) {
+                if (widget.behavior.panSensitivity > 0 &&
+                    details.focalPointDelta > const Offset(10, 10)) {
                   _setOffsetFromRawInput(details.focalPointDelta);
                 }
               },
               onScaleEnd: (details) => _onDragEnd(),
               child: child,
             )
-          : Listener(
-              onPointerDown: (event) => setState(() {
-                _isDragging = true;
-                _onDragStart();
-              }),
-              onPointerMove: (event) {
-                if (widget.behavior.panSensitivity > 0 && _isDragging) {
-                  _setOffsetFromRawInput(event.delta);
-                  _onDragUpdate(event.delta);
-                }
-              },
-              onPointerSignal: (event) {
-                if (widget.behavior.zoomSensitivity > 0 &&
-                    event is PointerScrollEvent) {
-                  _setZoomFromRawInput(event.scrollDelta.dy);
-                }
-              },
-              onPointerUp: (event) => setState(() {
-                _isDragging = false;
-                _onDragEnd();
-              }),
-              child: child,
+          : MouseRegion(
+              cursor: _isDragging
+                  ? SystemMouseCursors.move
+                  : SystemMouseCursors.basic,
+              child: ImprovedListener(
+                onDoubleClick: () => widget.controller.selectNodesById([]),
+                onPointerPressed: (event) {
+                  if (event.buttons == kMiddleMouseButton) {
+                    _onDragStart();
+                  } else if (event.buttons == kPrimaryMouseButton) {
+                    _onSelectStart(event.localPosition);
+                  }
+                },
+                onPointerMoved: (event) {
+                  if (_isDragging && widget.behavior.panSensitivity > 0) {
+                    _onDragUpdate(event.delta);
+                  } else if (_isSelecting) {
+                    _onSelectUpdate(event.localPosition);
+                  }
+                },
+                onPointerReleased: (event) {
+                  if (_isDragging) {
+                    _onDragEnd();
+                  } else if (_isSelecting) {
+                    _onSelectEnd();
+                  }
+                },
+                onPointerSignalReceived: (event) {
+                  if (widget.behavior.zoomSensitivity > 0 &&
+                      event is PointerScrollEvent) {
+                    _setZoomFromRawInput(event.scrollDelta.dy);
+                  }
+                },
+                child: child,
+              ),
             );
     }
 
@@ -309,40 +373,18 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
               child: RepaintBoundary(
                 child: NodeEditorWidget(
                   key: nodeEditorWidgetKey,
+                  controller: widget.controller,
                   style: widget.style.gridPainterStyle,
-                  offset: _offset,
-                  zoom: _zoom,
-                  nodes: widget.controller.nodes,
                 ),
               ),
             ),
-            ...widget.overaly(_offset, _zoom),
-            if (kDebugMode)
-              Positioned(
-                top: 0,
-                right: 0,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      'X: ${_offset.dx.toStringAsFixed(2)}, Y: ${_offset.dy.toStringAsFixed(2)}',
-                      textAlign: TextAlign.left,
-                      style: const TextStyle(
-                        color: Colors.blue,
-                        fontSize: 16,
-                      ),
-                    ),
-                    Text(
-                      'Zoom: ${_zoom.toStringAsFixed(2)}',
-                      textAlign: TextAlign.right,
-                      style: const TextStyle(
-                        color: Colors.blue,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ],
+            ...widget.overaly().map(
+                  (overlay) => RepaintBoundary(child: overlay),
                 ),
+            if (kDebugMode)
+              DebugInfoWidget(
+                offset: widget.controller.offset,
+                zoom: widget.controller.zoom,
               ),
           ],
         ),
@@ -366,5 +408,33 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
         child: editor,
       );
     }
+  }
+}
+
+class DebugInfoWidget extends StatelessWidget {
+  final Offset offset;
+  final double zoom;
+
+  const DebugInfoWidget({super.key, required this.offset, required this.zoom});
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      top: 0,
+      right: 0,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Text(
+            'X: ${offset.dx.toStringAsFixed(2)}, Y: ${offset.dy.toStringAsFixed(2)}',
+            style: const TextStyle(color: Colors.blue, fontSize: 16),
+          ),
+          Text(
+            'Zoom: ${zoom.toStringAsFixed(2)}',
+            style: const TextStyle(color: Colors.blue, fontSize: 16),
+          ),
+        ],
+      ),
+    );
   }
 }

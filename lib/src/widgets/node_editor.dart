@@ -1,34 +1,29 @@
+import 'package:fl_nodes/fl_nodes.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
-import 'package:fl_nodes/src/core/models/styles.dart';
 import 'package:fl_nodes/src/utils/grid.dart';
 import 'package:fl_nodes/src/widgets/node.dart';
-
-import '../core/models/node.dart';
-import '../core/utils/renderbox.dart';
 
 class NodeParentData extends ContainerBoxParentData<RenderBox> {
   Offset nodeOffset = Offset.zero;
 }
 
 class NodeEditorWidget extends MultiChildRenderObjectWidget {
+  final FlNodeEditorController controller;
   final GridStyle style;
-  final Offset offset;
-  final double zoom;
-  final List<Node> nodes;
 
   NodeEditorWidget({
     super.key,
+    required this.controller,
     required this.style,
-    required this.offset,
-    required this.zoom,
-    required this.nodes,
   }) : super(
-          children: nodes
+          children: controller.nodesAsList
               .map(
                 (node) => NodeWidget(
                   node: node,
+                  controller: controller,
                 ),
               )
               .toList(),
@@ -38,9 +33,10 @@ class NodeEditorWidget extends MultiChildRenderObjectWidget {
   NodeEditorRenderBox createRenderObject(BuildContext context) {
     return NodeEditorRenderBox(
       style: style,
-      offset: offset,
-      zoom: zoom,
-      nodePositions: nodes.map((n) => n.offset).toList(),
+      offset: controller.offset,
+      zoom: controller.zoom,
+      selctionArea: controller.selectionArea,
+      nodePositions: controller.nodesAsList.map((n) => n.offset).toList(),
     );
   }
 
@@ -50,9 +46,12 @@ class NodeEditorWidget extends MultiChildRenderObjectWidget {
     NodeEditorRenderBox renderObject,
   ) {
     renderObject
-      ..offset = offset
-      ..zoom = zoom
-      ..updateNodePositions(nodes.map((n) => n.offset).toList());
+      ..offset = controller.offset
+      ..zoom = controller.zoom
+      ..selectionArea = controller.selectionArea
+      ..updateNodePositions(
+        controller.nodesAsList.map((n) => n.offset).toList(),
+      );
   }
 }
 
@@ -64,11 +63,21 @@ class NodeEditorRenderBox extends RenderBox
     required GridStyle style,
     required Offset offset,
     required double zoom,
+    required Rect selctionArea,
     required List<Offset> nodePositions,
   })  : _style = style,
         _offset = offset,
-        _zoom = zoom {
+        _zoom = zoom,
+        _selectionArea = selctionArea {
     _updateNodePositions(nodePositions);
+  }
+
+  Rect _selectionArea;
+  Rect get selectionArea => _selectionArea;
+  set selectionArea(Rect value) {
+    if (_selectionArea == value) return;
+    _selectionArea = value;
+    markNeedsPaint();
   }
 
   GridStyle _style;
@@ -172,37 +181,6 @@ class NodeEditorRenderBox extends RenderBox
 
     paintGrid(style, canvas, viewport, startX, startY);
 
-    if (childCount > 1) {
-      final NodeParentData firstNodeData =
-          firstChild!.parentData! as NodeParentData;
-      final NodeParentData lastNodeData =
-          lastChild!.parentData! as NodeParentData;
-
-      final Offset startPoint = Offset(
-        firstNodeData.nodeOffset.dx + 56,
-        firstNodeData.nodeOffset.dy,
-      );
-      final Offset endPoint = lastNodeData.nodeOffset;
-
-      final Paint paint = Paint()
-        ..color = Colors.blue
-        ..strokeWidth = 2.0
-        ..style = PaintingStyle.stroke;
-
-      final Path path = Path()
-        ..moveTo(startPoint.dx, startPoint.dy)
-        ..cubicTo(
-          startPoint.dx + 100,
-          startPoint.dy,
-          endPoint.dx - 100,
-          endPoint.dy,
-          endPoint.dx,
-          endPoint.dy,
-        );
-
-      canvas.drawPath(path, paint);
-    }
-
     RenderBox? child = firstChild;
     while (child != null) {
       final NodeParentData childParentData =
@@ -212,6 +190,33 @@ class NodeEditorRenderBox extends RenderBox
       context.paintChild(child, nodeOffset);
 
       child = childParentData.nextSibling;
+    }
+
+    if (!selectionArea.isEmpty) {
+      final transformedSelectionArea = Rect.fromLTWH(
+        screenToCanvas(selectionArea.topLeft, size, offset, zoom).dx,
+        screenToCanvas(selectionArea.topLeft, size, offset, zoom).dy,
+        selectionArea.width / zoom,
+        selectionArea.height / zoom,
+      );
+
+      final Paint selectionPaint = Paint()
+        ..color = Colors.blue.withAlpha(50)
+        ..style = PaintingStyle.fill;
+
+      canvas.drawRect(transformedSelectionArea, selectionPaint);
+
+      final Paint borderPaint = Paint()
+        ..color = Colors.blue
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.5;
+
+      canvas.drawRect(transformedSelectionArea, borderPaint);
+    }
+
+    if (kDebugMode) {
+      paintDebugViewport(canvas, viewport);
+      paintDebugOffset(canvas, size);
     }
 
     context.canvas.restore();
@@ -237,11 +242,32 @@ class NodeEditorRenderBox extends RenderBox
   @visibleForTesting
   void paintDebugViewport(Canvas canvas, Rect viewport) {
     final Paint debugPaint = Paint()
-      ..color = Colors.red.withOpacity(0.3)
+      ..color = Colors.red
       ..style = PaintingStyle.stroke;
 
     // Draw the viewport rect
     canvas.drawRect(viewport, debugPaint);
+  }
+
+  @visibleForTesting
+  void paintDebugOffset(Canvas canvas, Size size) {
+    final Paint debugPaint = Paint()
+      ..color = Colors.green.withAlpha(200)
+      ..style = PaintingStyle.fill;
+
+    // Draw the offset point
+    canvas.drawCircle(Offset.zero, 5, debugPaint);
+  }
+
+  Offset screenToCanvas(
+    Offset screenPosition,
+    Size size,
+    Offset offset,
+    double zoom,
+  ) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final translated = screenPosition - center;
+    return translated / zoom - offset;
   }
 
   double _calculateStart(double viewportEdge, double gridSpacing) {
@@ -251,5 +277,35 @@ class NodeEditorRenderBox extends RenderBox
   @override
   bool hitTestSelf(Offset position) {
     return true;
+  }
+
+  @override
+  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) {
+    final transformedPosition =
+        (position - Offset(size.width / 2, size.height / 2))
+                .scale(1 / _zoom, 1 / _zoom) -
+            _offset;
+
+    RenderBox? child = lastChild;
+    while (child != null) {
+      final NodeParentData childParentData =
+          child.parentData! as NodeParentData;
+
+      final bool isHit = result.addWithPaintOffset(
+        offset: childParentData.nodeOffset,
+        position: transformedPosition,
+        hitTest: (BoxHitTestResult result, Offset transformed) {
+          return child!.hitTest(result, position: transformed);
+        },
+      );
+
+      if (isHit) {
+        return true;
+      }
+
+      child = childParentData.previousSibling;
+    }
+
+    return false;
   }
 }

@@ -60,8 +60,44 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
       ),
     );
 
-    _nodeEditorController.addNode('add', offset: const Offset(100, 100));
-    _nodeEditorController.addNode('add', offset: const Offset(300, 500));
+    _nodeEditorController.registerNodePrototype(
+      'input',
+      () => NodePrototype(
+        name: 'Input',
+        outputs: [
+          PortPrototype(
+            name: 'Value',
+            data: 0,
+          ),
+        ],
+        onExecute: (inputIds, outputIds) {},
+      ),
+    );
+
+    _nodeEditorController.registerNodePrototype(
+      'output',
+      () => NodePrototype(
+        name: 'Output',
+        inputs: [
+          PortPrototype(
+            name: 'Value',
+            data: 0,
+          ),
+        ],
+        onExecute: (inputIds, outputIds) {},
+      ),
+    );
+
+    _nodeEditorController.addNode('add', offset: const Offset(0, 0));
+    _nodeEditorController.addNode('input', offset: const Offset(-200, -100));
+    _nodeEditorController.addNode('input', offset: const Offset(-200, 100));
+    _nodeEditorController.addNode('output', offset: const Offset(200, 0));
+  }
+
+  @override
+  void dispose() {
+    _nodeEditorController.dispose();
+    super.dispose();
   }
 
   @override
@@ -90,7 +126,7 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
               intersectionRadius: 2,
             ),
           ),
-          overaly: (offset, zoom) {
+          overaly: () {
             return [
               Padding(
                 padding: const EdgeInsets.all(8),
@@ -104,8 +140,8 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: IconButton(
-                        onPressed: () =>
-                            _nodeEditorController.setOffset(Offset.zero),
+                        onPressed: () => _nodeEditorController
+                            .setViewportOffset(Offset.zero),
                         icon: const Icon(
                           Icons.center_focus_strong,
                           size: 32,
@@ -120,8 +156,8 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: IconButton(
-                        onPressed: () =>
-                            _nodeEditorController.setZoom(zoom * 2),
+                        onPressed: () => _nodeEditorController
+                            .setViewportZoom(_nodeEditorController.zoom * 2),
                         icon: const Icon(
                           Icons.zoom_in,
                           size: 32,
@@ -136,8 +172,8 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: IconButton(
-                        onPressed: () =>
-                            _nodeEditorController.setZoom(zoom / 2),
+                        onPressed: () => _nodeEditorController
+                            .setViewportZoom(_nodeEditorController.zoom / 2),
                         icon: const Icon(
                           Icons.zoom_out,
                           size: 32,
