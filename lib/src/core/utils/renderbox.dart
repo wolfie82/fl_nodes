@@ -15,3 +15,14 @@ Size? getSizeFromGlobalKey(GlobalKey key) {
   }
   return null;
 }
+
+Offset screenToWorld(
+  Offset screenPosition,
+  Size size,
+  Offset offset,
+  double zoom,
+) {
+  final center = Offset(size.width / 2, size.height / 2);
+  final translated = screenPosition - center;
+  return translated / zoom - offset;
+}

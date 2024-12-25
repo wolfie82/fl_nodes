@@ -193,25 +193,18 @@ class NodeEditorRenderBox extends RenderBox
     }
 
     if (!selectionArea.isEmpty) {
-      final transformedSelectionArea = Rect.fromLTWH(
-        screenToCanvas(selectionArea.topLeft, size, offset, zoom).dx,
-        screenToCanvas(selectionArea.topLeft, size, offset, zoom).dy,
-        selectionArea.width / zoom,
-        selectionArea.height / zoom,
-      );
-
       final Paint selectionPaint = Paint()
         ..color = Colors.blue.withAlpha(50)
         ..style = PaintingStyle.fill;
 
-      canvas.drawRect(transformedSelectionArea, selectionPaint);
+      canvas.drawRect(selectionArea, selectionPaint);
 
       final Paint borderPaint = Paint()
         ..color = Colors.blue
         ..style = PaintingStyle.stroke
         ..strokeWidth = 0.5;
 
-      canvas.drawRect(transformedSelectionArea, borderPaint);
+      canvas.drawRect(selectionArea, borderPaint);
     }
 
     if (kDebugMode) {
@@ -257,17 +250,6 @@ class NodeEditorRenderBox extends RenderBox
 
     // Draw the offset point
     canvas.drawCircle(Offset.zero, 5, debugPaint);
-  }
-
-  Offset screenToCanvas(
-    Offset screenPosition,
-    Size size,
-    Offset offset,
-    double zoom,
-  ) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final translated = screenPosition - center;
-    return translated / zoom - offset;
   }
 
   double _calculateStart(double viewportEdge, double gridSpacing) {

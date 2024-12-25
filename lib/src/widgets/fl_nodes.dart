@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:fl_nodes/src/core/utils/renderbox.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -127,16 +128,40 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
 
   void _onSelectUpdate(Offset position) {
     setState(() {
-      widget.controller.selectNodesByArea(
-        Rect.fromPoints(_selectionStart, position),
+      final screenSpaceSelectionArea = Rect.fromPoints(
+        _selectionStart,
+        position,
       );
+
+      final nodeEditorWidgetSize = getSizeFromGlobalKey(nodeEditorWidgetKey);
+
+      if (nodeEditorWidgetSize == null) return;
+
+      final worldSpaceSelectionArea = Rect.fromLTWH(
+        screenToWorld(
+          screenSpaceSelectionArea.topLeft,
+          nodeEditorWidgetSize,
+          _offset,
+          _zoom,
+        ).dx,
+        screenToWorld(
+          screenSpaceSelectionArea.topLeft,
+          nodeEditorWidgetSize,
+          _offset,
+          _zoom,
+        ).dy,
+        screenSpaceSelectionArea.width / _zoom,
+        screenSpaceSelectionArea.height / _zoom,
+      );
+
+      widget.controller.setSelectionArea(worldSpaceSelectionArea);
     });
   }
 
   void _onSelectEnd() {
     setState(() {
       _isSelecting = false;
-      widget.controller.selectNodesByArea(Rect.zero);
+      widget.controller.selectNodesByArea();
     });
   }
 
