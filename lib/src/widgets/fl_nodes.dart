@@ -406,6 +406,7 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
       ),
       child: controlsWrapper(
         Stack(
+          clipBehavior: Clip.none,
           children: [
             Positioned(
               top: 0,
