@@ -1,18 +1,24 @@
+import 'dart:async';
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
+import 'package:flutter/services.dart';
 
 import 'package:gap/gap.dart';
 
 import 'package:fl_nodes/src/core/controllers/node_editor.dart';
 import 'package:fl_nodes/src/utils/improved_listener.dart';
 
+import '../core/controllers/node_editor_events.dart';
 import '../core/models/node.dart';
+import '../core/utils/keys.dart';
 import '../core/utils/platform.dart';
+import '../core/utils/renderbox.dart';
 
 class NodeWidget extends StatefulWidget {
   final Node node;
   final FlNodeEditorController controller;
-
   const NodeWidget({
     super.key,
     required this.node,
@@ -24,7 +30,88 @@ class NodeWidget extends StatefulWidget {
 }
 
 class _NodeWidgetState extends State<NodeWidget> {
-  bool _isCollapsed = true;
+  Timer? _edgeTimer;
+
+  double get zoom => widget.controller.zoom;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _handleControllerEvents();
+
+    // This is a workaround to ensure that the node has been built before getting its bounds.
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      widget.node.hasBuilt(widget.node);
+    });
+  }
+
+  void _handleControllerEvents() {
+    widget.controller.eventBus.events.listen((event) {
+      if (event.isHandled) return;
+
+      if (event is SelectionEvent) {
+        if (event.ids.contains(widget.node.id)) {
+          setState(() {
+            widget.node.state.isSelected = true;
+          });
+        } else {
+          setState(() {
+            widget.node.state.isSelected = false;
+          });
+        }
+      } else if (event is DragSelectionEvent) {
+        if (event.ids.contains(widget.node.id)) {
+          setState(() {
+            widget.node.offset += event.delta / widget.controller.zoom;
+          });
+        }
+      } else if (event is CollapseNodeEvent) {
+        if (event.id == widget.node.id) {
+          setState(() {});
+        }
+      }
+    });
+  }
+
+  void _startEdgeTimer(Offset position) {
+    const edgeThreshold = 20.0; // Distance from edge to start moving
+    const moveAmount = 5.0; // Amount to move per frame
+
+    final Size? editorSize = getSizeFromGlobalKey(nodeEditorWidgetKey);
+    if (editorSize == null) return;
+
+    _edgeTimer?.cancel();
+
+    _edgeTimer = Timer.periodic(const Duration(milliseconds: 16), (timer) {
+      double dx = 0;
+      double dy = 0;
+
+      if (position.dx < edgeThreshold) {
+        dx = -moveAmount;
+      } else if (position.dx > editorSize.width - edgeThreshold) {
+        dx = moveAmount;
+      }
+
+      if (position.dy < edgeThreshold) {
+        dy = -moveAmount;
+      } else if (position.dy > editorSize.height - edgeThreshold) {
+        dy = moveAmount;
+      }
+
+      if (dx != 0 || dy != 0) {
+        widget.controller.dragSelection(Offset(dx, dy));
+        widget.controller.setViewportOffset(
+          Offset(-dx / zoom, -dy / zoom),
+          animate: false,
+        );
+      }
+    });
+  }
+
+  void _resetEdgeTimer() {
+    _edgeTimer?.cancel();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,19 +119,28 @@ class _NodeWidgetState extends State<NodeWidget> {
       return isMobile()
           ? GestureDetector(
               onPanUpdate: (details) {
-                widget.controller.dragNode(widget.node.id, details.delta);
+                widget.controller.dragSelection(details.delta);
               },
               onTap: () => widget.controller.selectNodesById([widget.node.id]),
+              onDoubleTap: () => widget.controller
+                  .selectNodesById([widget.node.id], holdSelection: true),
               child: child,
             )
           : ImprovedListener(
               onPointerMoved: (event) {
+                _startEdgeTimer(event.position);
+
                 if (event.buttons == kPrimaryMouseButton) {
-                  widget.controller.dragNode(widget.node.id, event.delta);
+                  widget.controller.dragSelection(event.delta);
                 }
               },
-              onPointerPressed: (event) =>
-                  widget.controller.selectNodesById([widget.node.id]),
+              onPointerPressed: (event) => widget.controller.selectNodesById(
+                [widget.node.id],
+                holdSelection: widget.node.state.isSelected
+                    ? true
+                    : HardwareKeyboard.instance.isControlPressed,
+              ),
+              onPointerReleased: (event) => _resetEdgeTimer(),
               child: child,
             );
     }
@@ -88,14 +184,12 @@ class _NodeWidgetState extends State<NodeWidget> {
                         children: [
                           InkWell(
                             onTap: () {
-                              setState(() {
-                                _isCollapsed = !_isCollapsed;
-                              });
+                              widget.controller.collapseNode(widget.node.id);
                             },
                             child: Icon(
-                              _isCollapsed
-                                  ? Icons.arrow_right
-                                  : Icons.arrow_drop_down,
+                              widget.node.state.isCollapsed
+                                  ? Icons.arrow_drop_down
+                                  : Icons.arrow_right,
                             ),
                           ),
                           const Gap(8),
@@ -110,7 +204,7 @@ class _NodeWidgetState extends State<NodeWidget> {
                       ),
                     ),
                     Visibility(
-                      visible: _isCollapsed,
+                      visible: !widget.node.state.isCollapsed,
                       child: Padding(
                         padding: const EdgeInsets.all(12),
                         child: Column(
@@ -153,7 +247,7 @@ class _NodeWidgetState extends State<NodeWidget> {
 
   Widget _buildPortRow(Port port, {required bool isInput}) {
     return Visibility(
-      visible: _isCollapsed,
+      visible: !widget.node.state.isCollapsed,
       child: Row(
         mainAxisAlignment:
             isInput ? MainAxisAlignment.start : MainAxisAlignment.end,
@@ -176,7 +270,7 @@ class _NodeWidgetState extends State<NodeWidget> {
 
   Widget _buildPortIndicator(Port port, {required bool isInput}) {
     return Visibility(
-      visible: _isCollapsed,
+      visible: !widget.node.state.isCollapsed,
       child: Positioned.fill(
         child: LayoutBuilder(
           builder: (context, constraints) {

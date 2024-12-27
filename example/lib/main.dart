@@ -141,7 +141,7 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
                       ),
                       child: IconButton(
                         onPressed: () => _nodeEditorController
-                            .setViewportOffset(Offset.zero),
+                            .setViewportOffset(Offset.zero, absolute: true),
                         icon: const Icon(
                           Icons.center_focus_strong,
                           size: 32,

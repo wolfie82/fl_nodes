@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 
-class NodeEditorEvent {}
+class NodeEditorEvent {
+  final bool isHandled;
+
+  NodeEditorEvent({this.isHandled = false});
+}
 
 class ViewportOffsetEvent extends NodeEditorEvent {
   final Offset offset;
@@ -19,16 +23,23 @@ class ViewportZoomEvent extends NodeEditorEvent {
   });
 }
 
-class DragNodeEvent extends NodeEditorEvent {
-  final String id;
+class SelectionAreaEvent extends NodeEditorEvent {
+  final Rect area;
 
-  DragNodeEvent(this.id);
+  SelectionAreaEvent(this.area);
 }
 
-class SelectNodeEvent extends NodeEditorEvent {
-  final List<String> ids;
+class DragSelectionEvent extends NodeEditorEvent {
+  final Set<String> ids;
+  final Offset delta;
 
-  SelectNodeEvent(this.ids);
+  DragSelectionEvent(this.ids, this.delta);
+}
+
+class SelectionEvent extends NodeEditorEvent {
+  final Set<String> ids;
+
+  SelectionEvent(this.ids);
 }
 
 class CollapseNodeEvent extends NodeEditorEvent {

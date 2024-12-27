@@ -1,14 +1,15 @@
 import 'dart:async';
 
-import 'package:fl_nodes/src/core/utils/renderbox.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:flutter/services.dart';
 
 import 'package:fl_nodes/src/core/controllers/node_editor.dart';
 import 'package:fl_nodes/src/core/models/styles.dart';
 import 'package:fl_nodes/src/core/utils/platform.dart';
+import 'package:fl_nodes/src/core/utils/renderbox.dart';
 import 'package:fl_nodes/src/utils/improved_listener.dart';
 import 'package:fl_nodes/src/widgets/node_editor.dart';
 
@@ -85,14 +86,14 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
 
   void _handleControllerEvents() {
     widget.controller.eventBus.events.listen((event) {
+      if (event.isHandled) return;
+
       if (event is ViewportOffsetEvent) {
         _setOffset(event.offset, animate: event.animate);
       } else if (event is ViewportZoomEvent) {
         _setZoom(event.zoom, animate: event.animate);
-      } else if (event is DragNodeEvent) {
-        _onNodeDrag();
-      } else {
-        setState(() {});
+      } else if (event is DragSelectionEvent) {
+        _suppressActions();
       }
     });
   }
@@ -111,11 +112,12 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
     });
   }
 
+  void _onDragCancel() => _onDragEnd();
+
   void _onDragEnd() {
     setState(() {
       _isDragging = false;
       _kineticEnergy = _lastPositionDelta;
-      _kineticTimer?.cancel();
     });
   }
 
@@ -158,19 +160,34 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
     });
   }
 
-  void _onSelectEnd() {
+  void _onSelectCancel() {
     setState(() {
       _isSelecting = false;
-      widget.controller.selectNodesByArea();
+      _selectionStart = Offset.zero;
     });
   }
 
-  void _onNodeDrag() {
+  void _onSelectEnd() {
+    setState(() {
+      if (widget.controller.selectionArea.size > const Size(10, 10)) {
+        widget.controller.selectNodesByArea(
+          holdSelection: HardwareKeyboard.instance.isControlPressed,
+        );
+      } else {
+        widget.controller.setSelectionArea(Rect.zero);
+      }
+
+      _isSelecting = false;
+      _selectionStart = Offset.zero;
+    });
+  }
+
+  void _suppressActions() {
     setState(() {
       if (_isDragging) {
-        _onDragEnd();
+        _onDragCancel();
       } else if (_isSelecting) {
-        _onSelectEnd();
+        _onSelectCancel();
       }
     });
   }
@@ -354,7 +371,7 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
                 },
                 onPointerMoved: (event) {
                   if (_isDragging && widget.behavior.panSensitivity > 0) {
-                    _onDragUpdate(event.delta);
+                    _onDragUpdate(event.localDelta);
                   } else if (_isSelecting) {
                     _onSelectUpdate(event.localPosition);
                   }

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:fl_nodes/src/core/utils/renderbox.dart';
 import 'package:flutter/material.dart';
 
 import '../models/node.dart';
@@ -29,7 +30,7 @@ class FlNodeEditorController {
   double zoom = 1.0;
   final Map<String, NodePrototype Function()> _nodePrototypes = {};
   final Map<String, Node> _nodes = {};
-  List<String> _selectedNodeIds = [];
+  final Set<String> _selectedNodeIds = {};
   Rect _selectionArea = Rect.zero;
 
   FlNodeEditorController();
@@ -52,6 +53,7 @@ class FlNodeEditorController {
     final node = createNode(
       _nodePrototypes[type]!(),
       offset: offset,
+      hasBuilt: (self) => (),
     );
 
     _nodes.putIfAbsent(
@@ -64,9 +66,18 @@ class FlNodeEditorController {
     _nodes.remove(id);
   }
 
-  void setViewportOffset(Offset coords, {bool animate = true}) {
-    offset = coords;
-    eventBus.emit(ViewportOffsetEvent(offset));
+  void setViewportOffset(
+    Offset coords, {
+    bool animate = true,
+    bool absolute = false,
+  }) {
+    if (absolute) {
+      offset = coords;
+    } else {
+      offset += coords;
+    }
+
+    eventBus.emit(ViewportOffsetEvent(offset, animate: animate));
   }
 
   void setViewportZoom(double amount, {bool animate = true}) {
@@ -79,10 +90,13 @@ class FlNodeEditorController {
     node?.offset = offset;
   }
 
-  void dragNode(String id, Offset offset) {
-    final node = _nodes[id];
-    node?.offset += offset;
-    eventBus.emit(DragNodeEvent(id));
+  void dragSelection(Offset delta) {
+    eventBus.emit(DragSelectionEvent(_selectedNodeIds.toSet(), delta));
+  }
+
+  void setSelectionArea(Rect area) {
+    _selectionArea = area;
+    eventBus.emit(SelectionAreaEvent(area));
   }
 
   void collapseNode(String id) {
@@ -91,30 +105,52 @@ class FlNodeEditorController {
     eventBus.emit(CollapseNodeEvent(id));
   }
 
-  void selectNodesById(List<String> ids) {
-    for (final id in _selectedNodeIds) {
-      final node = _nodes[id];
-      node?.state.isSelected = false;
+  void selectNodesById(List<String> ids, {bool holdSelection = false}) {
+    if (!holdSelection) {
+      for (final id in _selectedNodeIds) {
+        final node = _nodes[id];
+        node?.state.isSelected = false;
+      }
+
+      _selectedNodeIds.clear();
     }
 
-    _selectedNodeIds = ids;
+    _selectedNodeIds.addAll(ids);
 
     for (final id in _selectedNodeIds) {
       final node = _nodes[id];
       node?.state.isSelected = true;
     }
 
-    eventBus.emit(SelectNodeEvent(ids));
+    eventBus.emit(SelectionEvent(_selectedNodeIds.toSet()));
   }
 
-  void selectNodesByArea(Rect area) {
-    _selectionArea = area;
+  void selectNodesByArea({bool holdSelection = false}) {
+    if (!holdSelection) {
+      for (final id in _selectedNodeIds) {
+        final node = _nodes[id];
+        node?.state.isSelected = false;
+      }
+
+      _selectedNodeIds.clear();
+    }
+
+    for (final node in _nodes.values) {
+      final nodeBounds = getBoundsFromGlobalKey(node);
+
+      if (nodeBounds != null && _selectionArea.overlaps(nodeBounds)) {
+        node.state.isSelected = true;
+        _selectedNodeIds.add(node.id);
+      }
+    }
+
+    _selectionArea = Rect.zero;
   }
 
   // Getters
 
   Map<String, NodePrototype Function()> get nodePrototypes => _nodePrototypes;
   List<Node> get nodesAsList => _nodes.values.toList();
-  List<String> get selectedNodeIds => _selectedNodeIds;
+  List<String> get selectedNodeIds => _selectedNodeIds.toList();
   Rect get selectionArea => _selectionArea;
 }
