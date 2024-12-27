@@ -142,6 +142,11 @@ class FlNodeEditorController {
         node.state.isSelected = true;
         _selectedNodeIds.add(node.id);
       }
+
+  void clearSelection() {
+    for (final id in _selectedNodeIds) {
+      final node = _nodes[id];
+      node?.state.isSelected = false;
     }
 
     _selectionArea = Rect.zero;

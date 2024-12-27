@@ -340,7 +340,7 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
     Widget controlsWrapper(Widget child) {
       return isMobile()
           ? GestureDetector(
-              onDoubleTap: () => widget.controller.selectNodesById([]),
+              onDoubleTap: () => widget.controller.clearSelection(),
               onScaleStart: (details) => _onDragStart(),
               onScaleUpdate: (details) {
                 if (widget.behavior.zoomSensitivity > 0 &&
@@ -361,7 +361,7 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
                   ? SystemMouseCursors.move
                   : SystemMouseCursors.basic,
               child: ImprovedListener(
-                onDoubleClick: () => widget.controller.selectNodesById([]),
+                onDoubleClick: () => widget.controller.clearSelection(),
                 onPointerPressed: (event) {
                   if (event.buttons == kMiddleMouseButton) {
                     _onDragStart();
