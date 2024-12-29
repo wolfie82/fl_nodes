@@ -42,6 +42,18 @@ class SelectionEvent extends NodeEditorEvent {
   SelectionEvent(this.ids);
 }
 
+class AddNodeEvent extends NodeEditorEvent {
+  final String id;
+
+  AddNodeEvent(this.id);
+}
+
+class RemoveNodeEvent extends NodeEditorEvent {
+  final String id;
+
+  RemoveNodeEvent(this.id);
+}
+
 class CollapseNodeEvent extends NodeEditorEvent {
   final String id;
 

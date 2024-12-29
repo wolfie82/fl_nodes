@@ -2,6 +2,18 @@ import 'package:flutter/material.dart';
 
 import 'package:uuid/uuid.dart';
 
+class Link {
+  final String id;
+  final (String, String) input;
+  final (String, String) output;
+
+  Link({
+    required this.id,
+    required this.input,
+    required this.output,
+  });
+}
+
 class PortPrototype {
   final String name;
   final dynamic data;
@@ -27,12 +39,14 @@ class Port {
 
 class NodePrototype {
   final String name;
+  final Color color;
   final List<PortPrototype> inputs;
   final List<PortPrototype> outputs;
   final void Function(List<String> inputIds, List<String> outputIds) onExecute;
 
   NodePrototype({
     required this.name,
+    this.color = Colors.blue,
     this.inputs = const [],
     this.outputs = const [],
     required this.onExecute,
@@ -52,10 +66,10 @@ class NodeState {
 class Node {
   final String id;
   final String name;
+  final Color color;
   final List<Port> inputs;
   final List<Port> outputs;
   final Function(List<String> inputIds, List<String> outputIds) onExecute;
-  final void Function(Node self) hasBuilt;
   Offset offset;
   final NodeState state = NodeState();
   final GlobalKey key = GlobalKey();
@@ -63,10 +77,10 @@ class Node {
   Node({
     required this.id,
     required this.name,
-    this.inputs = const [],
-    this.outputs = const [],
+    required this.color,
+    required this.inputs,
+    required this.outputs,
     required this.onExecute,
-    required this.hasBuilt,
     this.offset = Offset.zero,
   });
 }
@@ -81,16 +95,15 @@ Port createPort(PortPrototype prototype) {
 
 Node createNode(
   NodePrototype prototype, {
-  required void Function(Node self) hasBuilt,
   Offset? offset,
 }) {
   return Node(
     id: const Uuid().v4(),
     name: prototype.name,
+    color: prototype.color,
     inputs: prototype.inputs.map(createPort).toList(),
     outputs: prototype.outputs.map(createPort).toList(),
     onExecute: prototype.onExecute,
-    hasBuilt: hasBuilt,
     offset: offset ?? Offset.zero,
   );
 }

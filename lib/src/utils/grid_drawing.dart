@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../core/models/styles.dart';
 
-void paintGrid(
+void drawGrid(
   GridStyle style,
   Canvas canvas,
   Rect viewport,

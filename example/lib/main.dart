@@ -40,6 +40,7 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
       'add',
       () => NodePrototype(
         name: 'Add',
+        color: Colors.amber,
         inputs: [
           PortPrototype(
             name: 'A',
@@ -64,6 +65,7 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
       'input',
       () => NodePrototype(
         name: 'Input',
+        color: Colors.red,
         outputs: [
           PortPrototype(
             name: 'Value',
@@ -78,6 +80,7 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
       'output',
       () => NodePrototype(
         name: 'Output',
+        color: Colors.green,
         inputs: [
           PortPrototype(
             name: 'Value',
@@ -115,77 +118,104 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
         backgroundColor: Colors.blue,
       ),
       body: Center(
-        child: FlNodeEditor(
-          controller: _nodeEditorController,
-          expandToParent: true,
-          style: const NodeEditorStyle(
-            gridPainterStyle: GridStyle(
-              lineType: LineType.solid,
-              lineWidth: 1,
-              intersectionType: IntersectionType.circle,
-              intersectionRadius: 2,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: [
+            FlHierarchyWidget(
+              controller: _nodeEditorController,
+              style: const HierarchyStyle(),
             ),
-          ),
-          overaly: () {
-            return [
-              Padding(
-                padding: const EdgeInsets.all(8),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.blue,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: IconButton(
-                        onPressed: () => _nodeEditorController
-                            .setViewportOffset(Offset.zero, absolute: true),
-                        icon: const Icon(
-                          Icons.center_focus_strong,
-                          size: 32,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                    const Gap(8),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.blue,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: IconButton(
-                        onPressed: () => _nodeEditorController
-                            .setViewportZoom(_nodeEditorController.zoom * 2),
-                        icon: const Icon(
-                          Icons.zoom_in,
-                          size: 32,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                    const Gap(8),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.blue,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: IconButton(
-                        onPressed: () => _nodeEditorController
-                            .setViewportZoom(_nodeEditorController.zoom / 2),
-                        icon: const Icon(
-                          Icons.zoom_out,
-                          size: 32,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ],
+            Expanded(
+              child: FlNodeEditor(
+                controller: _nodeEditorController,
+                expandToParent: true,
+                style: const NodeEditorStyle(
+                  gridStyle: GridStyle(
+                    lineType: LineType.solid,
+                    lineWidth: 1,
+                    intersectionType: IntersectionType.circle,
+                    intersectionRadius: 2,
+                  ),
                 ),
+                overaly: () {
+                  return [
+                    FlOverlayData(
+                      child: Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.max,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            FlSearchWidget(
+                              controller: _nodeEditorController,
+                              style: const SearchStyle(),
+                            ),
+                            const Spacer(),
+                            Container(
+                              decoration: BoxDecoration(
+                                color: Colors.blue,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: IconButton(
+                                onPressed: () =>
+                                    _nodeEditorController.setViewportOffset(
+                                  Offset.zero,
+                                  absolute: true,
+                                ),
+                                icon: const Icon(
+                                  Icons.center_focus_strong,
+                                  size: 32,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                            const Gap(8),
+                            Container(
+                              decoration: BoxDecoration(
+                                color: Colors.blue,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: IconButton(
+                                onPressed: () =>
+                                    _nodeEditorController.setViewportZoom(
+                                  _nodeEditorController.zoom * 2,
+                                ),
+                                icon: const Icon(
+                                  Icons.zoom_in,
+                                  size: 32,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                            const Gap(8),
+                            Container(
+                              decoration: BoxDecoration(
+                                color: Colors.blue,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: IconButton(
+                                onPressed: () =>
+                                    _nodeEditorController.setViewportZoom(
+                                  _nodeEditorController.zoom / 2,
+                                ),
+                                icon: const Icon(
+                                  Icons.zoom_out,
+                                  size: 32,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ];
+                },
               ),
-            ];
-          },
+            ),
+          ],
         ),
       ),
     );

@@ -1,11 +1,34 @@
 import 'dart:async';
+import 'dart:math';
 
-import 'package:fl_nodes/src/core/utils/renderbox.dart';
 import 'package:flutter/material.dart';
+
+import 'package:fl_nodes/src/core/utils/constants.dart';
+import 'package:fl_nodes/src/core/utils/renderbox.dart';
 
 import '../models/node.dart';
 
 import 'node_editor_events.dart';
+
+class NodeEditorBehavior {
+  final double zoomSensitivity;
+  final double minZoom;
+  final double maxZoom;
+  final double panSensitivity;
+  final double maxPanX;
+  final double maxPanY;
+  final bool enableKineticScrolling;
+
+  const NodeEditorBehavior({
+    this.zoomSensitivity = 0.1,
+    this.minZoom = 0.1,
+    this.maxZoom = 10.0,
+    this.panSensitivity = 1.0,
+    this.maxPanX = 100000.0,
+    this.maxPanY = 100000.0,
+    this.enableKineticScrolling = true,
+  });
+}
 
 class NodeEditorEventBus {
   final _streamController = StreamController<NodeEditorEvent>.broadcast();
@@ -33,7 +56,12 @@ class FlNodeEditorController {
   final Set<String> _selectedNodeIds = {};
   Rect _selectionArea = Rect.zero;
 
-  FlNodeEditorController();
+  // Behavior
+  final NodeEditorBehavior behavior;
+
+  FlNodeEditorController({
+    this.behavior = const NodeEditorBehavior(),
+  });
 
   void dispose() {
     eventBus.dispose();
@@ -53,17 +81,20 @@ class FlNodeEditorController {
     final node = createNode(
       _nodePrototypes[type]!(),
       offset: offset,
-      hasBuilt: (self) => (),
     );
 
     _nodes.putIfAbsent(
       node.id,
       () => node,
     );
+
+    eventBus.emit(AddNodeEvent(node.id));
   }
 
   void removeNode(String id) {
     _nodes.remove(id);
+
+    eventBus.emit(RemoveNodeEvent(id));
   }
 
   void setViewportOffset(
@@ -105,7 +136,7 @@ class FlNodeEditorController {
     eventBus.emit(CollapseNodeEvent(id));
   }
 
-  void selectNodesById(List<String> ids, {bool holdSelection = false}) {
+  void selectNodesById(List<String> ids, {bool holdSelection = false}) async {
     if (!holdSelection) {
       for (final id in _selectedNodeIds) {
         final node = _nodes[id];
@@ -125,23 +156,22 @@ class FlNodeEditorController {
     eventBus.emit(SelectionEvent(_selectedNodeIds.toSet()));
   }
 
-  void selectNodesByArea({bool holdSelection = false}) {
-    if (!holdSelection) {
-      for (final id in _selectedNodeIds) {
-        final node = _nodes[id];
-        node?.state.isSelected = false;
-      }
-
-      _selectedNodeIds.clear();
-    }
+  void selectNodesByArea({bool holdSelection = false}) async {
+    final containedNodes = <String>[];
 
     for (final node in _nodes.values) {
-      final nodeBounds = getBoundsFromGlobalKey(node);
+      final nodeBounds = getNodeBoundsInWorld(node);
+      if (nodeBounds == null) continue;
 
-      if (nodeBounds != null && _selectionArea.overlaps(nodeBounds)) {
-        node.state.isSelected = true;
-        _selectedNodeIds.add(node.id);
+      if (_selectionArea.overlaps(nodeBounds)) {
+        containedNodes.add(node.id);
       }
+    }
+
+    selectNodesById(containedNodes, holdSelection: holdSelection);
+
+    _selectionArea = Rect.zero;
+  }
 
   void clearSelection() {
     for (final id in _selectedNodeIds) {
@@ -149,7 +179,51 @@ class FlNodeEditorController {
       node?.state.isSelected = false;
     }
 
-    _selectionArea = Rect.zero;
+    _selectedNodeIds.clear();
+    eventBus.emit(SelectionEvent(_selectedNodeIds.toSet()));
+  }
+
+  void focusNodesById(List<String> ids) {
+    Rect encompassingRect = Rect.zero;
+
+    for (final id in ids) {
+      final nodeBounds = getNodeBoundsInWorld(_nodes[id]!);
+      if (nodeBounds == null) continue;
+
+      if (encompassingRect.isEmpty) {
+        encompassingRect = nodeBounds;
+      } else {
+        encompassingRect = encompassingRect.expandToInclude(nodeBounds);
+      }
+    }
+
+    selectNodesById(ids, holdSelection: false);
+
+    final nodeEditorSize = getSizeFromGlobalKey(nodeEditorWidgetKey)!;
+    final paddedEncompassingRect = encompassingRect.inflate(50.0);
+    final fitZoom = min(
+      nodeEditorSize.width / paddedEncompassingRect.width,
+      nodeEditorSize.height / paddedEncompassingRect.height,
+    );
+
+    setViewportZoom(fitZoom, animate: true);
+    setViewportOffset(
+      -encompassingRect.center,
+      animate: true,
+      absolute: true,
+    );
+  }
+
+  Future<List<String>> searchNodesByName(String name) async {
+    final results = <String>[];
+
+    for (final node in _nodes.values) {
+      if (node.name.toLowerCase().contains(name.toLowerCase())) {
+        results.add(node.id);
+      }
+    }
+
+    return results;
   }
 
   // Getters

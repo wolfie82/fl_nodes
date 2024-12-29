@@ -20,12 +20,26 @@ Size? getSizeFromGlobalKey(GlobalKey key) {
 }
 
 /// Retrieves the bounds of a Node widget.
-Rect? getBoundsFromGlobalKey(Node node) {
+Rect? getNodeBoundsInWorld(Node node) {
   final size = getSizeFromGlobalKey(node.key);
   if (size != null) {
     return Rect.fromLTWH(
       node.offset.dx,
       node.offset.dy,
+      size.width,
+      size.height,
+    );
+  }
+  return null;
+}
+
+Rect? getEditorBoundsInScreen(GlobalKey key) {
+  final size = getSizeFromGlobalKey(key);
+  final offset = getOffsetFromGlobalKey(key);
+  if (size != null && offset != null) {
+    return Rect.fromLTWH(
+      offset.dx,
+      offset.dy,
       size.width,
       size.height,
     );

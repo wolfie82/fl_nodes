@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 
 import 'package:gap/gap.dart';
@@ -12,7 +11,7 @@ import 'package:fl_nodes/src/utils/improved_listener.dart';
 
 import '../core/controllers/node_editor_events.dart';
 import '../core/models/node.dart';
-import '../core/utils/keys.dart';
+import '../core/utils/constants.dart';
 import '../core/utils/platform.dart';
 import '../core/utils/renderbox.dart';
 
@@ -39,11 +38,6 @@ class _NodeWidgetState extends State<NodeWidget> {
     super.initState();
 
     _handleControllerEvents();
-
-    // This is a workaround to ensure that the node has been built before getting its bounds.
-    SchedulerBinding.instance.addPostFrameCallback((_) {
-      widget.node.hasBuilt(widget.node);
-    });
   }
 
   void _handleControllerEvents() {
@@ -75,27 +69,28 @@ class _NodeWidgetState extends State<NodeWidget> {
   }
 
   void _startEdgeTimer(Offset position) {
-    const edgeThreshold = 20.0; // Distance from edge to start moving
-    const moveAmount = 5.0; // Amount to move per frame
+    const edgeThreshold = 50.0; // Distance from edge to start moving
+    final moveAmount = 5.0 / widget.controller.zoom; // Amount to move per frame
 
-    final Size? editorSize = getSizeFromGlobalKey(nodeEditorWidgetKey);
-    if (editorSize == null) return;
+    final editorBounds = getEditorBoundsInScreen(nodeEditorWidgetKey);
+    if (editorBounds == null) return;
 
     _edgeTimer?.cancel();
 
-    _edgeTimer = Timer.periodic(const Duration(milliseconds: 16), (timer) {
+    _edgeTimer =
+        Timer.periodic(const Duration(milliseconds: 16), (timer) async {
       double dx = 0;
       double dy = 0;
+      final rect = editorBounds;
 
-      if (position.dx < edgeThreshold) {
+      if (position.dx < rect.left + edgeThreshold) {
         dx = -moveAmount;
-      } else if (position.dx > editorSize.width - edgeThreshold) {
+      } else if (position.dx > rect.right - edgeThreshold) {
         dx = moveAmount;
       }
-
-      if (position.dy < edgeThreshold) {
+      if (position.dy < rect.top + edgeThreshold) {
         dy = -moveAmount;
-      } else if (position.dy > editorSize.height - edgeThreshold) {
+      } else if (position.dy > rect.bottom - edgeThreshold) {
         dy = moveAmount;
       }
 
@@ -157,14 +152,14 @@ class _NodeWidgetState extends State<NodeWidget> {
                 boxShadow: [
                   BoxShadow(
                     color: widget.node.state.isSelected
-                        ? Colors.blue.withAlpha(128)
+                        ? widget.node.color.withAlpha(128)
                         : Colors.black.withAlpha(64),
-                    blurRadius: 5,
+                    blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
                 ],
                 border: Border.all(
-                  color: Colors.blue,
+                  color: widget.node.color,
                   width: 1,
                 ),
                 borderRadius: BorderRadius.circular(8.0),
@@ -177,8 +172,8 @@ class _NodeWidgetState extends State<NodeWidget> {
                   children: [
                     Container(
                       padding: const EdgeInsets.all(8),
-                      decoration: const BoxDecoration(
-                        color: Colors.blue,
+                      decoration: BoxDecoration(
+                        color: widget.node.color,
                       ),
                       child: Row(
                         children: [

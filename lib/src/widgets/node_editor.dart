@@ -1,293 +1,503 @@
-import 'package:fl_nodes/fl_nodes.dart';
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
+import 'package:flutter/scheduler.dart';
+import 'package:flutter/services.dart';
 
-import 'package:fl_nodes/src/utils/grid.dart';
-import 'package:fl_nodes/src/widgets/node.dart';
+import 'package:fl_nodes/src/core/controllers/node_editor.dart';
+import 'package:fl_nodes/src/core/models/styles.dart';
+import 'package:fl_nodes/src/core/utils/platform.dart';
+import 'package:fl_nodes/src/core/utils/renderbox.dart';
+import 'package:fl_nodes/src/utils/improved_listener.dart';
+import 'package:fl_nodes/src/widgets/node_editor_render.dart';
 
-class NodeParentData extends ContainerBoxParentData<RenderBox> {
-  Offset nodeOffset = Offset.zero;
+import '../core/controllers/node_editor_events.dart';
+import '../core/utils/constants.dart';
+
+class FlOverlayData {
+  final Widget child;
+  final double? top;
+  final double? left;
+  final double? bottom;
+  final double? right;
+
+  FlOverlayData({
+    required this.child,
+    this.top,
+    this.left,
+    this.bottom,
+    this.right,
+  });
 }
 
-class NodeEditorWidget extends MultiChildRenderObjectWidget {
+class FlNodeEditor extends StatefulWidget {
   final FlNodeEditorController controller;
-  final GridStyle style;
+  final NodeEditorStyle style;
+  final bool expandToParent;
+  final Size? fixedSize;
+  final List<FlOverlayData> Function() overaly;
 
-  NodeEditorWidget({
+  const FlNodeEditor({
     super.key,
     required this.controller,
-    required this.style,
-  }) : super(
-          children: controller.nodesAsList
-              .map(
-                (node) => NodeWidget(
-                  node: node,
-                  controller: controller,
-                ),
-              )
-              .toList(),
-        );
+    this.style = const NodeEditorStyle(
+      gridStyle: GridStyle(),
+    ),
+    this.expandToParent = true,
+    this.fixedSize,
+    required this.overaly,
+  });
 
   @override
-  NodeEditorRenderBox createRenderObject(BuildContext context) {
-    return NodeEditorRenderBox(
-      style: style,
-      offset: controller.offset,
-      zoom: controller.zoom,
-      selctionArea: controller.selectionArea,
-      nodePositions: controller.nodesAsList.map((n) => n.offset).toList(),
-    );
+  State<FlNodeEditor> createState() => _FlNodeEditorWidgetState();
+}
+
+class _FlNodeEditorWidgetState extends State<FlNodeEditor>
+    with TickerProviderStateMixin {
+  // Core state
+  Offset _offset = Offset.zero;
+  double _zoom = 1.0;
+
+  // Interaction state
+  bool _isDragging = false;
+  bool _isSelecting = false;
+
+  // Interaction kinematics
+  Offset _lastPositionDelta = Offset.zero;
+  Offset _kineticEnergy = Offset.zero;
+  Timer? _kineticTimer;
+  Offset _selectionStart = Offset.zero;
+
+  // Animation controllers and animations
+  late AnimationController _offsetAnimationController;
+  late AnimationController _zoomAnimationController;
+  late Animation<Offset> _offsetAnimation;
+  late Animation<double> _zoomAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _handleControllerEvents();
+
+    _offsetAnimationController = AnimationController(vsync: this);
+    _zoomAnimationController = AnimationController(vsync: this);
+
+    // Ensure the editor is updated after the first frame
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      setState(() {});
+    });
   }
 
   @override
-  void updateRenderObject(
-    BuildContext context,
-    NodeEditorRenderBox renderObject,
-  ) {
-    renderObject
-      ..offset = controller.offset
-      ..zoom = controller.zoom
-      ..selectionArea = controller.selectionArea
-      ..updateNodePositions(
-        controller.nodesAsList.map((n) => n.offset).toList(),
+  void dispose() {
+    _offsetAnimationController.dispose();
+    _zoomAnimationController.dispose();
+    super.dispose();
+  }
+
+  void _handleControllerEvents() {
+    widget.controller.eventBus.events.listen((event) {
+      if (event.isHandled) return;
+
+      if (event is ViewportOffsetEvent) {
+        _setOffset(event.offset, animate: event.animate);
+      } else if (event is ViewportZoomEvent) {
+        _setZoom(event.zoom, animate: event.animate);
+      } else if (event is DragSelectionEvent) {
+        _suppressActions();
+      } else if (event is AddNodeEvent || event is RemoveNodeEvent) {
+        setState(() {});
+      }
+    });
+  }
+
+  void _onDragStart() {
+    _isDragging = true;
+    _offsetAnimationController.stop();
+    _startKineticTimer();
+  }
+
+  void _onDragUpdate(Offset delta) {
+    setState(() {
+      _lastPositionDelta = delta;
+      _resetKineticTimer();
+      _setOffsetFromRawInput(delta);
+    });
+  }
+
+  void _onDragCancel() => _onDragEnd();
+
+  void _onDragEnd() {
+    setState(() {
+      _isDragging = false;
+      _kineticEnergy = _lastPositionDelta;
+    });
+  }
+
+  void _onSelectStart(Offset position) {
+    setState(() {
+      _isSelecting = true;
+      _selectionStart = screenToWorld(
+        position,
+        getSizeFromGlobalKey(nodeEditorWidgetKey)!,
+        _offset,
+        _zoom,
       );
+    });
+  }
+
+  void _onSelectUpdate(Offset position) {
+    setState(() {
+      widget.controller.setSelectionArea(
+        Rect.fromPoints(
+          _selectionStart,
+          screenToWorld(
+            position,
+            getSizeFromGlobalKey(nodeEditorWidgetKey)!,
+            _offset,
+            _zoom,
+          ),
+        ),
+      );
+    });
+  }
+
+  void _onSelectCancel() {
+    setState(() {
+      _isSelecting = false;
+      _selectionStart = Offset.zero;
+      widget.controller.setSelectionArea(Rect.zero);
+    });
+  }
+
+  void _onSelectEnd() {
+    setState(() {
+      if (widget.controller.selectionArea.size > const Size(10, 10)) {
+        widget.controller.selectNodesByArea(
+          holdSelection: HardwareKeyboard.instance.isControlPressed,
+        );
+      } else {
+        widget.controller.setSelectionArea(Rect.zero);
+      }
+
+      _isSelecting = false;
+      _selectionStart = Offset.zero;
+    });
+  }
+
+  void _suppressActions() {
+    setState(() {
+      if (_isDragging) {
+        _onDragCancel();
+      } else if (_isSelecting) {
+        _onSelectCancel();
+      }
+    });
+  }
+
+  void _startKineticTimer() {
+    const duration = Duration(milliseconds: 16); // ~60 FPS
+    const decayFactor = 0.9; // Exponential decay factor (magic number)
+    const minEnergyThreshold = 0.1; // Stop motion threshold (magic number)
+
+    _kineticTimer?.cancel();
+
+    _kineticTimer = Timer.periodic(duration, (timer) {
+      if (_lastPositionDelta == Offset.zero) {
+        timer.cancel();
+        return;
+      }
+
+      final Offset adjustedKineticEnergy = _kineticEnergy / _zoom;
+
+      _setOffset(_offset + adjustedKineticEnergy, animate: false);
+
+      _kineticEnergy *= decayFactor;
+
+      if (_kineticEnergy.distance < minEnergyThreshold) {
+        timer.cancel();
+        _kineticEnergy = Offset.zero;
+      }
+    });
+  }
+
+  void _resetKineticTimer() {
+    _kineticTimer?.cancel();
+    _startKineticTimer();
+  }
+
+  void _setOffsetFromRawInput(Offset delta) {
+    final Offset offsetFactor =
+        delta * widget.controller.behavior.panSensitivity / _zoom;
+
+    final Offset targetOffset = _offset + offsetFactor;
+
+    _setOffset(targetOffset, animate: false);
+  }
+
+  void _setZoomFromRawInput(double amount) {
+    const double baseSpeed =
+        0.05; // Base zoom speed and damping factor (magic number)
+    const double scaleFactor =
+        1.5; // Controls how zoom speed scales with zoom level (magic number)
+
+    final double sensitivity = widget.controller.behavior.zoomSensitivity;
+
+    final double dynamicZoomFactor =
+        baseSpeed * (1 + scaleFactor * _zoom) * sensitivity;
+
+    final double zoomFactor =
+        (amount * dynamicZoomFactor).abs().clamp(0.1, 10.0);
+
+    final double targetZoom =
+        (amount < 0 ? _zoom * (1 + zoomFactor) : _zoom / (1 + zoomFactor));
+
+    _setZoom(targetZoom, animate: true);
+  }
+
+  void _setOffset(Offset targetOffset, {bool animate = true}) {
+    if (_offset == targetOffset) return;
+
+    final beginOffset = _offset;
+
+    final Offset endOffset = Offset(
+      targetOffset.dx.clamp(
+        -widget.controller.behavior.maxPanX,
+        widget.controller.behavior.maxPanX,
+      ),
+      targetOffset.dy.clamp(
+        -widget.controller.behavior.maxPanY,
+        widget.controller.behavior.maxPanY,
+      ),
+    );
+
+    if (animate) {
+      _offsetAnimationController.reset();
+
+      final distance = (_offset - endOffset).distance;
+      final durationFactor = (distance / 1000).clamp(0.5, 3.0);
+      _offsetAnimationController.duration = Duration(
+        milliseconds: (1000 * durationFactor).toInt(),
+      );
+
+      _offsetAnimation = Tween<Offset>(
+        begin: beginOffset,
+        end: endOffset,
+      ).animate(
+        CurvedAnimation(
+          parent: _offsetAnimationController,
+          curve: Curves.easeOut,
+        ),
+      )..addListener(() {
+          setState(() {
+            _offset = _offsetAnimation.value;
+            widget.controller.offset = _offset;
+          });
+        });
+
+      _offsetAnimationController.forward();
+    } else {
+      setState(() {
+        _offset = endOffset;
+        widget.controller.offset = _offset;
+      });
+    }
+  }
+
+  void _setZoom(double targetZoom, {bool animate = true}) {
+    if (_zoom == targetZoom) return;
+
+    final beginZoom = _zoom;
+
+    final endZoom = targetZoom.clamp(
+      widget.controller.behavior.minZoom,
+      widget.controller.behavior.maxZoom,
+    );
+
+    if (animate) {
+      _zoomAnimationController.reset();
+
+      _zoomAnimationController.duration = const Duration(milliseconds: 200);
+
+      _zoomAnimation = Tween<double>(
+        begin: beginZoom,
+        end: endZoom,
+      ).animate(
+        CurvedAnimation(
+          parent: _zoomAnimationController,
+          curve: Curves.easeOut,
+        ),
+      )..addListener(() {
+          setState(() {
+            _zoom = _zoomAnimation.value;
+            widget.controller.zoom = _zoom;
+          });
+        });
+
+      _zoomAnimationController.forward();
+    } else {
+      setState(() {
+        _zoom = endZoom;
+        widget.controller.zoom = _zoom;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    Widget controlsWrapper(Widget child) {
+      return isMobile()
+          ? GestureDetector(
+              onDoubleTap: () => widget.controller.clearSelection(),
+              onScaleStart: (details) => _onDragStart(),
+              onScaleUpdate: (details) {
+                if (widget.controller.behavior.zoomSensitivity > 0 &&
+                    details.scale.abs() > 0.01) {
+                  _setZoomFromRawInput(details.scale);
+                }
+
+                if (widget.controller.behavior.panSensitivity > 0 &&
+                    details.focalPointDelta > const Offset(10, 10)) {
+                  _setOffsetFromRawInput(details.focalPointDelta);
+                }
+              },
+              onScaleEnd: (details) => _onDragEnd(),
+              child: child,
+            )
+          : MouseRegion(
+              cursor: _isDragging
+                  ? SystemMouseCursors.move
+                  : SystemMouseCursors.basic,
+              child: ImprovedListener(
+                onDoubleClick: () => widget.controller.clearSelection(),
+                onPointerPressed: (event) {
+                  if (event.buttons == kMiddleMouseButton) {
+                    _onDragStart();
+                  } else if (event.buttons == kPrimaryMouseButton) {
+                    _onSelectStart(event.localPosition);
+                  }
+                },
+                onPointerMoved: (event) {
+                  if (_isDragging &&
+                      widget.controller.behavior.panSensitivity > 0) {
+                    _onDragUpdate(event.localDelta);
+                  } else if (_isSelecting) {
+                    _onSelectUpdate(event.localPosition);
+                  }
+                },
+                onPointerReleased: (event) {
+                  if (_isDragging) {
+                    _onDragEnd();
+                  } else if (_isSelecting) {
+                    _onSelectEnd();
+                  }
+                },
+                onPointerSignalReceived: (event) {
+                  if (widget.controller.behavior.zoomSensitivity > 0 &&
+                      event is PointerScrollEvent) {
+                    _setZoomFromRawInput(event.scrollDelta.dy);
+                  }
+                },
+                child: child,
+              ),
+            );
+    }
+
+    final Widget editor = Container(
+      decoration: BoxDecoration(
+        image: widget.style.backgroundImage,
+        color: widget.style.backgroundColor,
+        border: Border.all(
+          color: widget.style.borderColor,
+          width: widget.style.borderWidth,
+        ),
+        borderRadius: widget.style.borderRadius,
+      ),
+      child: controlsWrapper(
+        Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Positioned(
+              top: 0,
+              right: 0,
+              bottom: 0,
+              left: 0,
+              child: RepaintBoundary(
+                child: NodeEditorRenderWidget(
+                  key: nodeEditorWidgetKey,
+                  controller: widget.controller,
+                  style: widget.style,
+                ),
+              ),
+            ),
+            ...widget.overaly().map(
+                  (overlayData) => Positioned(
+                    top: overlayData.top,
+                    left: overlayData.left,
+                    bottom: overlayData.bottom,
+                    right: overlayData.right,
+                    child: RepaintBoundary(
+                      child: overlayData.child,
+                    ),
+                  ),
+                ),
+            if (kDebugMode)
+              _DebugInfoWidget(
+                offset: widget.controller.offset,
+                zoom: widget.controller.zoom,
+              ),
+          ],
+        ),
+      ),
+    );
+
+    if (widget.expandToParent) {
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          return SizedBox(
+            width: constraints.maxWidth,
+            height: constraints.maxHeight,
+            child: editor,
+          );
+        },
+      );
+    } else {
+      return SizedBox(
+        width: widget.fixedSize?.width ?? 100,
+        height: widget.fixedSize?.height ?? 100,
+        child: editor,
+      );
+    }
   }
 }
 
-class NodeEditorRenderBox extends RenderBox
-    with
-        ContainerRenderObjectMixin<RenderBox, NodeParentData>,
-        RenderBoxContainerDefaultsMixin<RenderBox, NodeParentData> {
-  NodeEditorRenderBox({
-    required GridStyle style,
-    required Offset offset,
-    required double zoom,
-    required Rect selctionArea,
-    required List<Offset> nodePositions,
-  })  : _style = style,
-        _offset = offset,
-        _zoom = zoom,
-        _selectionArea = selctionArea {
-    _updateNodePositions(nodePositions);
-  }
+class _DebugInfoWidget extends StatelessWidget {
+  final Offset offset;
+  final double zoom;
 
-  Rect _selectionArea;
-  Rect get selectionArea => _selectionArea;
-  set selectionArea(Rect value) {
-    if (_selectionArea == value) return;
-    _selectionArea = value;
-    markNeedsPaint();
-  }
-
-  GridStyle _style;
-  GridStyle get style => _style;
-  set style(GridStyle value) {
-    if (_style == value) return;
-    _style = value;
-    markNeedsPaint();
-  }
-
-  Offset _offset;
-  Offset get offset => _offset;
-  set offset(Offset value) {
-    if (_offset == value) return;
-    _offset = value;
-    markNeedsPaint();
-  }
-
-  double _zoom;
-  double get zoom => _zoom;
-  set zoom(double value) {
-    if (_zoom == value) return;
-    _zoom = value;
-    markNeedsPaint();
-    markNeedsLayout();
-  }
-
-  void updateNodePositions(List<Offset> newPositions) {
-    if (_areNodePositionsEqual(newPositions)) return;
-    _updateNodePositions(newPositions);
-    markNeedsLayout();
-  }
-
-  void _updateNodePositions(List<Offset> positions) {
-    RenderBox? child = firstChild;
-    int index = 0;
-
-    while (child != null && index < positions.length) {
-      final NodeParentData childParentData =
-          child.parentData! as NodeParentData;
-      childParentData.nodeOffset = positions[index];
-      child = childParentData.nextSibling;
-      index++;
-    }
-  }
-
-  bool _areNodePositionsEqual(List<Offset> newPositions) {
-    RenderBox? child = firstChild;
-    int index = 0;
-
-    while (child != null && index < newPositions.length) {
-      final NodeParentData childParentData =
-          child.parentData! as NodeParentData;
-      if (childParentData.nodeOffset != newPositions[index]) {
-        return false;
-      }
-      child = childParentData.nextSibling;
-      index++;
-    }
-
-    return true;
-  }
+  const _DebugInfoWidget({required this.offset, required this.zoom});
 
   @override
-  void setupParentData(RenderBox child) {
-    if (child.parentData is! NodeParentData) {
-      child.parentData = NodeParentData();
-    }
-  }
-
-  @override
-  void performLayout() {
-    size = constraints.biggest;
-
-    RenderBox? child = firstChild;
-    while (child != null) {
-      final NodeParentData childParentData =
-          child.parentData! as NodeParentData;
-
-      child.layout(
-        BoxConstraints.loose(constraints.biggest),
-        parentUsesSize: true,
-      );
-
-      childParentData.offset = childParentData.nodeOffset;
-
-      child = childParentData.nextSibling;
-    }
-  }
-
-  @override
-  void paint(PaintingContext context, Offset offset) {
-    final Canvas canvas = context.canvas;
-
-    canvas.save();
-    _prepareCanvas(context.canvas, size);
-
-    final viewport = _calculateViewport(context.canvas, size);
-    final startX = _calculateStart(viewport.left, style.gridSpacingX);
-    final startY = _calculateStart(viewport.top, style.gridSpacingY);
-
-    paintGrid(style, canvas, viewport, startX, startY);
-
-    RenderBox? child = firstChild;
-    while (child != null) {
-      final NodeParentData childParentData =
-          child.parentData! as NodeParentData;
-
-      final Offset nodeOffset = childParentData.nodeOffset;
-      context.paintChild(child, nodeOffset);
-
-      child = childParentData.nextSibling;
-    }
-
-    if (!selectionArea.isEmpty) {
-      final Paint selectionPaint = Paint()
-        ..color = Colors.blue.withAlpha(50)
-        ..style = PaintingStyle.fill;
-
-      canvas.drawRect(selectionArea, selectionPaint);
-
-      final Paint borderPaint = Paint()
-        ..color = Colors.blue
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 0.5;
-
-      canvas.drawRect(selectionArea, borderPaint);
-    }
-
-    if (kDebugMode) {
-      paintDebugViewport(canvas, viewport);
-      paintDebugOffset(canvas, size);
-    }
-
-    context.canvas.restore();
-  }
-
-  void _prepareCanvas(Canvas canvas, Size size) {
-    canvas.translate(size.width / 2, size.height / 2);
-    canvas.scale(_zoom);
-    canvas.translate(_offset.dx, _offset.dy);
-  }
-
-  Rect _calculateViewport(Canvas canvas, Size size) {
-    final viewport = Rect.fromLTWH(
-      -size.width / 2 / _zoom - _offset.dx,
-      -size.height / 2 / _zoom - _offset.dy,
-      size.width / _zoom,
-      size.height / _zoom,
+  Widget build(BuildContext context) {
+    return Positioned(
+      bottom: 0,
+      right: 0,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Text(
+            'X: ${offset.dx.toStringAsFixed(2)}, Y: ${offset.dy.toStringAsFixed(2)}',
+            style: const TextStyle(color: Colors.blue, fontSize: 16),
+          ),
+          Text(
+            'Zoom: ${zoom.toStringAsFixed(2)}',
+            style: const TextStyle(color: Colors.blue, fontSize: 16),
+          ),
+        ],
+      ),
     );
-
-    return viewport;
-  }
-
-  @visibleForTesting
-  void paintDebugViewport(Canvas canvas, Rect viewport) {
-    final Paint debugPaint = Paint()
-      ..color = Colors.red
-      ..style = PaintingStyle.stroke;
-
-    // Draw the viewport rect
-    canvas.drawRect(viewport, debugPaint);
-  }
-
-  @visibleForTesting
-  void paintDebugOffset(Canvas canvas, Size size) {
-    final Paint debugPaint = Paint()
-      ..color = Colors.green.withAlpha(200)
-      ..style = PaintingStyle.fill;
-
-    // Draw the offset point
-    canvas.drawCircle(Offset.zero, 5, debugPaint);
-  }
-
-  double _calculateStart(double viewportEdge, double gridSpacing) {
-    return (viewportEdge / gridSpacing).floor() * gridSpacing;
-  }
-
-  @override
-  bool hitTestSelf(Offset position) {
-    return true;
-  }
-
-  @override
-  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) {
-    final transformedPosition =
-        (position - Offset(size.width / 2, size.height / 2))
-                .scale(1 / _zoom, 1 / _zoom) -
-            _offset;
-
-    RenderBox? child = lastChild;
-    while (child != null) {
-      final NodeParentData childParentData =
-          child.parentData! as NodeParentData;
-
-      final bool isHit = result.addWithPaintOffset(
-        offset: childParentData.nodeOffset,
-        position: transformedPosition,
-        hitTest: (BoxHitTestResult result, Offset transformed) {
-          return child!.hitTest(result, position: transformed);
-        },
-      );
-
-      if (isHit) {
-        return true;
-      }
-
-      child = childParentData.previousSibling;
-    }
-
-    return false;
   }
 }
