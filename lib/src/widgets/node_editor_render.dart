@@ -1,11 +1,13 @@
 import 'dart:ui' as ui;
 
-import 'package:fl_nodes/src/utils/grid_drawing.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
+import 'package:tuple/tuple.dart';
+
 import 'package:fl_nodes/fl_nodes.dart';
+import 'package:fl_nodes/src/utils/grid_drawing.dart';
 import 'package:fl_nodes/src/widgets/node.dart';
 
 class NodeParentData extends ContainerBoxParentData<RenderBox> {
@@ -41,7 +43,8 @@ class NodeEditorRenderWidget extends MultiChildRenderObjectWidget {
       offset: controller.offset,
       zoom: controller.zoom,
       selectionArea: controller.selectionArea,
-      nodePositions: controller.nodesAsList.map((n) => n.offset).toList(),
+      nodePositions: controller.nodesAsList.map((node) => node.offset).toList(),
+      linkPositions: _getLinkPositions(),
     );
   }
 
@@ -56,7 +59,25 @@ class NodeEditorRenderWidget extends MultiChildRenderObjectWidget {
       ..selectionArea = controller.selectionArea
       ..updateNodePositions(
         controller.nodesAsList.map((n) => n.offset).toList(),
+      )
+      ..linkPositions = _getLinkPositions();
+  }
+
+  List<Tuple2<Offset, Offset>> _getLinkPositions() {
+    return controller.linksAsList.map((link) {
+      final outNodeOffset = controller.nodes[link.fromTo.item1]!.offset;
+      final inNodeOffset = controller.nodes[link.fromTo.item3]!.offset;
+
+      final outPortRelativeOffset =
+          controller.nodes[link.fromTo.item1]!.ports[link.fromTo.item2]!.offset;
+      final inPortRelativeOffset =
+          controller.nodes[link.fromTo.item3]!.ports[link.fromTo.item4]!.offset;
+
+      return Tuple2(
+        outNodeOffset + outPortRelativeOffset,
+        inNodeOffset + inPortRelativeOffset,
       );
+    }).toList();
   }
 }
 
@@ -71,11 +92,13 @@ class NodeEditorRenderBox extends RenderBox
     required double zoom,
     required Rect selectionArea,
     required List<Offset> nodePositions,
+    required List<Tuple2<Offset, Offset>> linkPositions,
   })  : _style = style,
         _behavior = behavior,
         _offset = offset,
         _zoom = zoom,
-        _selectionArea = selectionArea {
+        _selectionArea = selectionArea,
+        _linkPositions = linkPositions {
     _updateNodePositions(nodePositions);
   }
 
@@ -120,13 +143,33 @@ class NodeEditorRenderBox extends RenderBox
     markNeedsPaint();
   }
 
-  void updateNodePositions(List<Offset> newPositions) {
-    if (_areNodePositionsEqual(newPositions)) return;
-    _updateNodePositions(newPositions);
+  Tuple2<Offset, Offset>? _tempLink;
+  Tuple2<Offset, Offset>? get tempLink => _tempLink;
+  set tempLink(Tuple2<Offset, Offset>? value) {
+    if (_tempLink == value) return;
+    _tempLink = value;
+    markNeedsPaint();
+  }
+
+  List<Tuple2<Offset, Offset>> _linkPositions;
+  List<Tuple2<Offset, Offset>> get linkPositions => _linkPositions;
+  set linkPositions(List<Tuple2<Offset, Offset>> value) {
+    if (_linkPositions == value) return;
+    _linkPositions = value;
+    markNeedsPaint();
+  }
+
+  List<Offset> _nodePositions = [];
+
+  void updateNodePositions(List<Offset> newNodePositions) {
+    if (_areNodePositionsEqual(newNodePositions)) return;
+    _updateNodePositions(newNodePositions);
     markNeedsLayout();
   }
 
   void _updateNodePositions(List<Offset> positions) {
+    _nodePositions = positions;
+
     RenderBox? child = firstChild;
     int index = 0;
 
@@ -140,6 +183,10 @@ class NodeEditorRenderBox extends RenderBox
   }
 
   bool _areNodePositionsEqual(List<Offset> newPositions) {
+    if (childCount != newPositions.length) {
+      return false;
+    }
+
     RenderBox? child = firstChild;
     int index = 0;
 
@@ -161,6 +208,29 @@ class NodeEditorRenderBox extends RenderBox
     if (child.parentData is! NodeParentData) {
       child.parentData = NodeParentData();
     }
+  }
+
+  @override
+  void insert(RenderBox child, {RenderBox? after}) {
+    setupParentData(child);
+    super.insert(child, after: after);
+    final index = indexOf(child);
+    if (index >= 0 && index < _nodePositions.length) {
+      (child.parentData as NodeParentData).nodeOffset = _nodePositions[index];
+    }
+  }
+
+  int indexOf(RenderBox child) {
+    int index = 0;
+    RenderBox? current = firstChild;
+
+    while (current != null) {
+      if (current == child) return index;
+      current = childAfter(current);
+      index++;
+    }
+
+    return -1;
   }
 
   @override
@@ -195,6 +265,9 @@ class NodeEditorRenderBox extends RenderBox
       drawGrid(style.gridStyle, canvas, viewport, startX, startY);
     }
 
+    _paintLinks(canvas);
+    _paintTemporaryLink(canvas);
+
     RenderBox? child = firstChild;
     while (child != null) {
       final NodeParentData childParentData =
@@ -217,7 +290,7 @@ class NodeEditorRenderBox extends RenderBox
     }
 
     if (!selectionArea.isEmpty) {
-      paintSelectionArea(canvas, viewport);
+      _paintSelectionArea(canvas, viewport);
     }
 
     if (kDebugMode) {
@@ -267,7 +340,79 @@ class NodeEditorRenderBox extends RenderBox
     canvas.drawRect(viewport, debugPaint);
   }
 
-  void paintSelectionArea(Canvas canvas, Rect viewport) {
+  void _paintLinks(Canvas canvas) {
+    for (final link in linkPositions) {
+      final outPortOffset = link.item1;
+      final inPortOffset = link.item2;
+
+      final path = Path()..moveTo(outPortOffset.dx, outPortOffset.dy);
+      final midX = (outPortOffset.dx + inPortOffset.dx) / 2;
+
+      path.cubicTo(
+        midX,
+        outPortOffset.dy,
+        midX,
+        inPortOffset.dy,
+        inPortOffset.dx,
+        inPortOffset.dy,
+      );
+
+      final gradient = LinearGradient(
+        colors: [Colors.green[300]!, Colors.purple[200]!],
+        begin: Alignment.centerLeft,
+        end: Alignment.centerRight,
+      );
+
+      final shader = gradient.createShader(
+        Rect.fromPoints(outPortOffset, inPortOffset),
+      );
+
+      final Paint gradientPaint = Paint()
+        ..shader = shader
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3;
+
+      canvas.drawPath(path, gradientPaint);
+    }
+  }
+
+  void _paintTemporaryLink(Canvas canvas) {
+    if (tempLink == null) return;
+
+    final outPortOffset = tempLink!.item1;
+    final inPortOffset = tempLink!.item2;
+
+    final path = Path()..moveTo(outPortOffset.dx, outPortOffset.dy);
+    final midX = (outPortOffset.dx + inPortOffset.dx) / 2;
+
+    path.cubicTo(
+      midX,
+      outPortOffset.dy,
+      midX,
+      inPortOffset.dy,
+      inPortOffset.dx,
+      inPortOffset.dy,
+    );
+
+    final gradient = LinearGradient(
+      colors: [Colors.green[300]!, Colors.purple[200]!],
+      begin: Alignment.centerLeft,
+      end: Alignment.centerRight,
+    );
+
+    final shader = gradient.createShader(
+      Rect.fromPoints(outPortOffset, inPortOffset),
+    );
+
+    final Paint gradientPaint = Paint()
+      ..shader = shader
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3;
+
+    canvas.drawPath(path, gradientPaint);
+  }
+
+  void _paintSelectionArea(Canvas canvas, Rect viewport) {
     final Paint selectionPaint = Paint()
       ..color = Colors.blue.withAlpha(50)
       ..style = PaintingStyle.fill;

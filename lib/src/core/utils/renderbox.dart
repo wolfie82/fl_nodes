@@ -10,6 +10,22 @@ Offset? getOffsetFromGlobalKey(GlobalKey key) {
   return null;
 }
 
+/// Retrieves the global offset of a widget relative to another widget.
+Offset? getOffsetFromGlobalKeyRelativeTo(
+  GlobalKey key,
+  GlobalKey relativeTo,
+) {
+  final renderObject = key.currentContext?.findRenderObject();
+  final relativeRenderObject = relativeTo.currentContext?.findRenderObject();
+  if (renderObject is RenderBox && relativeRenderObject is RenderBox) {
+    return renderObject.localToGlobal(
+      Offset.zero,
+      ancestor: relativeRenderObject,
+    );
+  }
+  return null;
+}
+
 /// Retrieves the size of a widget identified by a [GlobalKey].
 Size? getSizeFromGlobalKey(GlobalKey key) {
   final renderObject = key.currentContext?.findRenderObject();

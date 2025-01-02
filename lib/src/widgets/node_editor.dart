@@ -1,17 +1,19 @@
 import 'dart:async';
 
+import 'package:fl_nodes/fl_nodes.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 
-import 'package:fl_nodes/src/core/controllers/node_editor.dart';
-import 'package:fl_nodes/src/core/models/styles.dart';
+import 'package:flutter_context_menu/flutter_context_menu.dart';
+
 import 'package:fl_nodes/src/core/utils/platform.dart';
 import 'package:fl_nodes/src/core/utils/renderbox.dart';
+import 'package:fl_nodes/src/utils/context_menu.dart';
 import 'package:fl_nodes/src/utils/improved_listener.dart';
 import 'package:fl_nodes/src/widgets/node_editor_render.dart';
+import 'package:tuple/tuple.dart';
 
 import '../core/controllers/node_editor_events.dart';
 import '../core/utils/constants.dart';
@@ -63,12 +65,14 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
   // Interaction state
   bool _isDragging = false;
   bool _isSelecting = false;
+  bool _isLinking = false;
 
   // Interaction kinematics
   Offset _lastPositionDelta = Offset.zero;
   Offset _kineticEnergy = Offset.zero;
   Timer? _kineticTimer;
   Offset _selectionStart = Offset.zero;
+  Tuple2<String, String>? _tempLink;
 
   // Animation controllers and animations
   late AnimationController _offsetAnimationController;
@@ -84,11 +88,6 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
 
     _offsetAnimationController = AnimationController(vsync: this);
     _zoomAnimationController = AnimationController(vsync: this);
-
-    // Ensure the editor is updated after the first frame
-    SchedulerBinding.instance.addPostFrameCallback((_) {
-      setState(() {});
-    });
   }
 
   @override
@@ -100,15 +99,21 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
 
   void _handleControllerEvents() {
     widget.controller.eventBus.events.listen((event) {
-      if (event.isHandled) return;
+      if (event.isHandled || !mounted) return;
 
       if (event is ViewportOffsetEvent) {
         _setOffset(event.offset, animate: event.animate);
       } else if (event is ViewportZoomEvent) {
         _setZoom(event.zoom, animate: event.animate);
       } else if (event is DragSelectionEvent) {
-        _suppressActions();
-      } else if (event is AddNodeEvent || event is RemoveNodeEvent) {
+        setState(() {
+          _suppressEvents();
+        });
+      } else if (event is AddNodeEvent ||
+          event is RemoveNodeEvent ||
+          event is AddLinkEvent ||
+          event is RemoveLinkEvent ||
+          event is LinkDrawEvent) {
         setState(() {});
       }
     });
@@ -142,7 +147,7 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
       _isSelecting = true;
       _selectionStart = screenToWorld(
         position,
-        getSizeFromGlobalKey(nodeEditorWidgetKey)!,
+        getSizeFromGlobalKey(kNodeEditorWidgetKey)!,
         _offset,
         _zoom,
       );
@@ -156,7 +161,7 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
           _selectionStart,
           screenToWorld(
             position,
-            getSizeFromGlobalKey(nodeEditorWidgetKey)!,
+            getSizeFromGlobalKey(kNodeEditorWidgetKey)!,
             _offset,
             _zoom,
           ),
@@ -188,14 +193,12 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
     });
   }
 
-  void _suppressActions() {
-    setState(() {
-      if (_isDragging) {
-        _onDragCancel();
-      } else if (_isSelecting) {
-        _onSelectCancel();
-      }
-    });
+  void _suppressEvents() {
+    if (_isDragging) {
+      _onDragCancel();
+    } else if (_isSelecting) {
+      _onSelectCancel();
+    }
   }
 
   void _startKineticTimer() {
@@ -346,12 +349,95 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
     }
   }
 
+  Tuple2<String, String>? _isNearPort(Offset worldPosition) {
+    for (final node in widget.controller.nodes.values) {
+      for (final port in node.ports.values) {
+        final absolutePortPosition = node.offset + port.offset;
+
+        if ((worldPosition - absolutePortPosition).distance < 12) {
+          return Tuple2(node.id, port.id);
+        }
+      }
+    }
+
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
+    List<ContextMenuEntry> contextMenuEntries(Offset position) => [
+          const MenuHeader(text: "Context Menu"),
+          MenuItem(
+            label: 'Center View',
+            value: "Center View",
+            icon: Icons.center_focus_strong,
+            onSelected: () => widget.controller.setViewportOffset(
+              Offset.zero,
+              absolute: true,
+            ),
+          ),
+          if (_zoom != 1.0)
+            MenuItem(
+              label: 'Reset Zoom',
+              value: "Reset Zoom",
+              icon: _zoom < 1.0 ? Icons.zoom_in_map : Icons.zoom_out_map,
+              onSelected: () => widget.controller.setViewportZoom(1.0),
+            ),
+          const MenuDivider(),
+          MenuItem.submenu(
+            label: 'Create',
+            icon: Icons.add,
+            items: widget.controller.nodePrototypes.entries
+                .map(
+                  (entry) => MenuItem(
+                    label: entry.value().name,
+                    value: entry.key,
+                    icon: Icons.widgets,
+                    onSelected: () => widget.controller.addNode(
+                      entry.key,
+                      offset: screenToWorld(
+                        position,
+                        getSizeFromGlobalKey(kNodeEditorWidgetKey)!,
+                        _offset,
+                        _zoom,
+                      ),
+                    ),
+                  ),
+                )
+                .toList(),
+          ),
+          MenuItem(
+            label: 'Paste',
+            value: "Paste",
+            icon: Icons.paste,
+            onSelected: () {},
+          ),
+          const MenuDivider(),
+          MenuItem(
+            label: 'Undo',
+            value: "Undo",
+            icon: Icons.undo,
+            onSelected: () {},
+          ),
+          MenuItem(
+            label: 'Redo',
+            value: 'Redo',
+            icon: Icons.redo,
+            onSelected: () {},
+          ),
+        ];
+
     Widget controlsWrapper(Widget child) {
       return isMobile()
           ? GestureDetector(
               onDoubleTap: () => widget.controller.clearSelection(),
+              onLongPressDown: (details) {
+                createAndShowContextMenu(
+                  context,
+                  contextMenuEntries(details.localPosition),
+                  details.globalPosition,
+                );
+              },
               onScaleStart: (details) => _onDragStart(),
               onScaleUpdate: (details) {
                 if (widget.controller.behavior.zoomSensitivity > 0 &&
@@ -374,10 +460,43 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
               child: ImprovedListener(
                 onDoubleClick: () => widget.controller.clearSelection(),
                 onPointerPressed: (event) {
-                  if (event.buttons == kMiddleMouseButton) {
+                  if (event.buttons == kPrimaryMouseButton) {
+                    final worldPosition = screenToWorld(
+                      event.localPosition,
+                      getSizeFromGlobalKey(kNodeEditorWidgetKey)!,
+                      _offset,
+                      _zoom,
+                    );
+
+                    final locator = _isNearPort(worldPosition);
+
+                    if (locator != null) {
+                      if (_isLinking && _tempLink != null) {
+                        widget.controller.addLink(
+                          _tempLink!.item1,
+                          _tempLink!.item2,
+                          locator.item1,
+                          locator.item2,
+                        );
+
+                        _isLinking = false;
+                        _tempLink = null;
+                      } else {
+                        _tempLink = Tuple2(locator.item1, locator.item2);
+                        _isLinking = true;
+                      }
+                    } else {
+                      _onSelectStart(event.localPosition);
+                    }
+                  } else if (event.buttons == kSecondaryMouseButton &&
+                      !isContextMenuVisible) {
+                    createAndShowContextMenu(
+                      context,
+                      contextMenuEntries(event.localPosition),
+                      event.position,
+                    );
+                  } else if (event.buttons == kMiddleMouseButton) {
                     _onDragStart();
-                  } else if (event.buttons == kPrimaryMouseButton) {
-                    _onSelectStart(event.localPosition);
                   }
                 },
                 onPointerMoved: (event) {
@@ -427,7 +546,7 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
               left: 0,
               child: RepaintBoundary(
                 child: NodeEditorRenderWidget(
-                  key: nodeEditorWidgetKey,
+                  key: kNodeEditorWidgetKey,
                   controller: widget.controller,
                   style: widget.style,
                 ),
@@ -490,11 +609,11 @@ class _DebugInfoWidget extends StatelessWidget {
         children: [
           Text(
             'X: ${offset.dx.toStringAsFixed(2)}, Y: ${offset.dy.toStringAsFixed(2)}',
-            style: const TextStyle(color: Colors.blue, fontSize: 16),
+            style: const TextStyle(color: Colors.red, fontSize: 16),
           ),
           Text(
             'Zoom: ${zoom.toStringAsFixed(2)}',
-            style: const TextStyle(color: Colors.blue, fontSize: 16),
+            style: const TextStyle(color: Colors.green, fontSize: 16),
           ),
         ],
       ),

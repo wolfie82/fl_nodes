@@ -1,7 +1,10 @@
 import 'dart:async';
+import 'dart:collection';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+
+import 'package:tuple/tuple.dart';
 
 import 'package:fl_nodes/src/core/utils/constants.dart';
 import 'package:fl_nodes/src/core/utils/renderbox.dart';
@@ -32,16 +35,24 @@ class NodeEditorBehavior {
 
 class NodeEditorEventBus {
   final _streamController = StreamController<NodeEditorEvent>.broadcast();
-
-  Stream<NodeEditorEvent> get events => _streamController.stream;
+  final Queue<NodeEditorEvent> _eventHistory = Queue();
 
   void emit(NodeEditorEvent event) {
     _streamController.add(event);
+
+    if (_eventHistory.length >= kMaxEventHistory) {
+      _eventHistory.removeFirst();
+    }
+
+    _eventHistory.add(event);
   }
 
   void dispose() {
     _streamController.close();
   }
+
+  Stream<NodeEditorEvent> get events => _streamController.stream;
+  NodeEditorEvent get lastEvent => _eventHistory.last;
 }
 
 class FlNodeEditorController {
@@ -53,6 +64,7 @@ class FlNodeEditorController {
   double zoom = 1.0;
   final Map<String, NodePrototype Function()> _nodePrototypes = {};
   final Map<String, Node> _nodes = {};
+  final Map<String, Link> _links = {};
   final Set<String> _selectedNodeIds = {};
   Rect _selectionArea = Rect.zero;
 
@@ -67,8 +79,6 @@ class FlNodeEditorController {
     eventBus.dispose();
   }
 
-  // Controllet to UI communication
-
   void registerNodePrototype(String type, NodePrototype Function() node) {
     _nodePrototypes[type] = node;
   }
@@ -77,7 +87,7 @@ class FlNodeEditorController {
     _nodePrototypes.remove(type);
   }
 
-  void addNode(String type, {Offset? offset}) {
+  String addNode(String type, {Offset? offset}) {
     final node = createNode(
       _nodePrototypes[type]!(),
       offset: offset,
@@ -89,12 +99,39 @@ class FlNodeEditorController {
     );
 
     eventBus.emit(AddNodeEvent(node.id));
+
+    return node.id;
   }
 
   void removeNode(String id) {
     _nodes.remove(id);
-
     eventBus.emit(RemoveNodeEvent(id));
+  }
+
+  String addLink(
+    String fromNode,
+    String fromPort,
+    String toNode,
+    String toPort,
+  ) {
+    final link = Link(
+      id: 'from-$fromNode-$fromPort-to-$toNode-$toPort',
+      fromTo: Tuple4(fromNode, fromPort, toNode, toPort),
+    );
+
+    _links.putIfAbsent(
+      link.id,
+      () => link,
+    );
+
+    eventBus.emit(AddLinkEvent(link.id));
+
+    return link.id;
+  }
+
+  void removeLink(String id) {
+    _links.remove(id);
+    eventBus.emit(RemoveLinkEvent(id));
   }
 
   void setViewportOffset(
@@ -132,8 +169,14 @@ class FlNodeEditorController {
 
   void collapseNode(String id) {
     final node = _nodes[id];
-    node?.state.isCollapsed = !node.state.isCollapsed;
+    node?.state.isCollapsed = true;
     eventBus.emit(CollapseNodeEvent(id));
+  }
+
+  void expandNode(String id) {
+    final node = _nodes[id];
+    node?.state.isCollapsed = false;
+    eventBus.emit(ExpandNodeEvent(id));
   }
 
   void selectNodesById(List<String> ids, {bool holdSelection = false}) async {
@@ -199,7 +242,7 @@ class FlNodeEditorController {
 
     selectNodesById(ids, holdSelection: false);
 
-    final nodeEditorSize = getSizeFromGlobalKey(nodeEditorWidgetKey)!;
+    final nodeEditorSize = getSizeFromGlobalKey(kNodeEditorWidgetKey)!;
     final paddedEncompassingRect = encompassingRect.inflate(50.0);
     final fitZoom = min(
       nodeEditorSize.width / paddedEncompassingRect.width,
@@ -228,8 +271,13 @@ class FlNodeEditorController {
 
   // Getters
 
+  List<NodePrototype> get nodePrototypesAsList =>
+      _nodePrototypes.values.map((e) => e()).toList();
   Map<String, NodePrototype Function()> get nodePrototypes => _nodePrototypes;
   List<Node> get nodesAsList => _nodes.values.toList();
+  Map<String, Link> get links => _links;
+  List<Link> get linksAsList => _links.values.toList();
+  Map<String, Node> get nodes => _nodes;
   List<String> get selectedNodeIds => _selectedNodeIds.toList();
   Rect get selectionArea => _selectionArea;
 }

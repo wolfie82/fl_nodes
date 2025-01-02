@@ -70,6 +70,7 @@ class _FlSearchWidgetState extends State<FlSearchWidget> {
   @override
   Widget build(BuildContext context) {
     return AnimatedContainer(
+      height: 50,
       duration: const Duration(milliseconds: 900),
       decoration: BoxDecoration(
         color: widget.style.backgroundColor,

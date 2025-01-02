@@ -10,6 +10,7 @@ class ImprovedListener extends StatefulWidget {
   final PointerSignalEventListener? onPointerSignalReceived;
   final VoidCallback? onDoubleClick;
   final Duration doubleClickThreshold;
+  final HitTestBehavior behavior;
 
   const ImprovedListener({
     super.key,
@@ -21,6 +22,7 @@ class ImprovedListener extends StatefulWidget {
     this.onPointerSignalReceived,
     this.onDoubleClick,
     this.doubleClickThreshold = const Duration(milliseconds: 300),
+    this.behavior = HitTestBehavior.deferToChild,
   });
 
   @override
@@ -33,6 +35,7 @@ class _ImprovedListenerState extends State<ImprovedListener> {
   @override
   Widget build(BuildContext context) {
     return Listener(
+      behavior: widget.behavior,
       onPointerDown: (PointerDownEvent event) {
         final now = DateTime.now();
         if (_lastClickTime != null &&

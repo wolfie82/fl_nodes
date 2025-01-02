@@ -42,6 +42,13 @@ class SelectionEvent extends NodeEditorEvent {
   SelectionEvent(this.ids);
 }
 
+class LinkDrawEvent extends NodeEditorEvent {
+  final Offset from;
+  final Offset to;
+
+  LinkDrawEvent(this.from, this.to);
+}
+
 class AddNodeEvent extends NodeEditorEvent {
   final String id;
 
@@ -54,8 +61,26 @@ class RemoveNodeEvent extends NodeEditorEvent {
   RemoveNodeEvent(this.id);
 }
 
+class AddLinkEvent extends NodeEditorEvent {
+  final String id;
+
+  AddLinkEvent(this.id);
+}
+
+class RemoveLinkEvent extends NodeEditorEvent {
+  final String id;
+
+  RemoveLinkEvent(this.id);
+}
+
 class CollapseNodeEvent extends NodeEditorEvent {
   final String id;
 
   CollapseNodeEvent(this.id);
+}
+
+class ExpandNodeEvent extends NodeEditorEvent {
+  final String id;
+
+  ExpandNodeEvent(this.id);
 }

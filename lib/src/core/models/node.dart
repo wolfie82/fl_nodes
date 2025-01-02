@@ -1,54 +1,59 @@
 import 'package:flutter/material.dart';
 
+import 'package:tuple/tuple.dart';
 import 'package:uuid/uuid.dart';
 
 class Link {
   final String id;
-  final (String, String) input;
-  final (String, String) output;
+  final Tuple4<String, String, String, String> fromTo;
 
   Link({
     required this.id,
-    required this.input,
-    required this.output,
+    required this.fromTo,
   });
 }
 
 class PortPrototype {
   final String name;
   final dynamic data;
+  final bool isInput;
+  final bool allowMultipleLinks;
 
   PortPrototype({
     required this.name,
     required this.data,
+    this.isInput = true,
+    this.allowMultipleLinks = false,
   });
 }
 
 class Port {
   final String id;
   final String name;
+  final bool isInput;
+  final bool allowMultipleLinks;
+  Offset offset;
   final GlobalKey key = GlobalKey();
-  final void Function(Node self) hasBuilt;
 
   Port({
     required this.id,
     required this.name,
-    required this.hasBuilt,
+    required this.isInput,
+    required this.allowMultipleLinks,
+    this.offset = Offset.zero,
   });
 }
 
 class NodePrototype {
   final String name;
   final Color color;
-  final List<PortPrototype> inputs;
-  final List<PortPrototype> outputs;
+  final List<PortPrototype> ports;
   final void Function(List<String> inputIds, List<String> outputIds) onExecute;
 
   NodePrototype({
     required this.name,
     this.color = Colors.blue,
-    this.inputs = const [],
-    this.outputs = const [],
+    this.ports = const [],
     required this.onExecute,
   });
 }
@@ -67,8 +72,7 @@ class Node {
   final String id;
   final String name;
   final Color color;
-  final List<Port> inputs;
-  final List<Port> outputs;
+  final Map<String, Port> ports;
   final Function(List<String> inputIds, List<String> outputIds) onExecute;
   Offset offset;
   final NodeState state = NodeState();
@@ -78,8 +82,7 @@ class Node {
     required this.id,
     required this.name,
     required this.color,
-    required this.inputs,
-    required this.outputs,
+    required this.ports,
     required this.onExecute,
     this.offset = Offset.zero,
   });
@@ -89,7 +92,8 @@ Port createPort(PortPrototype prototype) {
   return Port(
     id: const Uuid().v4(),
     name: prototype.name,
-    hasBuilt: (self) {},
+    isInput: prototype.isInput,
+    allowMultipleLinks: prototype.allowMultipleLinks,
   );
 }
 
@@ -101,8 +105,10 @@ Node createNode(
     id: const Uuid().v4(),
     name: prototype.name,
     color: prototype.color,
-    inputs: prototype.inputs.map(createPort).toList(),
-    outputs: prototype.outputs.map(createPort).toList(),
+    ports: prototype.ports.asMap().map((_, portPrototype) {
+      final port = createPort(portPrototype);
+      return MapEntry(port.id, port);
+    }),
     onExecute: prototype.onExecute,
     offset: offset ?? Offset.zero,
   );

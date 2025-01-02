@@ -26,16 +26,11 @@ class GridStyle {
   const GridStyle({
     this.gridSpacingX = 64.0,
     this.gridSpacingY = 64.0,
-    this.lineType = LineType.solid,
+    this.lineType = LineType.none,
     this.lineWidth = 1.0,
     this.lineColor = Colors.transparent,
     this.intersectionType = IntersectionType.circle,
-    this.intersectionColor = const Color.fromARGB(
-      150,
-      50,
-      50,
-      50,
-    ), // Equivalent to grey with alpha 50
+    this.intersectionColor = const Color(0xFF333333),
     this.intersectionRadius = 1,
     this.intersectionSize = const Size(8.0, 8.0),
   });
@@ -114,7 +109,7 @@ class SearchStyle {
   final BorderRadius borderRadius;
 
   const SearchStyle({
-    this.backgroundColor = Colors.blue,
+    this.backgroundColor = const Color(0xFF212121),
     this.textColor = Colors.white,
     this.searchIcon = const Icon(Icons.search),
     this.previousResultIcon = const Icon(Icons.arrow_upward),
@@ -149,7 +144,7 @@ class HierarchyStyle {
 
   const HierarchyStyle({
     this.backgroundColor = const Color.fromARGB(255, 33, 33, 33),
-    this.selectedColor = Colors.blue,
+    this.selectedColor = Colors.grey,
     this.textColor = Colors.white,
     this.borderRadius = const BorderRadius.all(Radius.circular(8.0)),
   });

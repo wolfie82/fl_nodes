@@ -1,12 +1,15 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'package:flutter_context_menu/flutter_context_menu.dart';
 import 'package:gap/gap.dart';
 
 import 'package:fl_nodes/src/core/controllers/node_editor.dart';
+import 'package:fl_nodes/src/utils/context_menu.dart';
 import 'package:fl_nodes/src/utils/improved_listener.dart';
 
 import '../core/controllers/node_editor_events.dart';
@@ -32,6 +35,7 @@ class _NodeWidgetState extends State<NodeWidget> {
   Timer? _edgeTimer;
 
   double get zoom => widget.controller.zoom;
+  Offset get nodeOffset => widget.node.offset;
 
   @override
   void initState() {
@@ -42,7 +46,7 @@ class _NodeWidgetState extends State<NodeWidget> {
 
   void _handleControllerEvents() {
     widget.controller.eventBus.events.listen((event) {
-      if (event.isHandled) return;
+      if (event.isHandled || !mounted) return;
 
       if (event is SelectionEvent) {
         if (event.ids.contains(widget.node.id)) {
@@ -64,6 +68,10 @@ class _NodeWidgetState extends State<NodeWidget> {
         if (event.id == widget.node.id) {
           setState(() {});
         }
+      } else if (event is ExpandNodeEvent) {
+        if (event.id == widget.node.id) {
+          setState(() {});
+        }
       }
     });
   }
@@ -72,7 +80,7 @@ class _NodeWidgetState extends State<NodeWidget> {
     const edgeThreshold = 50.0; // Distance from edge to start moving
     final moveAmount = 5.0 / widget.controller.zoom; // Amount to move per frame
 
-    final editorBounds = getEditorBoundsInScreen(nodeEditorWidgetKey);
+    final editorBounds = getEditorBoundsInScreen(kNodeEditorWidgetKey);
     if (editorBounds == null) return;
 
     _edgeTimer?.cancel();
@@ -110,15 +118,58 @@ class _NodeWidgetState extends State<NodeWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final contextMenuEntries = [
+      MenuItem(
+        label: widget.node.state.isCollapsed ? 'Expand' : 'Collapse',
+        value: "toogleCollapse",
+        icon: widget.node.state.isCollapsed
+            ? Icons.arrow_drop_down
+            : Icons.arrow_right,
+        onSelected: () {
+          if (widget.node.state.isCollapsed) {
+            widget.controller.expandNode(widget.node.id);
+          } else {
+            widget.controller.collapseNode(widget.node.id);
+          }
+        },
+      ),
+      const MenuDivider(),
+      MenuItem(
+        label: 'Delete',
+        value: "Delete",
+        icon: Icons.delete,
+        onSelected: () {
+          widget.controller.removeNode(widget.node.id);
+        },
+      ),
+      MenuItem(
+        label: 'Cut',
+        value: "Cut",
+        icon: Icons.content_cut,
+        onSelected: () {},
+      ),
+      MenuItem(
+        label: 'Copy',
+        value: "Copy",
+        icon: Icons.copy,
+        onSelected: () {},
+      ),
+    ];
+
     Widget controlsWrapper(Widget child) {
       return isMobile()
           ? GestureDetector(
-              onPanUpdate: (details) {
-                widget.controller.dragSelection(details.delta);
-              },
               onTap: () => widget.controller.selectNodesById([widget.node.id]),
-              onDoubleTap: () => widget.controller
-                  .selectNodesById([widget.node.id], holdSelection: true),
+              onDoubleTapDown: (details) {
+                createAndShowContextMenu(
+                  context,
+                  contextMenuEntries,
+                  details.globalPosition,
+                );
+              },
+              onPanUpdate: (details) =>
+                  widget.controller.dragSelection(details.delta),
+              onPanEnd: (details) {},
               child: child,
             )
           : ImprovedListener(
@@ -129,13 +180,26 @@ class _NodeWidgetState extends State<NodeWidget> {
                   widget.controller.dragSelection(event.delta);
                 }
               },
-              onPointerPressed: (event) => widget.controller.selectNodesById(
-                [widget.node.id],
-                holdSelection: widget.node.state.isSelected
-                    ? true
-                    : HardwareKeyboard.instance.isControlPressed,
-              ),
-              onPointerReleased: (event) => _resetEdgeTimer(),
+              onPointerPressed: (event) {
+                if (event.buttons == kSecondaryMouseButton &&
+                    !isContextMenuVisible) {
+                  createAndShowContextMenu(
+                    context,
+                    contextMenuEntries,
+                    event.position,
+                  );
+                } else if (event.buttons == kPrimaryMouseButton) {
+                  widget.controller.selectNodesById(
+                    [widget.node.id],
+                    holdSelection: widget.node.state.isSelected
+                        ? true
+                        : HardwareKeyboard.instance.isControlPressed,
+                  );
+                }
+              },
+              onPointerReleased: (event) {
+                _resetEdgeTimer();
+              },
               child: child,
             );
     }
@@ -143,12 +207,13 @@ class _NodeWidgetState extends State<NodeWidget> {
     return controlsWrapper(
       IntrinsicWidth(
         child: Stack(
+          clipBehavior: Clip.none,
           children: [
             Container(
               key: widget.node.key,
               constraints: const BoxConstraints(minWidth: 100),
               decoration: BoxDecoration(
-                color: Colors.grey[850],
+                color: const Color(0xFF212121),
                 boxShadow: [
                   BoxShadow(
                     color: widget.node.state.isSelected
@@ -164,76 +229,57 @@ class _NodeWidgetState extends State<NodeWidget> {
                 ),
                 borderRadius: BorderRadius.circular(8.0),
               ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(7.0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: widget.node.color,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: widget.node.color,
+                      borderRadius: BorderRadius.only(
+                        topLeft: const Radius.circular(7),
+                        topRight: const Radius.circular(7),
+                        bottomLeft: widget.node.state.isCollapsed
+                            ? const Radius.circular(7)
+                            : Radius.zero,
+                        bottomRight: widget.node.state.isCollapsed
+                            ? const Radius.circular(7)
+                            : Radius.zero,
                       ),
-                      child: Row(
+                    ),
+                    child: Text(
+                      widget.node.name,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  Visibility(
+                    visible: !widget.node.state.isCollapsed,
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          InkWell(
-                            onTap: () {
-                              widget.controller.collapseNode(widget.node.id);
-                            },
-                            child: Icon(
-                              widget.node.state.isCollapsed
-                                  ? Icons.arrow_drop_down
-                                  : Icons.arrow_right,
-                            ),
-                          ),
-                          const Gap(8),
-                          Text(
-                            widget.node.name,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
+                          ...widget.node.ports.entries.map(
+                            (entry) => _buildPortRow(
+                              entry.value,
+                              isInput: true,
                             ),
                           ),
                         ],
                       ),
                     ),
-                    Visibility(
-                      visible: !widget.node.state.isCollapsed,
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            // Input Ports
-                            ...widget.node.inputs.asMap().entries.map(
-                                  (entry) => _buildPortRow(
-                                    entry.value,
-                                    isInput: true,
-                                  ),
-                                ),
-                            const SizedBox(height: 8),
-                            // Output Ports
-                            ...widget.node.outputs.asMap().entries.map(
-                                  (entry) => _buildPortRow(
-                                    entry.value,
-                                    isInput: false,
-                                  ),
-                                ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
-            ...widget.node.inputs.asMap().entries.map(
-                  (entry) => _buildPortIndicator(entry.value, isInput: true),
-                ),
-            ...widget.node.outputs.asMap().entries.map(
-                  (entry) => _buildPortIndicator(entry.value, isInput: false),
-                ),
+            ...widget.node.ports.entries.map(
+              (entry) => _buildPortIndicator(entry.value),
+            ),
           ],
         ),
       ),
@@ -263,7 +309,7 @@ class _NodeWidgetState extends State<NodeWidget> {
     );
   }
 
-  Widget _buildPortIndicator(Port port, {required bool isInput}) {
+  Widget _buildPortIndicator(Port port) {
     return Visibility(
       visible: !widget.node.state.isCollapsed,
       child: Positioned.fill(
@@ -279,17 +325,22 @@ class _NodeWidgetState extends State<NodeWidget> {
                 as RenderBox?;
             if (nodeBox == null) return const SizedBox();
 
-            final portPosition = portBox.localToGlobal(Offset.zero);
-            final nodePosition = nodeBox.localToGlobal(Offset.zero);
-            final relativePosition = portPosition - nodePosition;
+            final portOffset = portBox.localToGlobal(Offset.zero);
+            final nodeOffset = nodeBox.localToGlobal(Offset.zero);
+            final relativeOffset = portOffset - nodeOffset;
+
+            port.offset = Offset(
+              port.isInput ? 0 : constraints.maxWidth,
+              relativeOffset.dy + portBox.size.height / 2,
+            );
 
             return CustomPaint(
               painter: _PortDotPainter(
                 position: Offset(
-                  isInput ? 0 : constraints.maxWidth,
-                  relativePosition.dy + portBox.size.height / 2,
+                  port.isInput ? 0 : constraints.maxWidth,
+                  relativeOffset.dy + portBox.size.height / 2,
                 ),
-                color: isInput ? Colors.purple[200]! : Colors.green[300]!,
+                color: port.isInput ? Colors.purple[200]! : Colors.green[300]!,
               ),
             );
           },
@@ -303,6 +354,7 @@ class _PortDotPainter extends CustomPainter {
   final Offset position;
   final Color color;
   static const double portSize = 4;
+  static const double hitBoxSize = 12;
 
   _PortDotPainter({
     required this.position,
@@ -316,13 +368,25 @@ class _PortDotPainter extends CustomPainter {
       ..style = PaintingStyle.fill;
 
     canvas.drawCircle(position, portSize, paint);
+
+    if (kDebugMode) {
+      _paintDebugHitBox(canvas);
+    }
   }
 
-  @override
-  bool? hitTest(Offset position) {
-    final dx = (position.dx - this.position.dx).abs();
-    final dy = (position.dy - this.position.dy).abs();
-    return dx <= portSize && dy <= portSize;
+  void _paintDebugHitBox(Canvas canvas) {
+    final hitBoxPaint = Paint()
+      ..color = Colors.red
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1;
+
+    final hitBoxRect = Rect.fromCenter(
+      center: position,
+      width: hitBoxSize,
+      height: hitBoxSize,
+    );
+
+    canvas.drawRect(hitBoxRect, hitBoxPaint);
   }
 
   @override

@@ -1,6 +1,5 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-
-import 'package:gap/gap.dart';
 
 import 'package:fl_nodes/fl_nodes.dart';
 
@@ -17,6 +16,7 @@ class NodeEditorExampleApp extends StatelessWidget {
       title: 'Node Editor Example',
       theme: ThemeData.dark(),
       home: const NodeEditorExampleScreen(),
+      debugShowCheckedModeBanner: kDebugMode,
     );
   }
 }
@@ -41,7 +41,7 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
       () => NodePrototype(
         name: 'Add',
         color: Colors.amber,
-        inputs: [
+        ports: [
           PortPrototype(
             name: 'A',
             data: 0,
@@ -50,11 +50,10 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
             name: 'B',
             data: 0,
           ),
-        ],
-        outputs: [
           PortPrototype(
             name: 'Result',
             data: 0,
+            isInput: false,
           ),
         ],
         onExecute: (inputIds, outputIds) {},
@@ -66,10 +65,11 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
       () => NodePrototype(
         name: 'Input',
         color: Colors.red,
-        outputs: [
+        ports: [
           PortPrototype(
             name: 'Value',
             data: 0,
+            isInput: false,
           ),
         ],
         onExecute: (inputIds, outputIds) {},
@@ -81,7 +81,7 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
       () => NodePrototype(
         name: 'Output',
         color: Colors.green,
-        inputs: [
+        ports: [
           PortPrototype(
             name: 'Value',
             data: 0,
@@ -91,9 +91,9 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
       ),
     );
 
-    _nodeEditorController.addNode('add', offset: const Offset(0, 0));
     _nodeEditorController.addNode('input', offset: const Offset(-200, -100));
     _nodeEditorController.addNode('input', offset: const Offset(-200, 100));
+    _nodeEditorController.addNode('add', offset: const Offset(0, 0));
     _nodeEditorController.addNode('output', offset: const Offset(200, 0));
   }
 
@@ -106,17 +106,6 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Node Editor Example',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        backgroundColor: Colors.blue,
-      ),
       body: Center(
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -143,70 +132,39 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
                     FlOverlayData(
                       child: Padding(
                         padding: const EdgeInsets.all(8),
+                        child: FlSearchWidget(
+                          controller: _nodeEditorController,
+                          style: const SearchStyle(),
+                        ),
+                      ),
+                    ),
+                    FlOverlayData(
+                      bottom: 0,
+                      left: 0,
+                      child: const Padding(
+                        padding: EdgeInsets.all(8),
                         child: Column(
-                          mainAxisSize: MainAxisSize.max,
-                          mainAxisAlignment: MainAxisAlignment.center,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            FlSearchWidget(
-                              controller: _nodeEditorController,
-                              style: const SearchStyle(),
+                            Text(
+                              'Mouse Commands:',
+                              style: TextStyle(fontWeight: FontWeight.bold),
                             ),
-                            const Spacer(),
-                            Container(
-                              decoration: BoxDecoration(
-                                color: Colors.blue,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: IconButton(
-                                onPressed: () =>
-                                    _nodeEditorController.setViewportOffset(
-                                  Offset.zero,
-                                  absolute: true,
-                                ),
-                                icon: const Icon(
-                                  Icons.center_focus_strong,
-                                  size: 32,
-                                  color: Colors.white,
-                                ),
-                              ),
+                            Text(' - Left Click: Select Node'),
+                            Text(' - Right Click: Open Context Menu'),
+                            Text(' - Scroll: Zoom In/Out'),
+                            Text(' - Middle Click: Pan'),
+                            SizedBox(height: 8),
+                            Text(
+                              'Keyboard Commands:',
+                              style: TextStyle(fontWeight: FontWeight.bold),
                             ),
-                            const Gap(8),
-                            Container(
-                              decoration: BoxDecoration(
-                                color: Colors.blue,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: IconButton(
-                                onPressed: () =>
-                                    _nodeEditorController.setViewportZoom(
-                                  _nodeEditorController.zoom * 2,
-                                ),
-                                icon: const Icon(
-                                  Icons.zoom_in,
-                                  size: 32,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                            const Gap(8),
-                            Container(
-                              decoration: BoxDecoration(
-                                color: Colors.blue,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: IconButton(
-                                onPressed: () =>
-                                    _nodeEditorController.setViewportZoom(
-                                  _nodeEditorController.zoom / 2,
-                                ),
-                                icon: const Icon(
-                                  Icons.zoom_out,
-                                  size: 32,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
+                            Text(' - Ctrl + C: Copy Node'),
+                            Text(' - Ctrl + V: Paste Node'),
+                            Text(' - Ctrl + X: Cut Node'),
+                            Text(' - Delete: Remove Node'),
+                            Text(' - Ctrl + Z: Undo'),
+                            Text(' - Ctrl + Y: Redo'),
                           ],
                         ),
                       ),
