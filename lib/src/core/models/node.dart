@@ -15,29 +15,34 @@ class Link {
 
 class PortPrototype {
   final String name;
-  final dynamic data;
+  final Type dataType;
   final bool isInput;
   final bool allowMultipleLinks;
 
   PortPrototype({
     required this.name,
-    required this.data,
+    this.dataType = dynamic,
     this.isInput = true,
-    this.allowMultipleLinks = false,
+    this.allowMultipleLinks = true,
   });
 }
 
 class Port {
   final String id;
   final String name;
+  final dynamic data;
+  final Type dataType;
   final bool isInput;
   final bool allowMultipleLinks;
+  List<Link> links = [];
   Offset offset;
   final GlobalKey key = GlobalKey();
 
   Port({
     required this.id,
     required this.name,
+    required this.data,
+    required this.dataType,
     required this.isInput,
     required this.allowMultipleLinks,
     this.offset = Offset.zero,
@@ -92,6 +97,8 @@ Port createPort(PortPrototype prototype) {
   return Port(
     id: const Uuid().v4(),
     name: prototype.name,
+    data: null,
+    dataType: prototype.dataType,
     isInput: prototype.isInput,
     allowMultipleLinks: prototype.allowMultipleLinks,
   );

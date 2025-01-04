@@ -44,15 +44,15 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
         ports: [
           PortPrototype(
             name: 'A',
-            data: 0,
+            dataType: double,
           ),
           PortPrototype(
             name: 'B',
-            data: 0,
+            dataType: double,
           ),
           PortPrototype(
             name: 'Result',
-            data: 0,
+            dataType: double,
             isInput: false,
           ),
         ],
@@ -68,7 +68,7 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
         ports: [
           PortPrototype(
             name: 'Value',
-            data: 0,
+            dataType: double,
             isInput: false,
           ),
         ],
@@ -84,17 +84,32 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
         ports: [
           PortPrototype(
             name: 'Value',
-            data: 0,
+            dataType: double,
           ),
         ],
         onExecute: (inputIds, outputIds) {},
       ),
     );
 
-    _nodeEditorController.addNode('input', offset: const Offset(-200, -100));
-    _nodeEditorController.addNode('input', offset: const Offset(-200, 100));
-    _nodeEditorController.addNode('add', offset: const Offset(0, 0));
-    _nodeEditorController.addNode('output', offset: const Offset(200, 0));
+    _nodeEditorController.registerNodePrototype(
+      'round',
+      () => NodePrototype(
+        name: 'Round',
+        color: Colors.blue,
+        ports: [
+          PortPrototype(
+            name: 'Value',
+            dataType: double,
+          ),
+          PortPrototype(
+            name: 'Rounded',
+            dataType: int,
+            isInput: false,
+          ),
+        ],
+        onExecute: (inputIds, outputIds) {},
+      ),
+    );
   }
 
   @override
@@ -135,6 +150,27 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
                         child: FlSearchWidget(
                           controller: _nodeEditorController,
                           style: const SearchStyle(),
+                        ),
+                      ),
+                    ),
+                    FlOverlayData(
+                      top: 0,
+                      right: 0,
+                      child: Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.grey[900],
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: IconButton(
+                            onPressed: () {},
+                            icon: const Icon(
+                              Icons.play_arrow,
+                              size: 32,
+                              color: Colors.white,
+                            ),
+                          ),
                         ),
                       ),
                     ),

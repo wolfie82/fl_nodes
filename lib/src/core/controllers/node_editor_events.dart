@@ -71,10 +71,10 @@ class DrawTempLinkEvent extends NodeEditorEvent {
   DrawTempLinkEvent(this.from, this.to);
 }
 
-class RemoveLinkEvent extends NodeEditorEvent {
+class RemoveLinksEvent extends NodeEditorEvent {
   final String id;
 
-  RemoveLinkEvent(this.id);
+  RemoveLinksEvent(this.id);
 }
 
 class CollapseNodeEvent extends NodeEditorEvent {

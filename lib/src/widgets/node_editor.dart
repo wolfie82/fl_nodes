@@ -1,22 +1,24 @@
 import 'dart:async';
 
-import 'package:fl_nodes/fl_nodes.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 
 import 'package:flutter_context_menu/flutter_context_menu.dart';
+import 'package:tuple/tuple.dart';
 
+import 'package:fl_nodes/fl_nodes.dart';
 import 'package:fl_nodes/src/core/utils/platform.dart';
 import 'package:fl_nodes/src/core/utils/renderbox.dart';
 import 'package:fl_nodes/src/utils/context_menu.dart';
 import 'package:fl_nodes/src/utils/improved_listener.dart';
 import 'package:fl_nodes/src/widgets/node_editor_render.dart';
-import 'package:tuple/tuple.dart';
 
 import '../core/controllers/node_editor_events.dart';
 import '../core/utils/constants.dart';
+
 import 'debug_info.dart';
 
 class FlOverlayData {
@@ -72,6 +74,7 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
   Offset _lastPositionDelta = Offset.zero;
   Offset _kineticEnergy = Offset.zero;
   Timer? _kineticTimer;
+  Timer? _edgeTimer;
   Offset _selectionStart = Offset.zero;
   Tuple2<String, String>? _tempLink;
 
@@ -113,7 +116,7 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
       } else if (event is AddNodeEvent ||
           event is RemoveNodeEvent ||
           event is AddLinkEvent ||
-          event is RemoveLinkEvent ||
+          event is RemoveLinksEvent ||
           event is DrawTempLinkEvent) {
         setState(() {});
       }
@@ -297,6 +300,45 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
     _startKineticTimer();
   }
 
+  void _startEdgeTimer(Offset position) {
+    const edgeThreshold = 50.0; // Distance from edge to start moving
+    final moveAmount = 5.0 / widget.controller.zoom; // Amount to move per frame
+
+    final editorBounds = getEditorBoundsInScreen(kNodeEditorWidgetKey);
+    if (editorBounds == null) return;
+
+    _edgeTimer?.cancel();
+
+    _edgeTimer =
+        Timer.periodic(const Duration(milliseconds: 16), (timer) async {
+      double dx = 0;
+      double dy = 0;
+      final rect = editorBounds;
+
+      if (position.dx < rect.left + edgeThreshold) {
+        dx = -moveAmount;
+      } else if (position.dx > rect.right - edgeThreshold) {
+        dx = moveAmount;
+      }
+      if (position.dy < rect.top + edgeThreshold) {
+        dy = -moveAmount;
+      } else if (position.dy > rect.bottom - edgeThreshold) {
+        dy = moveAmount;
+      }
+
+      if (dx != 0 || dy != 0) {
+        _setOffset(
+          Offset(-dx / _zoom, -dy / _zoom),
+          animate: false,
+        );
+      }
+    });
+  }
+
+  void _resetEdgeTimer() {
+    _edgeTimer?.cancel();
+  }
+
   void _setOffsetFromRawInput(Offset delta) {
     final Offset offsetFactor =
         delta * widget.controller.behavior.panSensitivity / _zoom;
@@ -416,79 +458,132 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
 
   @override
   Widget build(BuildContext context) {
-    List<ContextMenuEntry> contextMenuEntries(Offset position) => [
-          const MenuHeader(text: "Context Menu"),
+    List<ContextMenuEntry> createSubmenuEntries(Offset position) {
+      final fromLink = _tempLink != null;
+
+      final List<MapEntry<String, NodePrototype>> compatiblePrototypes = [];
+
+      if (fromLink) {
+        final startPort =
+            widget.controller.nodes[_tempLink!.item1]!.ports[_tempLink!.item2]!;
+
+        widget.controller.nodePrototypes.forEach(
+          (key, value) {
+            if (value()
+                .ports
+                .any((port) => port.isInput != startPort.isInput)) {
+              compatiblePrototypes.add(MapEntry(key, value()));
+            }
+          },
+        );
+      } else {
+        widget.controller.nodePrototypes.forEach(
+          (key, value) => compatiblePrototypes.add(MapEntry(key, value())),
+        );
+      }
+
+      return compatiblePrototypes.map((entry) {
+        return MenuItem(
+          label: entry.value.name,
+          icon: Icons.widgets,
+          onSelected: () {
+            final worldPosition = screenToWorld(
+              position,
+              getSizeFromGlobalKey(kNodeEditorWidgetKey)!,
+              _offset,
+              _zoom,
+            );
+
+            widget.controller.addNode(
+              entry.key,
+              offset: worldPosition,
+            );
+
+            if (fromLink) {
+              widget.controller.addLink(
+                _tempLink!.item1,
+                _tempLink!.item2,
+                widget.controller.nodes.values.last.id,
+                widget.controller.nodes.values.last.ports.entries.first.key,
+              );
+
+              _isLinking = false;
+              _tempLink = null;
+
+              SchedulerBinding.instance.addPostFrameCallback((_) {
+                setState(() {});
+              });
+            }
+          },
+        );
+      }).toList();
+    }
+
+    List<ContextMenuEntry> editorContextMenuEntries(Offset position) {
+      return [
+        const MenuHeader(text: "Editor Menu"),
+        MenuItem(
+          label: 'Center View',
+          icon: Icons.center_focus_strong,
+          onSelected: () => widget.controller.setViewportOffset(
+            Offset.zero,
+            absolute: true,
+          ),
+        ),
+        if (_zoom != 1.0)
           MenuItem(
-            label: 'Center View',
-            value: "Center View",
-            icon: Icons.center_focus_strong,
-            onSelected: () => widget.controller.setViewportOffset(
-              Offset.zero,
-              absolute: true,
-            ),
+            label: 'Reset Zoom',
+            icon: _zoom < 1.0 ? Icons.zoom_in_map : Icons.zoom_out_map,
+            onSelected: () => widget.controller.setViewportZoom(1.0),
           ),
-          if (_zoom != 1.0)
-            MenuItem(
-              label: 'Reset Zoom',
-              value: "Reset Zoom",
-              icon: _zoom < 1.0 ? Icons.zoom_in_map : Icons.zoom_out_map,
-              onSelected: () => widget.controller.setViewportZoom(1.0),
-            ),
-          const MenuDivider(),
-          MenuItem.submenu(
-            label: 'Create',
-            icon: Icons.add,
-            items: widget.controller.nodePrototypes.entries
-                .map(
-                  (entry) => MenuItem(
-                    label: entry.value().name,
-                    value: entry.key,
-                    icon: Icons.widgets,
-                    onSelected: () => widget.controller.addNode(
-                      entry.key,
-                      offset: screenToWorld(
-                        position,
-                        getSizeFromGlobalKey(kNodeEditorWidgetKey)!,
-                        _offset,
-                        _zoom,
-                      ),
-                    ),
-                  ),
-                )
-                .toList(),
-          ),
-          MenuItem(
-            label: 'Paste',
-            value: "Paste",
-            icon: Icons.paste,
-            onSelected: () {},
-          ),
-          const MenuDivider(),
-          MenuItem(
-            label: 'Undo',
-            value: "Undo",
-            icon: Icons.undo,
-            onSelected: () {},
-          ),
-          MenuItem(
-            label: 'Redo',
-            value: 'Redo',
-            icon: Icons.redo,
-            onSelected: () {},
-          ),
-        ];
+        const MenuDivider(),
+        MenuItem.submenu(
+          label: 'Create',
+          icon: Icons.add,
+          items: createSubmenuEntries(position),
+        ),
+        MenuItem(
+          label: 'Paste',
+          icon: Icons.paste,
+          onSelected: () {},
+        ),
+        const MenuDivider(),
+        MenuItem(
+          label: 'Undo',
+          icon: Icons.undo,
+          onSelected: () {},
+        ),
+        MenuItem(
+          label: 'Redo',
+          icon: Icons.redo,
+          onSelected: () {},
+        ),
+      ];
+    }
+
+    List<ContextMenuEntry> portContextMenuEntries(
+      Offset position, {
+      required Tuple2<String, String> locator,
+    }) {
+      return [
+        const MenuHeader(text: "Port Menu"),
+        MenuItem(
+          label: 'Remove Links',
+          icon: Icons.remove_circle,
+          onSelected: () {
+            widget.controller.removeLinks(
+              locator.item1,
+              locator.item2,
+            );
+          },
+        ),
+      ];
+    }
 
     Widget controlsWrapper(Widget child) {
       return isMobile()
           ? GestureDetector(
               onDoubleTap: () => widget.controller.clearSelection(),
-              onLongPressDown: (details) {
-                createAndShowContextMenu(
-                  context,
-                  contextMenuEntries(details.localPosition),
-                  details.globalPosition,
-                );
-              },
               onScaleStart: (details) => _onDragStart(),
               onScaleUpdate: (details) {
                 if (widget.controller.behavior.zoomSensitivity > 0 &&
@@ -525,13 +620,25 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
                     } else {
                       _onSelectStart(event.localPosition);
                     }
-                  } else if (event.buttons == kSecondaryMouseButton &&
-                      !isContextMenuVisible) {
-                    createAndShowContextMenu(
-                      context,
-                      contextMenuEntries(event.localPosition),
-                      event.position,
-                    );
+                  } else if (event.buttons == kSecondaryMouseButton) {
+                    final locator = _isNearPort(event.localPosition);
+
+                    if (locator != null) {
+                      createAndShowContextMenu(
+                        context,
+                        portContextMenuEntries(
+                          event.localPosition,
+                          locator: locator,
+                        ),
+                        event.position,
+                      );
+                    } else if (!isContextMenuVisible) {
+                      createAndShowContextMenu(
+                        context,
+                        editorContextMenuEntries(event.localPosition),
+                        event.position,
+                      );
+                    }
                   }
                 },
                 onPointerMoved: (event) {
@@ -540,6 +647,7 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
                     _onDragUpdate(event.localDelta);
                   }
                   if (_isLinking) {
+                    _startEdgeTimer(event.position);
                     _onLinkUpdate(event.localPosition);
                   } else if (_isSelecting) {
                     _onSelectUpdate(event.localPosition);
@@ -549,12 +657,20 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
                   if (_isDragging) {
                     _onDragEnd();
                   } else if (_isLinking) {
+                    _resetEdgeTimer();
+
                     final locator = _isNearPort(event.localPosition);
 
                     if (locator != null) {
                       _onLinkEnd(locator);
-                    } else {
-                      _onLinkCancel();
+                    } else if (!isContextMenuVisible) {
+                      createAndShowContextMenu(
+                        context,
+                        editorContextMenuEntries(event.localPosition),
+                        event.position,
+                      ).then((value) {
+                        _onLinkCancel();
+                      });
                     }
                   } else if (_isSelecting) {
                     _onSelectEnd();

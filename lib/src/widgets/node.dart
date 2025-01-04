@@ -118,74 +118,53 @@ class _NodeWidgetState extends State<NodeWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final contextMenuEntries = [
-      MenuItem(
-        label: widget.node.state.isCollapsed ? 'Expand' : 'Collapse',
-        value: "toogleCollapse",
-        icon: widget.node.state.isCollapsed
-            ? Icons.arrow_drop_down
-            : Icons.arrow_right,
-        onSelected: () {
-          if (widget.node.state.isCollapsed) {
-            widget.controller.expandNode(widget.node.id);
-          } else {
-            widget.controller.collapseNode(widget.node.id);
-          }
-        },
-      ),
-      const MenuDivider(),
-      MenuItem(
-        label: 'Delete',
-        value: "Delete",
-        icon: Icons.delete,
-        onSelected: () {
-          widget.controller.removeNode(widget.node.id);
-        },
-      ),
-      MenuItem(
-        label: 'Cut',
-        value: "Cut",
-        icon: Icons.content_cut,
-        onSelected: () {},
-      ),
-      MenuItem(
-        label: 'Copy',
-        value: "Copy",
-        icon: Icons.copy,
-        onSelected: () {},
-      ),
-    ];
+    List<ContextMenuEntry> contextMenuEntries() {
+      return [
+        const MenuHeader(text: 'Node Menu'),
+        MenuItem(
+          label: widget.node.state.isCollapsed ? 'Expand' : 'Collapse',
+          icon: widget.node.state.isCollapsed
+              ? Icons.arrow_drop_down
+              : Icons.arrow_right,
+          onSelected: () {
+            if (widget.node.state.isCollapsed) {
+              widget.controller.expandNode(widget.node.id);
+            } else {
+              widget.controller.collapseNode(widget.node.id);
+            }
+          },
+        ),
+        const MenuDivider(),
+        MenuItem(
+          label: 'Delete',
+          icon: Icons.delete,
+          onSelected: () {
+            widget.controller.removeNode(widget.node.id);
+          },
+        ),
+        MenuItem(
+          label: 'Cut',
+          icon: Icons.content_cut,
+          onSelected: () {},
+        ),
+        MenuItem(
+          label: 'Copy',
+          icon: Icons.copy,
+          onSelected: () {},
+        ),
+      ];
+    }
 
     Widget controlsWrapper(Widget child) {
       return isMobile()
-          ? GestureDetector(
-              onTap: () => widget.controller.selectNodesById([widget.node.id]),
-              onDoubleTapDown: (details) {
-                createAndShowContextMenu(
-                  context,
-                  contextMenuEntries,
-                  details.globalPosition,
-                );
-              },
-              onPanUpdate: (details) =>
-                  widget.controller.dragSelection(details.delta),
-              onPanEnd: (details) {},
-              child: child,
-            )
+          ? child
           : ImprovedListener(
-              onPointerMoved: (event) {
-                _startEdgeTimer(event.position);
-
-                if (event.buttons == kPrimaryMouseButton) {
-                  widget.controller.dragSelection(event.delta);
-                }
-              },
               onPointerPressed: (event) {
                 if (event.buttons == kSecondaryMouseButton &&
                     !isContextMenuVisible) {
                   createAndShowContextMenu(
                     context,
-                    contextMenuEntries,
+                    contextMenuEntries(),
                     event.position,
                   );
                 } else if (event.buttons == kPrimaryMouseButton) {
@@ -195,6 +174,13 @@ class _NodeWidgetState extends State<NodeWidget> {
                         ? true
                         : HardwareKeyboard.instance.isControlPressed,
                   );
+                }
+              },
+              onPointerMoved: (event) {
+                _startEdgeTimer(event.position);
+
+                if (event.buttons == kPrimaryMouseButton) {
+                  widget.controller.dragSelection(event.delta);
                 }
               },
               onPointerReleased: (event) {
@@ -292,7 +278,7 @@ class _NodeWidgetState extends State<NodeWidget> {
       child: Row(
         mainAxisAlignment:
             isInput ? MainAxisAlignment.start : MainAxisAlignment.end,
-        mainAxisSize: MainAxisSize.min, // Prevents stretching
+        mainAxisSize: MainAxisSize.max,
         key: port.key,
         children: [
           Gap(isInput ? 4 : 0),
@@ -301,6 +287,15 @@ class _NodeWidgetState extends State<NodeWidget> {
             style: const TextStyle(
               color: Colors.white70,
               fontSize: 13,
+            ),
+          ),
+          const Gap(4),
+          Text(
+            port.dataType.toString(),
+            style: const TextStyle(
+              color: Colors.white54,
+              fontSize: 12,
+              fontStyle: FontStyle.italic,
             ),
           ),
           Gap(isInput ? 0 : 4),
@@ -354,7 +349,7 @@ class _PortDotPainter extends CustomPainter {
   final Offset position;
   final Color color;
   static const double portSize = 4;
-  static const double hitBoxSize = 12;
+  static const double hitBoxSize = 16;
 
   _PortDotPainter({
     required this.position,

@@ -4,12 +4,12 @@ import 'package:flutter_context_menu/flutter_context_menu.dart';
 
 bool isContextMenuVisible = false;
 
-void createAndShowContextMenu(
+Future createAndShowContextMenu(
   BuildContext context,
   List<ContextMenuEntry> entries,
   Offset position,
 ) {
-  if (isContextMenuVisible) return;
+  if (isContextMenuVisible) return Future.value();
 
   isContextMenuVisible = true;
 
@@ -19,7 +19,7 @@ void createAndShowContextMenu(
     padding: const EdgeInsets.all(8.0),
   );
 
-  showContextMenu(context, contextMenu: menu).then((value) {
+  return showContextMenu(context, contextMenu: menu).then((value) {
     isContextMenuVisible = false;
   });
 }

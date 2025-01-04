@@ -5,6 +5,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 import 'package:tuple/tuple.dart';
+import 'package:uuid/uuid.dart';
 
 import 'package:fl_nodes/src/core/utils/constants.dart';
 import 'package:fl_nodes/src/core/utils/renderbox.dart';
@@ -150,7 +151,7 @@ class FlNodeEditorController {
     _nodePrototypes.remove(type);
   }
 
-  String addNode(String type, {Offset? offset}) {
+  Node addNode(String type, {Offset? offset}) {
     final node = createNode(
       _nodePrototypes[type]!(),
       offset: offset,
@@ -163,7 +164,7 @@ class FlNodeEditorController {
 
     eventBus.emit(AddNodeEvent(node.id));
 
-    return node.id;
+    return node;
   }
 
   void removeNode(String id) {
@@ -171,16 +172,33 @@ class FlNodeEditorController {
     eventBus.emit(RemoveNodeEvent(id));
   }
 
-  String addLink(
-    String fromNode,
-    String fromPort,
-    String toNode,
-    String toPort,
+  Link? addLink(
+    String fromNodeId,
+    String fromPortId,
+    String toNodeId,
+    String toPortId,
   ) {
+    final fromPort = _nodes[fromNodeId]!.ports[fromPortId]!;
+    final toPort = _nodes[toNodeId]!.ports[toPortId]!;
+
+    if (fromPort.isInput == toPort.isInput) return null;
+
+    if (fromPort.links.isNotEmpty && !fromPort.allowMultipleLinks) return null;
+    if (toPort.links.isNotEmpty && !toPort.allowMultipleLinks) return null;
+
+    for (final link in toPort.links) {
+      if (link.fromTo.item1 == fromNodeId && link.fromTo.item2 == fromPortId) {
+        return null;
+      }
+    }
+
     final link = Link(
-      id: 'from-$fromNode-$fromPort-to-$toNode-$toPort',
-      fromTo: Tuple4(fromNode, fromPort, toNode, toPort),
+      id: const Uuid().v4(),
+      fromTo: Tuple4(fromNodeId, fromPortId, toNodeId, toPortId),
     );
+
+    fromPort.links.add(link);
+    _nodes[toNodeId]!.ports[toPortId]!.links.add(link);
 
     _renderLinks.putIfAbsent(
       link.id,
@@ -189,12 +207,25 @@ class FlNodeEditorController {
 
     eventBus.emit(AddLinkEvent(link.id));
 
-    return link.id;
+    return link;
   }
 
-  void removeLink(String id) {
-    _renderLinks.remove(id);
-    eventBus.emit(RemoveLinkEvent(id));
+  void removeLinks(String nodeId, String portId) {
+    final port = _nodes[nodeId]!.ports[portId]!;
+
+    final linksToRemove = List<Link>.from(port.links);
+
+    for (final link in linksToRemove) {
+      final fromPort = _nodes[link.fromTo.item1]!.ports[link.fromTo.item2]!;
+      final toPort = _nodes[link.fromTo.item3]!.ports[link.fromTo.item4]!;
+
+      fromPort.links.remove(link);
+      toPort.links.remove(link);
+
+      _renderLinks.remove(link.id);
+    }
+
+    eventBus.emit(RemoveLinksEvent('$nodeId-$portId'));
   }
 
   void setNodeOffset(String id, Offset offset) {
