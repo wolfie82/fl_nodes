@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 
+/// Events are used to communicate between the [FlNodeEditorController] and the Widgets composing the Node Editor.
+/// Events can (where applicable) carry data to be used by the Widgets to update their state.
+
+/// Event base class for the [FlNodeEditorController] events bus.
 class NodeEditorEvent {
   final bool isHandled;
 
@@ -42,13 +46,6 @@ class SelectionEvent extends NodeEditorEvent {
   SelectionEvent(this.ids);
 }
 
-class LinkDrawEvent extends NodeEditorEvent {
-  final Offset from;
-  final Offset to;
-
-  LinkDrawEvent(this.from, this.to);
-}
-
 class AddNodeEvent extends NodeEditorEvent {
   final String id;
 
@@ -65,6 +62,13 @@ class AddLinkEvent extends NodeEditorEvent {
   final String id;
 
   AddLinkEvent(this.id);
+}
+
+class DrawTempLinkEvent extends NodeEditorEvent {
+  final Offset from;
+  final Offset to;
+
+  DrawTempLinkEvent(this.from, this.to);
 }
 
 class RemoveLinkEvent extends NodeEditorEvent {

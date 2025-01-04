@@ -13,26 +13,14 @@ import '../models/node.dart';
 
 import 'node_editor_events.dart';
 
-class NodeEditorBehavior {
-  final double zoomSensitivity;
-  final double minZoom;
-  final double maxZoom;
-  final double panSensitivity;
-  final double maxPanX;
-  final double maxPanY;
-  final bool enableKineticScrolling;
-
-  const NodeEditorBehavior({
-    this.zoomSensitivity = 0.1,
-    this.minZoom = 0.1,
-    this.maxZoom = 10.0,
-    this.panSensitivity = 1.0,
-    this.maxPanX = 100000.0,
-    this.maxPanY = 100000.0,
-    this.enableKineticScrolling = true,
-  });
-}
-
+/// A class that acts as an event bus for the Node Editor.
+///
+/// This class is responsible for handling and dispatching events
+/// related to the node editor. It allows different parts of the
+/// application to communicate with each other by sending and
+/// receiving events.
+///
+/// Events can object instances should extend the [NodeEditorEvent] class.
 class NodeEditorEventBus {
   final _streamController = StreamController<NodeEditorEvent>.broadcast();
   final Queue<NodeEditorEvent> _eventHistory = Queue();
@@ -55,18 +43,43 @@ class NodeEditorEventBus {
   NodeEditorEvent get lastEvent => _eventHistory.last;
 }
 
+/// A class that defines the behavior of a node editor.
+///
+/// This class is responsible for handling the interactions and
+/// behaviors associated with a node editor, such as node selection,
+/// movement, and other editor-specific functionalities.
+class NodeEditorBehavior {
+  final double zoomSensitivity;
+  final double minZoom;
+  final double maxZoom;
+  final double panSensitivity;
+  final double maxPanX;
+  final double maxPanY;
+  final bool enableKineticScrolling;
+
+  const NodeEditorBehavior({
+    this.zoomSensitivity = 0.1,
+    this.minZoom = 0.1,
+    this.maxZoom = 10.0,
+    this.panSensitivity = 1.0,
+    this.maxPanX = 100000.0,
+    this.maxPanY = 100000.0,
+    this.enableKineticScrolling = true,
+  });
+}
+
+/// A controller class for the Node Editor.
+///
+/// This class is responsible for managing the state of the node editor,
+/// including the nodes, links, and the viewport. It also provides methods
+/// for adding, removing, and manipulating nodes and links.
+///
+/// The controller also provides an event bus for the node editor, allowing
+/// different parts of the application to communicate with each other by
+/// sending and receiving events.
 class FlNodeEditorController {
   // Event bus
   final eventBus = NodeEditorEventBus();
-
-  // Node data
-  Offset offset = Offset.zero;
-  double zoom = 1.0;
-  final Map<String, NodePrototype Function()> _nodePrototypes = {};
-  final Map<String, Node> _nodes = {};
-  final Map<String, Link> _links = {};
-  final Set<String> _selectedNodeIds = {};
-  Rect _selectionArea = Rect.zero;
 
   // Behavior
   final NodeEditorBehavior behavior;
@@ -78,6 +91,56 @@ class FlNodeEditorController {
   void dispose() {
     eventBus.dispose();
   }
+
+  // Viewport
+  Offset offset = Offset.zero;
+  double zoom = 1.0;
+
+  void setViewportOffset(
+    Offset coords, {
+    bool animate = true,
+    bool absolute = false,
+  }) {
+    if (absolute) {
+      offset = coords;
+    } else {
+      offset += coords;
+    }
+
+    eventBus.emit(ViewportOffsetEvent(offset, animate: animate));
+  }
+
+  void setViewportZoom(double amount, {bool animate = true}) {
+    zoom = amount;
+    eventBus.emit(ViewportZoomEvent(zoom));
+  }
+
+  // This is used for rendering purposes only. For computation, use the links list in the Port class.
+  final Map<String, Link> _renderLinks = {};
+  Tuple2<Offset, Offset>? _renderTempLink;
+
+  List<Link> get renderLinksAsList => _renderLinks.values.toList();
+  Tuple2<Offset, Offset>? get renderTempLink => _renderTempLink;
+
+  void drawTempLink(Offset from, Offset to) {
+    _renderTempLink = Tuple2(from, to);
+    eventBus.emit(DrawTempLinkEvent(from, to));
+  }
+
+  void clearTempLink() {
+    _renderTempLink = null;
+    eventBus.emit(DrawTempLinkEvent(Offset.zero, Offset.zero));
+  }
+
+  // Nodes and links
+  final Map<String, NodePrototype Function()> _nodePrototypes = {};
+  final Map<String, Node> _nodes = {};
+
+  List<NodePrototype> get nodePrototypesAsList =>
+      _nodePrototypes.values.map((e) => e()).toList();
+  Map<String, NodePrototype Function()> get nodePrototypes => _nodePrototypes;
+  List<Node> get nodesAsList => _nodes.values.toList();
+  Map<String, Node> get nodes => _nodes;
 
   void registerNodePrototype(String type, NodePrototype Function() node) {
     _nodePrototypes[type] = node;
@@ -119,7 +182,7 @@ class FlNodeEditorController {
       fromTo: Tuple4(fromNode, fromPort, toNode, toPort),
     );
 
-    _links.putIfAbsent(
+    _renderLinks.putIfAbsent(
       link.id,
       () => link,
     );
@@ -130,41 +193,13 @@ class FlNodeEditorController {
   }
 
   void removeLink(String id) {
-    _links.remove(id);
+    _renderLinks.remove(id);
     eventBus.emit(RemoveLinkEvent(id));
-  }
-
-  void setViewportOffset(
-    Offset coords, {
-    bool animate = true,
-    bool absolute = false,
-  }) {
-    if (absolute) {
-      offset = coords;
-    } else {
-      offset += coords;
-    }
-
-    eventBus.emit(ViewportOffsetEvent(offset, animate: animate));
-  }
-
-  void setViewportZoom(double amount, {bool animate = true}) {
-    zoom = amount;
-    eventBus.emit(ViewportZoomEvent(zoom));
   }
 
   void setNodeOffset(String id, Offset offset) {
     final node = _nodes[id];
     node?.offset = offset;
-  }
-
-  void dragSelection(Offset delta) {
-    eventBus.emit(DragSelectionEvent(_selectedNodeIds.toSet(), delta));
-  }
-
-  void setSelectionArea(Rect area) {
-    _selectionArea = area;
-    eventBus.emit(SelectionAreaEvent(area));
   }
 
   void collapseNode(String id) {
@@ -177,6 +212,22 @@ class FlNodeEditorController {
     final node = _nodes[id];
     node?.state.isCollapsed = false;
     eventBus.emit(ExpandNodeEvent(id));
+  }
+
+  // Selection
+  final Set<String> _selectedNodeIds = {};
+  Rect _selectionArea = Rect.zero;
+
+  List<String> get selectedNodeIds => _selectedNodeIds.toList();
+  Rect get selectionArea => _selectionArea;
+
+  void dragSelection(Offset delta) {
+    eventBus.emit(DragSelectionEvent(_selectedNodeIds.toSet(), delta));
+  }
+
+  void setSelectionArea(Rect area) {
+    _selectionArea = area;
+    eventBus.emit(SelectionAreaEvent(area));
   }
 
   void selectNodesById(List<String> ids, {bool holdSelection = false}) async {
@@ -268,16 +319,4 @@ class FlNodeEditorController {
 
     return results;
   }
-
-  // Getters
-
-  List<NodePrototype> get nodePrototypesAsList =>
-      _nodePrototypes.values.map((e) => e()).toList();
-  Map<String, NodePrototype Function()> get nodePrototypes => _nodePrototypes;
-  List<Node> get nodesAsList => _nodes.values.toList();
-  Map<String, Link> get links => _links;
-  List<Link> get linksAsList => _links.values.toList();
-  Map<String, Node> get nodes => _nodes;
-  List<String> get selectedNodeIds => _selectedNodeIds.toList();
-  Rect get selectionArea => _selectionArea;
 }
