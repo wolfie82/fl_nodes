@@ -17,6 +17,7 @@ import 'package:tuple/tuple.dart';
 
 import '../core/controllers/node_editor_events.dart';
 import '../core/utils/constants.dart';
+import 'debug_info.dart';
 
 class FlOverlayData {
   final Widget child;
@@ -75,8 +76,8 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
   Tuple2<String, String>? _tempLink;
 
   // Animation controllers and animations
-  late AnimationController _offsetAnimationController;
-  late AnimationController _zoomAnimationController;
+  late final AnimationController _offsetAnimationController;
+  late final AnimationController _zoomAnimationController;
   late Animation<Offset> _offsetAnimation;
   late Animation<double> _zoomAnimation;
 
@@ -113,7 +114,7 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
           event is RemoveNodeEvent ||
           event is AddLinkEvent ||
           event is RemoveLinkEvent ||
-          event is LinkDrawEvent) {
+          event is DrawTempLinkEvent) {
         setState(() {});
       }
     });
@@ -193,9 +194,73 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
     });
   }
 
+  Tuple2<String, String>? _isNearPort(Offset position) {
+    final worldPosition = screenToWorld(
+      position,
+      getSizeFromGlobalKey(kNodeEditorWidgetKey)!,
+      _offset,
+      _zoom,
+    );
+
+    for (final node in widget.controller.nodes.values) {
+      for (final port in node.ports.values) {
+        final absolutePortPosition = node.offset + port.offset;
+
+        if ((worldPosition - absolutePortPosition).distance < 12) {
+          return Tuple2(node.id, port.id);
+        }
+      }
+    }
+
+    return null;
+  }
+
+  void _onLinkStart(Tuple2<String, String> locator) {
+    _tempLink = Tuple2(locator.item1, locator.item2);
+    _isLinking = true;
+  }
+
+  void _onLinkUpdate(Offset position) {
+    final worldPosition = screenToWorld(
+      position,
+      getSizeFromGlobalKey(kNodeEditorWidgetKey)!,
+      _offset,
+      _zoom,
+    );
+
+    final nodeOffset = widget.controller.nodes[_tempLink!.item1]!.offset;
+    final portOffset = widget
+        .controller.nodes[_tempLink!.item1]!.ports[_tempLink!.item2]!.offset;
+    final absolutePortOffset = nodeOffset + portOffset;
+
+    widget.controller.drawTempLink(absolutePortOffset, worldPosition);
+  }
+
+  void _onLinkCancel() {
+    widget.controller.clearTempLink();
+    _isLinking = false;
+    _tempLink = null;
+  }
+
+  void _onLinkEnd(Tuple2<String, String> locator) {
+    widget.controller.addLink(
+      _tempLink!.item1,
+      _tempLink!.item2,
+      locator.item1,
+      locator.item2,
+    );
+
+    _isLinking = false;
+    _tempLink = null;
+
+    widget.controller.clearTempLink();
+  }
+
   void _suppressEvents() {
     if (_isDragging) {
       _onDragCancel();
+    } else if (_isLinking) {
+      _onLinkCancel();
     } else if (_isSelecting) {
       _onSelectCancel();
     }
@@ -349,20 +414,6 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
     }
   }
 
-  Tuple2<String, String>? _isNearPort(Offset worldPosition) {
-    for (final node in widget.controller.nodes.values) {
-      for (final port in node.ports.values) {
-        final absolutePortPosition = node.offset + port.offset;
-
-        if ((worldPosition - absolutePortPosition).distance < 12) {
-          return Tuple2(node.id, port.id);
-        }
-      }
-    }
-
-    return null;
-  }
-
   @override
   Widget build(BuildContext context) {
     List<ContextMenuEntry> contextMenuEntries(Offset position) => [
@@ -460,30 +511,16 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
               child: ImprovedListener(
                 onDoubleClick: () => widget.controller.clearSelection(),
                 onPointerPressed: (event) {
-                  if (event.buttons == kPrimaryMouseButton) {
-                    final worldPosition = screenToWorld(
-                      event.localPosition,
-                      getSizeFromGlobalKey(kNodeEditorWidgetKey)!,
-                      _offset,
-                      _zoom,
-                    );
-
-                    final locator = _isNearPort(worldPosition);
+                  if (event.buttons == kMiddleMouseButton) {
+                    _onDragStart();
+                  } else if (event.buttons == kPrimaryMouseButton) {
+                    final locator = _isNearPort(event.localPosition);
 
                     if (locator != null) {
                       if (_isLinking && _tempLink != null) {
-                        widget.controller.addLink(
-                          _tempLink!.item1,
-                          _tempLink!.item2,
-                          locator.item1,
-                          locator.item2,
-                        );
-
-                        _isLinking = false;
-                        _tempLink = null;
+                        _onLinkEnd(locator);
                       } else {
-                        _tempLink = Tuple2(locator.item1, locator.item2);
-                        _isLinking = true;
+                        _onLinkStart(locator);
                       }
                     } else {
                       _onSelectStart(event.localPosition);
@@ -495,14 +532,15 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
                       contextMenuEntries(event.localPosition),
                       event.position,
                     );
-                  } else if (event.buttons == kMiddleMouseButton) {
-                    _onDragStart();
                   }
                 },
                 onPointerMoved: (event) {
                   if (_isDragging &&
                       widget.controller.behavior.panSensitivity > 0) {
                     _onDragUpdate(event.localDelta);
+                  }
+                  if (_isLinking) {
+                    _onLinkUpdate(event.localPosition);
                   } else if (_isSelecting) {
                     _onSelectUpdate(event.localPosition);
                   }
@@ -510,6 +548,14 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
                 onPointerReleased: (event) {
                   if (_isDragging) {
                     _onDragEnd();
+                  } else if (_isLinking) {
+                    final locator = _isNearPort(event.localPosition);
+
+                    if (locator != null) {
+                      _onLinkEnd(locator);
+                    } else {
+                      _onLinkCancel();
+                    }
                   } else if (_isSelecting) {
                     _onSelectEnd();
                   }

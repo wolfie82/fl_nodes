@@ -42,6 +42,7 @@ class NodeEditorRenderWidget extends MultiChildRenderObjectWidget {
       behavior: behavior,
       offset: controller.offset,
       zoom: controller.zoom,
+      tempLink: controller.renderTempLink,
       selectionArea: controller.selectionArea,
       nodePositions: controller.nodesAsList.map((node) => node.offset).toList(),
       linkPositions: _getLinkPositions(),
@@ -56,6 +57,7 @@ class NodeEditorRenderWidget extends MultiChildRenderObjectWidget {
     renderObject
       ..offset = controller.offset
       ..zoom = controller.zoom
+      ..tempLink = controller.renderTempLink
       ..selectionArea = controller.selectionArea
       ..updateNodePositions(
         controller.nodesAsList.map((n) => n.offset).toList(),
@@ -64,7 +66,7 @@ class NodeEditorRenderWidget extends MultiChildRenderObjectWidget {
   }
 
   List<Tuple2<Offset, Offset>> _getLinkPositions() {
-    return controller.linksAsList.map((link) {
+    return controller.renderLinksAsList.map((link) {
       final outNodeOffset = controller.nodes[link.fromTo.item1]!.offset;
       final inNodeOffset = controller.nodes[link.fromTo.item3]!.offset;
 
@@ -90,6 +92,7 @@ class NodeEditorRenderBox extends RenderBox
     required NodeEditorBehavior behavior,
     required Offset offset,
     required double zoom,
+    required Tuple2<Offset, Offset>? tempLink,
     required Rect selectionArea,
     required List<Offset> nodePositions,
     required List<Tuple2<Offset, Offset>> linkPositions,
@@ -97,6 +100,7 @@ class NodeEditorRenderBox extends RenderBox
         _behavior = behavior,
         _offset = offset,
         _zoom = zoom,
+        _tempLink = tempLink,
         _selectionArea = selectionArea,
         _linkPositions = linkPositions {
     _updateNodePositions(nodePositions);
@@ -363,12 +367,12 @@ class NodeEditorRenderBox extends RenderBox
         end: Alignment.centerRight,
       );
 
-      final shader = gradient.createShader(
-        Rect.fromPoints(outPortOffset, inPortOffset),
-      );
+      final uRect = Rect.fromPoints(outPortOffset, inPortOffset);
+
+      final defaultShader = gradient.createShader(uRect);
 
       final Paint gradientPaint = Paint()
-        ..shader = shader
+        ..shader = defaultShader
         ..style = PaintingStyle.stroke
         ..strokeWidth = 3;
 
