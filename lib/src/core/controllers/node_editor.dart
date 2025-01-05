@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:collection';
 import 'dart:math';
 
+import 'package:fl_nodes/src/core/utils/platform.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'package:tuple/tuple.dart';
@@ -22,7 +24,7 @@ import 'node_editor_events.dart';
 /// receiving events.
 ///
 /// Events can object instances should extend the [NodeEditorEvent] class.
-class NodeEditorEventBus {
+class _NodeEditorEventBus {
   final _streamController = StreamController<NodeEditorEvent>.broadcast();
   final Queue<NodeEditorEvent> _eventHistory = Queue();
 
@@ -42,6 +44,45 @@ class NodeEditorEventBus {
 
   Stream<NodeEditorEvent> get events => _streamController.stream;
   NodeEditorEvent get lastEvent => _eventHistory.last;
+}
+
+enum NodeEditorLogSeverity {
+  info,
+  warning,
+  error,
+}
+
+class NodeEditorLog {
+  final String message;
+  final DateTime timestamp;
+  final NodeEditorLogSeverity severity;
+
+  NodeEditorLog({
+    required this.message,
+    required this.timestamp,
+    required this.severity,
+  });
+}
+
+/// A class that acts as a logger for the Node Editor. It serves
+/// internal purposes but can still be accessed by the developer
+/// to check the logs for debugging or giving feedback to the user.
+class _NodeEditorLogger {
+  final List<NodeEditorLog> _logs = [];
+
+  void log(String message, NodeEditorLogSeverity severity) {
+    final log = NodeEditorLog(
+      message: message,
+      timestamp: DateTime.now(),
+      severity: severity,
+    );
+
+    _logs.add(log);
+  }
+
+  void clearLogs() {
+    _logs.clear();
+  }
 }
 
 /// A class that defines the behavior of a node editor.
@@ -79,15 +120,30 @@ class NodeEditorBehavior {
 /// different parts of the application to communicate with each other by
 /// sending and receiving events.
 class FlNodeEditorController {
-  // Event bus
-  final eventBus = NodeEditorEventBus();
+  // Streams
+  final eventBus = _NodeEditorEventBus();
+  final logger = _NodeEditorLogger();
 
   // Behavior
   final NodeEditorBehavior behavior;
 
   FlNodeEditorController({
     this.behavior = const NodeEditorBehavior(),
-  });
+  }) {
+    if (kDebugMode) {
+      logger.log(
+        'FlNodes is running in debug mode. This may affect performance.',
+        NodeEditorLogSeverity.warning,
+      );
+    }
+
+    if (isMobile()) {
+      logger.log(
+        'FlNodes is view only on mobile devices. Editing is only available on desktop.',
+        NodeEditorLogSeverity.info,
+      );
+    }
+  }
 
   void dispose() {
     eventBus.dispose();
