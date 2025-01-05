@@ -1,63 +1,52 @@
 import 'package:flutter/material.dart';
 
-enum LineType {
-  solid,
-  none,
-}
-
-enum IntersectionType {
-  rectangle,
-  circle,
-  none,
-}
-
 class GridStyle {
   final double gridSpacingX;
   final double gridSpacingY;
-  final LineType lineType;
   final double lineWidth;
   final Color lineColor;
-  final IntersectionType intersectionType;
   final Color intersectionColor;
-  final double? intersectionRadius;
-  final Size? intersectionSize;
+  final double intersectionRadius;
   final bool showGrid = true;
 
   const GridStyle({
     this.gridSpacingX = 64.0,
     this.gridSpacingY = 64.0,
-    this.lineType = LineType.none,
     this.lineWidth = 1.0,
     this.lineColor = Colors.transparent,
-    this.intersectionType = IntersectionType.circle,
     this.intersectionColor = const Color(0xFF333333),
     this.intersectionRadius = 1,
-    this.intersectionSize = const Size(8.0, 8.0),
   });
 
   GridStyle copyWith({
     double? gridSpacingX,
     double? gridSpacingY,
-    LineType? lineType,
     double? lineWidth,
     Color? lineColor,
-    IntersectionType? intersectionType,
     Color? intersectionColor,
     double? intersectionRadius,
-    Size? intersectionSize,
   }) {
     return GridStyle(
       gridSpacingX: gridSpacingX ?? this.gridSpacingX,
       gridSpacingY: gridSpacingY ?? this.gridSpacingY,
-      lineType: lineType ?? this.lineType,
       lineWidth: lineWidth ?? this.lineWidth,
       lineColor: lineColor ?? this.lineColor,
-      intersectionType: intersectionType ?? this.intersectionType,
       intersectionColor: intersectionColor ?? this.intersectionColor,
       intersectionRadius: intersectionRadius ?? this.intersectionRadius,
-      intersectionSize: intersectionSize ?? this.intersectionSize,
     );
   }
+}
+
+enum LinkCurveType {
+  straight,
+  bezier,
+  ninetyDegree,
+}
+
+enum LinkStyle {
+  solid,
+  dashed,
+  dotted,
 }
 
 class NodeEditorStyle {
@@ -67,6 +56,8 @@ class NodeEditorStyle {
   final double borderWidth;
   final BorderRadius borderRadius;
   final double contentPadding;
+  final LinkCurveType linkCurveType;
+  final LinkStyle linkStyle;
   final GridStyle gridStyle;
 
   const NodeEditorStyle({
@@ -76,6 +67,8 @@ class NodeEditorStyle {
     this.borderWidth = 0.0,
     this.borderRadius = BorderRadius.zero,
     this.contentPadding = 8.0,
+    this.linkCurveType = LinkCurveType.bezier,
+    this.linkStyle = LinkStyle.solid,
     required this.gridStyle,
   });
 

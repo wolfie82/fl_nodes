@@ -9,13 +9,8 @@ void drawGrid(
   double startX,
   double startY,
 ) {
-  if (style.lineType != LineType.none) {
-    _drawGridLines(style, canvas, viewport, startX, startY);
-  }
-
-  if (style.intersectionType != IntersectionType.none) {
-    _drawIntersections(style, canvas, viewport, startX, startY);
-  }
+  _drawGridLines(style, canvas, viewport, startX, startY);
+  _drawIntersections(style, canvas, viewport, startX, startY);
 }
 
 void _drawGridLines(
@@ -25,17 +20,17 @@ void _drawGridLines(
   double startX,
   double startY,
 ) {
+  if (style.gridSpacingX <= 0 && style.gridSpacingY <= 0) {
+    return;
+  }
+
   final linePaint = Paint()
     ..color = style.lineColor
     ..style = PaintingStyle.stroke
     ..strokeWidth = style.lineWidth;
 
-  if (style.lineType == LineType.solid) {
-    _drawVerticalLines(style, canvas, viewport, startX, linePaint);
-    _drawHorizontalLines(style, canvas, viewport, startY, linePaint);
-  } else {
-    throw Exception('Invalid line type');
-  }
+  _drawVerticalLines(style, canvas, viewport, startX, linePaint);
+  _drawHorizontalLines(style, canvas, viewport, startY, linePaint);
 }
 
 void _drawVerticalLines(
@@ -77,59 +72,22 @@ void _drawIntersections(
   double startX,
   double startY,
 ) {
+  if (style.intersectionRadius <= 0) {
+    return;
+  }
+
   final intersectionPaint = Paint()
     ..color = style.intersectionColor
     ..style = PaintingStyle.fill;
 
-  switch (style.intersectionType) {
-    case IntersectionType.rectangle:
-      _drawRectangles(
-        style,
-        canvas,
-        viewport,
-        startX,
-        startY,
-        intersectionPaint,
-      );
-      break;
-    case IntersectionType.circle:
-      _drawCircles(
-        style,
-        canvas,
-        viewport,
-        startX,
-        startY,
-        intersectionPaint,
-      );
-      break;
-    default:
-      throw Exception('Invalid intersection type');
-  }
-}
-
-void _drawRectangles(
-  GridStyle style,
-  Canvas canvas,
-  Rect viewport,
-  double startX,
-  double startY,
-  Paint paint,
-) {
-  final intersectionSize = style.intersectionSize!;
-
-  for (double x = startX; x <= viewport.right; x += style.gridSpacingX) {
-    for (double y = startY; y <= viewport.bottom; y += style.gridSpacingY) {
-      canvas.drawRect(
-        Rect.fromLTWH(
-          x - intersectionSize.width / 2,
-          y - intersectionSize.height / 2,
-          intersectionSize.width,
-          intersectionSize.height,
-        ),
-        paint,
-      );
-    }
-  }
+  _drawCircles(
+    style,
+    canvas,
+    viewport,
+    startX,
+    startY,
+    intersectionPaint,
+  );
 }
 
 void _drawCircles(
@@ -140,7 +98,7 @@ void _drawCircles(
   double startY,
   Paint paint,
 ) {
-  final intersectionRadius = style.intersectionRadius!;
+  final intersectionRadius = style.intersectionRadius;
 
   for (double x = startX; x <= viewport.right; x += style.gridSpacingX) {
     for (double y = startY; y <= viewport.bottom; y += style.gridSpacingY) {

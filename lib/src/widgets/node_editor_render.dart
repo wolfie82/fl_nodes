@@ -345,47 +345,48 @@ class NodeEditorRenderBox extends RenderBox
   }
 
   void _paintLinks(Canvas canvas) {
-    for (final link in linkPositions) {
-      final outPortOffset = link.item1;
-      final inPortOffset = link.item2;
+    void paintLinksAsBeziers(Canvas canvas) {
+      for (final link in linkPositions) {
+        final outPortOffset = link.item1;
+        final inPortOffset = link.item2;
+        _paintBezierLink(canvas, outPortOffset, inPortOffset);
+      }
+    }
 
-      final path = Path()..moveTo(outPortOffset.dx, outPortOffset.dy);
-      final midX = (outPortOffset.dx + inPortOffset.dx) / 2;
+    void paintLinksAsStraights(Canvas canvas) {
+      for (final link in linkPositions) {
+        final outPortOffset = link.item1;
+        final inPortOffset = link.item2;
+        _paintStraightLink(canvas, outPortOffset, inPortOffset);
+      }
+    }
 
-      path.cubicTo(
-        midX,
-        outPortOffset.dy,
-        midX,
-        inPortOffset.dy,
-        inPortOffset.dx,
-        inPortOffset.dy,
-      );
+    void paintLinksAsNinetyDegrees(Canvas canvas) {
+      for (final link in linkPositions) {
+        final outPortOffset = link.item1;
+        final inPortOffset = link.item2;
+        _paintNinetyDegreesLink(canvas, outPortOffset, inPortOffset);
+      }
+    }
 
-      final gradient = LinearGradient(
-        colors: [Colors.green[300]!, Colors.purple[200]!],
-        begin: Alignment.centerLeft,
-        end: Alignment.centerRight,
-      );
-
-      final uRect = Rect.fromPoints(outPortOffset, inPortOffset);
-
-      final defaultShader = gradient.createShader(uRect);
-
-      final Paint gradientPaint = Paint()
-        ..shader = defaultShader
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 3;
-
-      canvas.drawPath(path, gradientPaint);
+    switch (style.linkCurveType) {
+      case LinkCurveType.straight:
+        paintLinksAsStraights(canvas);
+        break;
+      case LinkCurveType.bezier:
+        paintLinksAsBeziers(canvas);
+        break;
+      case LinkCurveType.ninetyDegree:
+        paintLinksAsNinetyDegrees(canvas);
+        break;
     }
   }
 
-  void _paintTemporaryLink(Canvas canvas) {
-    if (tempLink == null) return;
-
-    final outPortOffset = tempLink!.item1;
-    final inPortOffset = tempLink!.item2;
-
+  void _paintBezierLink(
+    Canvas canvas,
+    Offset inPortOffset,
+    Offset outPortOffset,
+  ) {
     final path = Path()..moveTo(outPortOffset.dx, outPortOffset.dy);
     final midX = (outPortOffset.dx + inPortOffset.dx) / 2;
 
@@ -404,6 +405,29 @@ class NodeEditorRenderBox extends RenderBox
       end: Alignment.centerRight,
     );
 
+    final uRect = Rect.fromPoints(outPortOffset, inPortOffset);
+
+    final defaultShader = gradient.createShader(uRect);
+
+    final Paint gradientPaint = Paint()
+      ..shader = defaultShader
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3;
+
+    canvas.drawPath(path, gradientPaint);
+  }
+
+  void _paintStraightLink(
+    Canvas canvas,
+    Offset outPortOffset,
+    Offset inPortOffset,
+  ) {
+    final gradient = LinearGradient(
+      colors: [Colors.green[300]!, Colors.purple[200]!],
+      begin: Alignment.centerLeft,
+      end: Alignment.centerRight,
+    );
+
     final shader = gradient.createShader(
       Rect.fromPoints(outPortOffset, inPortOffset),
     );
@@ -413,7 +437,57 @@ class NodeEditorRenderBox extends RenderBox
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3;
 
+    canvas.drawLine(outPortOffset, inPortOffset, gradientPaint);
+  }
+
+  void _paintNinetyDegreesLink(
+    Canvas canvas,
+    Offset outPortOffset,
+    Offset inPortOffset,
+  ) {
+    final gradient = LinearGradient(
+      colors: [Colors.green[300]!, Colors.purple[200]!],
+      begin: Alignment.centerLeft,
+      end: Alignment.centerRight,
+    );
+
+    final shader = gradient.createShader(
+      Rect.fromPoints(outPortOffset, inPortOffset),
+    );
+
+    final Paint gradientPaint = Paint()
+      ..shader = shader
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3;
+
+    final midX = (outPortOffset.dx + inPortOffset.dx) / 2;
+
+    final path = Path()
+      ..moveTo(outPortOffset.dx, outPortOffset.dy)
+      ..lineTo(midX, outPortOffset.dy)
+      ..lineTo(midX, inPortOffset.dy)
+      ..lineTo(inPortOffset.dx, inPortOffset.dy);
+
     canvas.drawPath(path, gradientPaint);
+  }
+
+  void _paintTemporaryLink(Canvas canvas) {
+    if (tempLink == null) return;
+
+    final outPortOffset = tempLink!.item1;
+    final inPortOffset = tempLink!.item2;
+
+    switch (style.linkCurveType) {
+      case LinkCurveType.straight:
+        _paintStraightLink(canvas, outPortOffset, inPortOffset);
+        break;
+      case LinkCurveType.bezier:
+        _paintBezierLink(canvas, outPortOffset, inPortOffset);
+        break;
+      case LinkCurveType.ninetyDegree:
+        _paintNinetyDegreesLink(canvas, outPortOffset, inPortOffset);
+        break;
+    }
   }
 
   void _paintSelectionArea(Canvas canvas, Rect viewport) {
