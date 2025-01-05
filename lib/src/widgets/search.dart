@@ -72,10 +72,8 @@ class _FlSearchWidgetState extends State<FlSearchWidget> {
     return AnimatedContainer(
       height: 50,
       duration: const Duration(milliseconds: 900),
-      decoration: BoxDecoration(
-        color: widget.style.backgroundColor,
-        borderRadius: widget.style.borderRadius,
-      ),
+      decoration: widget.style.decoration,
+      padding: widget.style.padding,
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -116,15 +114,9 @@ class _FlSearchWidgetState extends State<FlSearchWidget> {
                           child: TextField(
                             focusNode: _focusNode,
                             controller: _searchController,
-                            decoration: InputDecoration(
+                            decoration: const InputDecoration(
                               hintText: 'Search nodes by name...',
-                              hintStyle: TextStyle(
-                                color: widget.style.textColor,
-                              ),
                               border: InputBorder.none,
-                            ),
-                            style: TextStyle(
-                              color: widget.style.textColor,
                             ),
                             onChanged: (value) async {
                               if (value.isEmpty) {
@@ -182,9 +174,6 @@ class _FlSearchWidgetState extends State<FlSearchWidget> {
                           _isSearching
                               ? 'Searching...'
                               : '${_searchResults.length} results',
-                          style: TextStyle(
-                            color: widget.style.textColor,
-                          ),
                         ),
                       ],
                     ),

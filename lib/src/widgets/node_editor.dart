@@ -706,15 +706,8 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
     }
 
     final Widget editor = Container(
-      decoration: BoxDecoration(
-        image: widget.style.backgroundImage,
-        color: widget.style.backgroundColor,
-        border: Border.all(
-          color: widget.style.borderColor,
-          width: widget.style.borderWidth,
-        ),
-        borderRadius: widget.style.borderRadius,
-      ),
+      decoration: widget.style.decoration,
+      padding: widget.style.padding,
       child: controlsWrapper(
         Stack(
           clipBehavior: Clip.none,

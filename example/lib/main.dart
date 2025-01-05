@@ -136,9 +136,7 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
                 expandToParent: true,
                 style: const NodeEditorStyle(
                   gridStyle: GridStyle(
-                    lineType: LineType.solid,
                     lineWidth: 1,
-                    intersectionType: IntersectionType.circle,
                     intersectionRadius: 2,
                   ),
                 ),

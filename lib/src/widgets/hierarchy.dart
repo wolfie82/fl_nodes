@@ -48,24 +48,13 @@ class _FlHierarchyWidgetState extends State<FlHierarchyWidget> {
   Widget build(BuildContext context) {
     return Container(
       constraints: const BoxConstraints(maxWidth: 300),
-      padding: const EdgeInsets.all(8.0),
-      decoration: BoxDecoration(
-        color: widget.style.backgroundColor,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(64),
-            blurRadius: 5,
-            offset: const Offset(0, 2),
-          ),
-        ],
-        borderRadius: widget.style.borderRadius,
-      ),
+      decoration: widget.style.decoration,
+      padding: widget.style.padding,
       child: Column(
         children: [
-          Text(
+          const Text(
             'Hierarchy',
             style: TextStyle(
-              color: widget.style.textColor,
               fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
@@ -77,19 +66,11 @@ class _FlHierarchyWidgetState extends State<FlHierarchyWidget> {
             itemBuilder: (context, index) {
               final node = widget.controller.nodesAsList[index];
               return Container(
-                decoration: BoxDecoration(
-                  color: node.state.isSelected
-                      ? widget.style.selectedColor
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(8),
-                ),
+                decoration: widget.style.selectedDecoration,
                 child: ListTile(
                   title: Text(
                     '${node.offset} - ${node.name}',
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: widget.style.textColor,
-                    ),
                   ),
                   onTap: () {
                     final focusedNodes = [
