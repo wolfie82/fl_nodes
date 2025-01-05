@@ -168,7 +168,12 @@ class FlNodeEditorController {
   }
 
   void removeNode(String id) {
+    for (final port in _nodes[id]!.ports.values) {
+      removeLinks(id, port.id);
+    }
+
     _nodes.remove(id);
+
     eventBus.emit(RemoveNodeEvent(id));
   }
 
