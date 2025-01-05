@@ -73,7 +73,6 @@ class _FlSearchWidgetState extends State<FlSearchWidget> {
       height: 50,
       duration: const Duration(milliseconds: 900),
       decoration: widget.style.decoration,
-      padding: widget.style.padding,
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [

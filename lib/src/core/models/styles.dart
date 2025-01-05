@@ -88,7 +88,6 @@ class NodeEditorStyle {
 
 class SearchStyle {
   final BoxDecoration decoration;
-  final EdgeInsetsGeometry padding;
   final TextStyle textStyle;
   final IconThemeData iconTheme;
   final Icon searchIcon;
@@ -100,7 +99,6 @@ class SearchStyle {
       color: Color(0xFF212121),
       borderRadius: BorderRadius.all(Radius.circular(8.0)),
     ),
-    this.padding = const EdgeInsets.all(8.0),
     this.textStyle = const TextStyle(
       color: Colors.white,
     ),
@@ -134,7 +132,8 @@ class SearchStyle {
 class HierarchyStyle {
   final BoxDecoration decoration;
   final EdgeInsetsGeometry padding;
-  final BoxDecoration selectedDecoration;
+  final BoxDecoration nodeDecoration;
+  final BoxDecoration selectedNodeDecoration;
   final TextStyle textStyle;
 
   const HierarchyStyle({
@@ -143,8 +142,12 @@ class HierarchyStyle {
       borderRadius: BorderRadius.all(Radius.circular(8.0)),
     ),
     this.padding = const EdgeInsets.all(8.0),
-    this.selectedDecoration = const BoxDecoration(
-      color: Colors.grey,
+    this.nodeDecoration = const BoxDecoration(
+      color: Color(0xFF333333),
+      borderRadius: BorderRadius.all(Radius.circular(8.0)),
+    ),
+    this.selectedNodeDecoration = const BoxDecoration(
+      color: Color(0xFF424242),
       borderRadius: BorderRadius.all(Radius.circular(8.0)),
     ),
     this.textStyle = const TextStyle(
@@ -154,12 +157,17 @@ class HierarchyStyle {
 
   HierarchyStyle copyWith({
     BoxDecoration? decoration,
-    BoxDecoration? selectedDecoration,
+    EdgeInsetsGeometry? padding,
+    BoxDecoration? nodeDecoration,
+    BoxDecoration? selectedNodeDecoration,
     TextStyle? textStyle,
   }) {
     return HierarchyStyle(
       decoration: decoration ?? this.decoration,
-      selectedDecoration: selectedDecoration ?? this.selectedDecoration,
+      padding: padding ?? this.padding,
+      nodeDecoration: nodeDecoration ?? this.nodeDecoration,
+      selectedNodeDecoration:
+          selectedNodeDecoration ?? this.selectedNodeDecoration,
       textStyle: textStyle ?? this.textStyle,
     );
   }

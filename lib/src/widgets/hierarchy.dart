@@ -66,7 +66,9 @@ class _FlHierarchyWidgetState extends State<FlHierarchyWidget> {
             itemBuilder: (context, index) {
               final node = widget.controller.nodesAsList[index];
               return Container(
-                decoration: widget.style.selectedDecoration,
+                decoration: node.state.isSelected
+                    ? widget.style.selectedNodeDecoration
+                    : widget.style.nodeDecoration,
                 child: ListTile(
                   title: Text(
                     '${node.offset} - ${node.name}',
