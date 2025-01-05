@@ -65,6 +65,9 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
   Offset _offset = Offset.zero;
   double _zoom = 1.0;
 
+  // Focus node
+  final FocusNode _focusNode = FocusNode();
+
   // Interaction state
   bool _isDragging = false;
   bool _isSelecting = false;
@@ -110,11 +113,9 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
       } else if (event is ViewportZoomEvent) {
         _setZoom(event.zoom, animate: event.animate);
       } else if (event is DragSelectionEvent) {
-        setState(() {
-          _suppressEvents();
-        });
+        _suppressEvents();
       } else if (event is AddNodeEvent ||
-          event is RemoveNodeEvent ||
+          event is RemoveNodesEvent ||
           event is AddLinkEvent ||
           event is RemoveLinksEvent ||
           event is DrawTempLinkEvent) {
@@ -266,6 +267,8 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
       _onLinkCancel();
     } else if (_isSelecting) {
       _onSelectCancel();
+    } else {
+      setState(() {});
     }
   }
 
@@ -599,90 +602,105 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
               onScaleEnd: (details) => _onDragEnd(),
               child: child,
             )
-          : MouseRegion(
-              cursor: _isDragging
-                  ? SystemMouseCursors.move
-                  : SystemMouseCursors.basic,
-              child: ImprovedListener(
-                onDoubleClick: () => widget.controller.clearSelection(),
-                onPointerPressed: (event) {
-                  if (event.buttons == kMiddleMouseButton) {
-                    _onDragStart();
-                  } else if (event.buttons == kPrimaryMouseButton) {
-                    final locator = _isNearPort(event.localPosition);
+          : KeyboardListener(
+              autofocus: true,
+              focusNode: _focusNode,
+              onKeyEvent: (value) {
+                if (value.logicalKey == LogicalKeyboardKey.delete ||
+                    value.logicalKey == LogicalKeyboardKey.backspace) {
+                  widget.controller.removeNodes(
+                    widget.controller.selectedNodeIds,
+                  );
+                  widget.controller.clearSelection();
+                }
+              },
+              child: MouseRegion(
+                cursor: _isDragging
+                    ? SystemMouseCursors.move
+                    : SystemMouseCursors.basic,
+                child: ImprovedListener(
+                  onDoubleClick: () => widget.controller.clearSelection(),
+                  onPointerPressed: (event) {
+                    _focusNode.requestFocus();
 
-                    if (locator != null) {
-                      if (_isLinking && _tempLink != null) {
-                        _onLinkEnd(locator);
+                    if (event.buttons == kMiddleMouseButton) {
+                      _onDragStart();
+                    } else if (event.buttons == kPrimaryMouseButton) {
+                      final locator = _isNearPort(event.localPosition);
+
+                      if (locator != null) {
+                        if (_isLinking && _tempLink != null) {
+                          _onLinkEnd(locator);
+                        } else {
+                          _onLinkStart(locator);
+                        }
                       } else {
-                        _onLinkStart(locator);
+                        _onSelectStart(event.localPosition);
                       }
-                    } else {
-                      _onSelectStart(event.localPosition);
-                    }
-                  } else if (event.buttons == kSecondaryMouseButton) {
-                    final locator = _isNearPort(event.localPosition);
+                    } else if (event.buttons == kSecondaryMouseButton) {
+                      final locator = _isNearPort(event.localPosition);
 
-                    if (locator != null) {
-                      createAndShowContextMenu(
-                        context,
-                        portContextMenuEntries(
-                          event.localPosition,
-                          locator: locator,
-                        ),
-                        event.position,
-                      );
-                    } else if (!isContextMenuVisible) {
-                      createAndShowContextMenu(
-                        context,
-                        editorContextMenuEntries(event.localPosition),
-                        event.position,
-                      );
+                      if (locator != null) {
+                        createAndShowContextMenu(
+                          context,
+                          portContextMenuEntries(
+                            event.localPosition,
+                            locator: locator,
+                          ),
+                          event.position,
+                        );
+                      } else if (!isContextMenuVisible) {
+                        createAndShowContextMenu(
+                          context,
+                          editorContextMenuEntries(event.localPosition),
+                          event.position,
+                        );
+                      }
                     }
-                  }
-                },
-                onPointerMoved: (event) {
-                  if (_isDragging &&
-                      widget.controller.behavior.panSensitivity > 0) {
-                    _onDragUpdate(event.localDelta);
-                  }
-                  if (_isLinking) {
-                    _startEdgeTimer(event.position);
-                    _onLinkUpdate(event.localPosition);
-                  } else if (_isSelecting) {
-                    _onSelectUpdate(event.localPosition);
-                  }
-                },
-                onPointerReleased: (event) {
-                  if (_isDragging) {
-                    _onDragEnd();
-                  } else if (_isLinking) {
-                    _resetEdgeTimer();
-
-                    final locator = _isNearPort(event.localPosition);
-
-                    if (locator != null) {
-                      _onLinkEnd(locator);
-                    } else if (!isContextMenuVisible) {
-                      createAndShowContextMenu(
-                        context,
-                        editorContextMenuEntries(event.localPosition),
-                        event.position,
-                      ).then((value) {
-                        _onLinkCancel();
-                      });
+                  },
+                  onPointerMoved: (event) {
+                    if (_isDragging &&
+                        widget.controller.behavior.panSensitivity > 0) {
+                      _onDragUpdate(event.localDelta);
                     }
-                  } else if (_isSelecting) {
-                    _onSelectEnd();
-                  }
-                },
-                onPointerSignalReceived: (event) {
-                  if (widget.controller.behavior.zoomSensitivity > 0 &&
-                      event is PointerScrollEvent) {
-                    _setZoomFromRawInput(event.scrollDelta.dy);
-                  }
-                },
-                child: child,
+                    if (_isLinking) {
+                      _startEdgeTimer(event.position);
+                      _onLinkUpdate(event.localPosition);
+                    } else if (_isSelecting) {
+                      _onSelectUpdate(event.localPosition);
+                    }
+                  },
+                  onPointerReleased: (event) {
+                    if (_isDragging) {
+                      _onDragEnd();
+                    } else if (_isLinking) {
+                      _resetEdgeTimer();
+
+                      final locator = _isNearPort(event.localPosition);
+
+                      if (locator != null) {
+                        _onLinkEnd(locator);
+                      } else if (!isContextMenuVisible) {
+                        createAndShowContextMenu(
+                          context,
+                          editorContextMenuEntries(event.localPosition),
+                          event.position,
+                        ).then((value) {
+                          _onLinkCancel();
+                        });
+                      }
+                    } else if (_isSelecting) {
+                      _onSelectEnd();
+                    }
+                  },
+                  onPointerSignalReceived: (event) {
+                    if (widget.controller.behavior.zoomSensitivity > 0 &&
+                        event is PointerScrollEvent) {
+                      _setZoomFromRawInput(event.scrollDelta.dy);
+                    }
+                  },
+                  child: child,
+                ),
               ),
             );
     }

@@ -37,7 +37,7 @@ class _FlHierarchyWidgetState extends State<FlHierarchyWidget> {
             event is DragSelectionEvent ||
             event is CollapseNodeEvent ||
             event is AddNodeEvent ||
-            event is RemoveNodeEvent) {
+            event is RemoveNodesEvent) {
           setState(() {});
         }
       },

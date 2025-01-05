@@ -52,10 +52,10 @@ class AddNodeEvent extends NodeEditorEvent {
   AddNodeEvent(this.id);
 }
 
-class RemoveNodeEvent extends NodeEditorEvent {
-  final String id;
+class RemoveNodesEvent extends NodeEditorEvent {
+  final List<String> ids;
 
-  RemoveNodeEvent(this.id);
+  RemoveNodesEvent(this.ids);
 }
 
 class AddLinkEvent extends NodeEditorEvent {

@@ -139,7 +139,14 @@ class _NodeWidgetState extends State<NodeWidget> {
           label: 'Delete',
           icon: Icons.delete,
           onSelected: () {
-            widget.controller.removeNode(widget.node.id);
+            if (widget.node.state.isSelected) {
+              widget.controller.removeNodes(
+                widget.controller.selectedNodeIds,
+              );
+              widget.controller.clearSelection();
+            } else {
+              widget.controller.removeNodes([widget.node.id]);
+            }
           },
         ),
         MenuItem(
@@ -162,6 +169,9 @@ class _NodeWidgetState extends State<NodeWidget> {
               onPointerPressed: (event) {
                 if (event.buttons == kSecondaryMouseButton &&
                     !isContextMenuVisible) {
+                  if (!widget.node.state.isSelected) {
+                    widget.controller.clearSelection();
+                  }
                   createAndShowContextMenu(
                     context,
                     contextMenuEntries(),
