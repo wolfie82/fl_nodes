@@ -638,6 +638,7 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
                         _onSelectStart(event.localPosition);
                       }
                     } else if (event.buttons == kSecondaryMouseButton) {
+                      /// If a port is near the cursor, show the port context menu
                       final locator = _isNearPort(event.localPosition);
 
                       if (locator != null) {
@@ -650,6 +651,7 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
                           event.position,
                         );
                       } else if (!isContextMenuVisible) {
+                        // Otherwise, show the editor context menu
                         createAndShowContextMenu(
                           context,
                           editorContextMenuEntries(event.localPosition),
@@ -681,9 +683,10 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
                       if (locator != null) {
                         _onLinkEnd(locator);
                       } else if (!isContextMenuVisible) {
+                        // Show the create submenu if no port is near the cursor
                         createAndShowContextMenu(
                           context,
-                          editorContextMenuEntries(event.localPosition),
+                          createSubmenuEntries(event.position),
                           event.position,
                         ).then((value) {
                           _onLinkCancel();
