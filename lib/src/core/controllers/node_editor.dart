@@ -196,7 +196,25 @@ class FlNodeEditorController {
   List<NodePrototype> get nodePrototypesAsList =>
       _nodePrototypes.values.map((e) => e()).toList();
   Map<String, NodePrototype Function()> get nodePrototypes => _nodePrototypes;
-  List<Node> get nodesAsList => _nodes.values.toList();
+
+  List<Node> get nodesAsList {
+    final nodesList = _nodes.values.toList();
+
+    // We sort the nodes list so that selected nodes are rendered on top of others.
+    nodesList.sort((a, b) {
+      if (_selectedNodeIds.contains(a.id) && !_selectedNodeIds.contains(b.id)) {
+        return 1;
+      } else if (!_selectedNodeIds.contains(a.id) &&
+          _selectedNodeIds.contains(b.id)) {
+        return -1;
+      } else {
+        return 0;
+      }
+    });
+
+    return nodesList;
+  }
+
   Map<String, Node> get nodes => _nodes;
 
   void registerNodePrototype(String type, NodePrototype Function() node) {
