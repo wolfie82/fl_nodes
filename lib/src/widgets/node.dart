@@ -14,7 +14,7 @@ import 'package:fl_nodes/src/utils/context_menu.dart';
 import 'package:fl_nodes/src/utils/improved_listener.dart';
 
 import '../core/controllers/node_editor_events.dart';
-import '../core/models/node.dart';
+import '../core/models/entities.dart';
 import '../core/utils/constants.dart';
 import '../core/utils/platform.dart';
 import '../core/utils/renderbox.dart';

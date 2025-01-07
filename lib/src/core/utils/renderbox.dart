@@ -1,4 +1,4 @@
-import 'package:fl_nodes/src/core/models/node.dart';
+import 'package:fl_nodes/src/core/models/entities.dart';
 import 'package:flutter/widgets.dart';
 
 /// Retrieves the global offset of a widget identified by a [GlobalKey].

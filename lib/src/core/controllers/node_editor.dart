@@ -13,7 +13,7 @@ import 'package:uuid/uuid.dart';
 import 'package:fl_nodes/src/core/utils/constants.dart';
 import 'package:fl_nodes/src/core/utils/renderbox.dart';
 
-import '../models/node.dart';
+import '../models/entities.dart';
 
 import 'node_editor_events.dart';
 
