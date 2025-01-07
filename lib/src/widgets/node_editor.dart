@@ -686,7 +686,7 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
                         // Show the create submenu if no port is near the cursor
                         createAndShowContextMenu(
                           context,
-                          createSubmenuEntries(event.position),
+                          createSubmenuEntries(event.localPosition),
                           event.position,
                         ).then((value) {
                           _onLinkCancel();
