@@ -60,32 +60,34 @@ class _FlHierarchyWidgetState extends State<FlHierarchyWidget> {
             ),
           ),
           const Gap(8),
-          ListView.builder(
-            shrinkWrap: true,
-            itemCount: widget.controller.nodesAsList.length,
-            itemBuilder: (context, index) {
-              final node = widget.controller.nodesAsList[index];
-              return Container(
-                decoration: node.state.isSelected
-                    ? widget.style.selectedNodeDecoration
-                    : widget.style.nodeDecoration,
-                child: ListTile(
-                  title: Text(
-                    '${node.offset} - ${node.name}',
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  onTap: () {
-                    final focusedNodes = [
-                      node.id,
-                      if (HardwareKeyboard.instance.isControlPressed)
-                        ...widget.controller.selectedNodeIds,
-                    ];
+          Expanded(
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: widget.controller.nodesAsList.length,
+              itemBuilder: (context, index) {
+                final node = widget.controller.nodesAsList[index];
+                return Container(
+                  decoration: node.state.isSelected
+                      ? widget.style.selectedNodeDecoration
+                      : widget.style.nodeDecoration,
+                  child: ListTile(
+                    title: Text(
+                      '${node.offset} - ${node.name}',
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    onTap: () {
+                      final focusedNodes = [
+                        node.id,
+                        if (HardwareKeyboard.instance.isControlPressed)
+                          ...widget.controller.selectedNodeIds,
+                      ];
 
-                    widget.controller.focusNodesById(focusedNodes);
-                  },
-                ),
-              );
-            },
+                      widget.controller.focusNodesById(focusedNodes.toSet());
+                    },
+                  ),
+                );
+              },
+            ),
           ),
         ],
       ),

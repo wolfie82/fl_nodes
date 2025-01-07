@@ -206,7 +206,18 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
       _zoom,
     );
 
-    for (final node in widget.controller.nodes.values) {
+    final near = Rect.fromCenter(
+      center: worldPosition,
+      width: kSpatialHashingCellSize,
+      height: kSpatialHashingCellSize,
+    );
+
+    final nearNodeIds =
+        widget.controller.spatialHashGrid.queryNodeIdsInArea(near);
+
+    for (final nodeId in nearNodeIds) {
+      final node = widget.controller.nodes[nodeId]!;
+
       for (final port in node.ports.values) {
         final absolutePortPosition = node.offset + port.offset;
 

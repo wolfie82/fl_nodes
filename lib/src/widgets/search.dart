@@ -48,9 +48,7 @@ class _FlSearchWidgetState extends State<FlSearchWidget> {
       _currentFocus = _searchResults[0];
     }
 
-    widget.controller.focusNodesById([
-      _currentFocus!,
-    ]);
+    widget.controller.focusNodesById({_currentFocus!});
   }
 
   void _toPreviousResult() async {
@@ -62,9 +60,7 @@ class _FlSearchWidgetState extends State<FlSearchWidget> {
       _currentFocus = _searchResults[_searchResults.length - 1];
     }
 
-    widget.controller.focusNodesById([
-      _currentFocus!,
-    ]);
+    widget.controller.focusNodesById({_currentFocus!});
   }
 
   @override
@@ -146,9 +142,8 @@ class _FlSearchWidgetState extends State<FlSearchWidget> {
                               if (_currentFocus == null) {
                                 _currentFocus = _searchResults.first;
 
-                                widget.controller.focusNodesById([
-                                  _currentFocus!,
-                                ]);
+                                widget.controller
+                                    .focusNodesById({_currentFocus!});
                               } else {
                                 _toNextResult();
                               }

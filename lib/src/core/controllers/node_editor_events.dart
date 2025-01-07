@@ -10,14 +10,14 @@ class NodeEditorEvent {
   NodeEditorEvent({this.isHandled = false});
 }
 
-class ViewportOffsetEvent extends NodeEditorEvent {
+final class ViewportOffsetEvent extends NodeEditorEvent {
   final Offset offset;
   final bool animate;
 
   ViewportOffsetEvent(this.offset, {this.animate = true});
 }
 
-class ViewportZoomEvent extends NodeEditorEvent {
+final class ViewportZoomEvent extends NodeEditorEvent {
   final double zoom;
   final bool animate;
 
@@ -27,64 +27,64 @@ class ViewportZoomEvent extends NodeEditorEvent {
   });
 }
 
-class SelectionAreaEvent extends NodeEditorEvent {
+final class SelectionAreaEvent extends NodeEditorEvent {
   final Rect area;
 
   SelectionAreaEvent(this.area);
 }
 
-class DragSelectionEvent extends NodeEditorEvent {
+final class DragSelectionEvent extends NodeEditorEvent {
   final Set<String> ids;
   final Offset delta;
 
   DragSelectionEvent(this.ids, this.delta);
 }
 
-class SelectionEvent extends NodeEditorEvent {
+final class SelectionEvent extends NodeEditorEvent {
   final Set<String> ids;
 
   SelectionEvent(this.ids);
 }
 
-class AddNodeEvent extends NodeEditorEvent {
+final class AddNodeEvent extends NodeEditorEvent {
   final String id;
 
   AddNodeEvent(this.id);
 }
 
-class RemoveNodesEvent extends NodeEditorEvent {
-  final List<String> ids;
+final class RemoveNodesEvent extends NodeEditorEvent {
+  final Set<String> ids;
 
   RemoveNodesEvent(this.ids);
 }
 
-class AddLinkEvent extends NodeEditorEvent {
+final class AddLinkEvent extends NodeEditorEvent {
   final String id;
 
   AddLinkEvent(this.id);
 }
 
-class DrawTempLinkEvent extends NodeEditorEvent {
+final class DrawTempLinkEvent extends NodeEditorEvent {
   final Offset from;
   final Offset to;
 
   DrawTempLinkEvent(this.from, this.to);
 }
 
-class RemoveLinksEvent extends NodeEditorEvent {
+final class RemoveLinksEvent extends NodeEditorEvent {
   final String id;
 
   RemoveLinksEvent(this.id);
 }
 
-class CollapseNodeEvent extends NodeEditorEvent {
-  final String id;
+final class CollapseNodeEvent extends NodeEditorEvent {
+  final Set<String> ids;
 
-  CollapseNodeEvent(this.id);
+  CollapseNodeEvent(this.ids);
 }
 
-class ExpandNodeEvent extends NodeEditorEvent {
-  final String id;
+final class ExpandNodeEvent extends NodeEditorEvent {
+  final Set<String> ids;
 
-  ExpandNodeEvent(this.id);
+  ExpandNodeEvent(this.ids);
 }

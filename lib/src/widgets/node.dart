@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 
 import 'package:flutter_context_menu/flutter_context_menu.dart';
@@ -65,11 +66,11 @@ class _NodeWidgetState extends State<NodeWidget> {
           });
         }
       } else if (event is CollapseNodeEvent) {
-        if (event.id == widget.node.id) {
+        if (event.ids.contains(widget.node.id)) {
           setState(() {});
         }
       } else if (event is ExpandNodeEvent) {
-        if (event.id == widget.node.id) {
+        if (event.ids.contains(widget.node.id)) {
           setState(() {});
         }
       }
@@ -118,6 +119,10 @@ class _NodeWidgetState extends State<NodeWidget> {
 
   @override
   Widget build(BuildContext context) {
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      widget.node.onRendered(widget.node);
+    });
+
     List<ContextMenuEntry> contextMenuEntries() {
       return [
         const MenuHeader(text: 'Node Menu'),
@@ -128,9 +133,9 @@ class _NodeWidgetState extends State<NodeWidget> {
               : Icons.arrow_right,
           onSelected: () {
             if (widget.node.state.isCollapsed) {
-              widget.controller.expandNode(widget.node.id);
+              widget.controller.expandSelectedNodes();
             } else {
-              widget.controller.collapseNode(widget.node.id);
+              widget.controller.collapseSelectedNodes();
             }
           },
         ),
@@ -145,7 +150,7 @@ class _NodeWidgetState extends State<NodeWidget> {
               );
               widget.controller.clearSelection();
             } else {
-              widget.controller.removeNodes([widget.node.id]);
+              widget.controller.removeNodes({widget.node.id});
             }
           },
         ),
@@ -179,7 +184,7 @@ class _NodeWidgetState extends State<NodeWidget> {
                   );
                 } else if (event.buttons == kPrimaryMouseButton) {
                   widget.controller.selectNodesById(
-                    [widget.node.id],
+                    {widget.node.id},
                     holdSelection: widget.node.state.isSelected
                         ? true
                         : HardwareKeyboard.instance.isControlPressed,

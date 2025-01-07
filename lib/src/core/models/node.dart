@@ -79,6 +79,7 @@ class Node {
   final Color color;
   final Map<String, Port> ports;
   final Function(List<String> inputIds, List<String> outputIds) onExecute;
+  final void Function(Node node) onRendered;
   Offset offset;
   final NodeState state = NodeState();
   final GlobalKey key = GlobalKey();
@@ -89,6 +90,7 @@ class Node {
     required this.color,
     required this.ports,
     required this.onExecute,
+    required this.onRendered,
     this.offset = Offset.zero,
   });
 }
@@ -107,6 +109,7 @@ Port createPort(PortPrototype prototype) {
 Node createNode(
   NodePrototype prototype, {
   Offset? offset,
+  required void Function(Node node) onRendered,
 }) {
   return Node(
     id: const Uuid().v4(),
@@ -117,6 +120,7 @@ Node createNode(
       return MapEntry(port.id, port);
     }),
     onExecute: prototype.onExecute,
+    onRendered: onRendered,
     offset: offset ?? Offset.zero,
   );
 }

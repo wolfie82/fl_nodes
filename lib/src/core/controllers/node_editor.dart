@@ -3,6 +3,7 @@ import 'dart:collection';
 import 'dart:math';
 
 import 'package:fl_nodes/src/core/utils/platform.dart';
+import 'package:fl_nodes/src/core/utils/spatial_hash_grid.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
@@ -191,6 +192,7 @@ class FlNodeEditorController {
 
   // Nodes and links
   final Map<String, NodePrototype Function()> _nodePrototypes = {};
+  final SpatialHashGrid _spatialHashGrid = SpatialHashGrid();
   final Map<String, Node> _nodes = {};
 
   List<NodePrototype> get nodePrototypesAsList =>
@@ -216,6 +218,7 @@ class FlNodeEditorController {
   }
 
   Map<String, Node> get nodes => _nodes;
+  SpatialHashGrid get spatialHashGrid => _spatialHashGrid;
 
   void registerNodePrototype(String type, NodePrototype Function() node) {
     _nodePrototypes[type] = node;
@@ -229,6 +232,10 @@ class FlNodeEditorController {
     final node = createNode(
       _nodePrototypes[type]!(),
       offset: offset,
+      onRendered: (node) {
+        _spatialHashGrid.remove(node.id);
+        _spatialHashGrid.insert(Tuple2(node.id, getNodeBoundsInWorld(node)!));
+      },
     );
 
     _nodes.putIfAbsent(
@@ -236,17 +243,20 @@ class FlNodeEditorController {
       () => node,
     );
 
+    // The node is added to the spatial hash grid directly in the widget as it needs to be rendered first.
+
     eventBus.emit(AddNodeEvent(node.id));
 
     return node;
   }
 
-  void removeNodes(List<String> ids) {
+  void removeNodes(Set<String> ids) {
     for (final id in ids) {
       for (final port in _nodes[id]!.ports.values) {
         removeLinks(id, port.id);
       }
 
+      _spatialHashGrid.remove(id);
       _nodes.remove(id);
     }
 
@@ -314,23 +324,29 @@ class FlNodeEditorController {
     node?.offset = offset;
   }
 
-  void collapseNode(String id) {
-    final node = _nodes[id];
-    node?.state.isCollapsed = true;
-    eventBus.emit(CollapseNodeEvent(id));
+  void collapseSelectedNodes() {
+    for (final id in _selectedNodeIds) {
+      final node = _nodes[id];
+      node?.state.isCollapsed = true;
+    }
+
+    eventBus.emit(CollapseNodeEvent(_selectedNodeIds));
   }
 
-  void expandNode(String id) {
-    final node = _nodes[id];
-    node?.state.isCollapsed = false;
-    eventBus.emit(ExpandNodeEvent(id));
+  void expandSelectedNodes() {
+    for (final id in _selectedNodeIds) {
+      final node = _nodes[id];
+      node?.state.isCollapsed = false;
+    }
+
+    eventBus.emit(CollapseNodeEvent(_selectedNodeIds));
   }
 
   // Selection
   final Set<String> _selectedNodeIds = {};
   Rect _selectionArea = Rect.zero;
 
-  List<String> get selectedNodeIds => _selectedNodeIds.toList();
+  Set<String> get selectedNodeIds => _selectedNodeIds;
   Rect get selectionArea => _selectionArea;
 
   void dragSelection(Offset delta) {
@@ -342,7 +358,7 @@ class FlNodeEditorController {
     eventBus.emit(SelectionAreaEvent(area));
   }
 
-  void selectNodesById(List<String> ids, {bool holdSelection = false}) async {
+  void selectNodesById(Set<String> ids, {bool holdSelection = false}) async {
     if (!holdSelection) {
       for (final id in _selectedNodeIds) {
         final node = _nodes[id];
@@ -363,19 +379,8 @@ class FlNodeEditorController {
   }
 
   void selectNodesByArea({bool holdSelection = false}) async {
-    final containedNodes = <String>[];
-
-    for (final node in _nodes.values) {
-      final nodeBounds = getNodeBoundsInWorld(node);
-      if (nodeBounds == null) continue;
-
-      if (_selectionArea.overlaps(nodeBounds)) {
-        containedNodes.add(node.id);
-      }
-    }
-
+    final containedNodes = _spatialHashGrid.queryNodeIdsInArea(_selectionArea);
     selectNodesById(containedNodes, holdSelection: holdSelection);
-
     _selectionArea = Rect.zero;
   }
 
@@ -389,7 +394,7 @@ class FlNodeEditorController {
     eventBus.emit(SelectionEvent(_selectedNodeIds.toSet()));
   }
 
-  void focusNodesById(List<String> ids) {
+  void focusNodesById(Set<String> ids) {
     Rect encompassingRect = Rect.zero;
 
     for (final id in ids) {
