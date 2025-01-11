@@ -45,6 +45,12 @@ class _NodeWidgetState extends State<NodeWidget> {
     _handleControllerEvents();
   }
 
+  @override
+  void dispose() {
+    _edgeTimer?.cancel();
+    super.dispose();
+  }
+
   void _handleControllerEvents() {
     widget.controller.eventBus.events.listen((event) {
       if (event.isHandled || !mounted) return;
@@ -120,7 +126,7 @@ class _NodeWidgetState extends State<NodeWidget> {
   @override
   Widget build(BuildContext context) {
     SchedulerBinding.instance.addPostFrameCallback((_) {
-      widget.node.onRendered(widget.node);
+      if (mounted) widget.node.onRendered(widget.node);
     });
 
     List<ContextMenuEntry> contextMenuEntries() {
@@ -171,6 +177,7 @@ class _NodeWidgetState extends State<NodeWidget> {
       return isMobile()
           ? child
           : ImprovedListener(
+              behavior: HitTestBehavior.translucent,
               onPointerPressed: (event) {
                 if (event.buttons == kSecondaryMouseButton &&
                     !isContextMenuVisible) {
@@ -207,96 +214,206 @@ class _NodeWidgetState extends State<NodeWidget> {
 
     return controlsWrapper(
       IntrinsicWidth(
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Container(
-              key: widget.node.key,
-              constraints: const BoxConstraints(minWidth: 100),
-              decoration: BoxDecoration(
-                color: const Color(0xFF212121),
-                boxShadow: [
-                  BoxShadow(
-                    color: widget.node.state.isSelected
-                        ? widget.node.color.withAlpha(128)
-                        : Colors.black.withAlpha(64),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-                border: Border.all(
-                  color: widget.node.color,
-                  width: 1,
-                ),
-                borderRadius: BorderRadius.circular(8.0),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
+        child: IntrinsicHeight(
+          key: widget.node.key,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Visibility(
+                visible: !widget.node.state.isCollapsed,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF212121),
+                    boxShadow: [
+                      BoxShadow(
+                        color: widget.node.state.isSelected
+                            ? widget.node.color.withAlpha(128)
+                            : Colors.black.withAlpha(64),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                    border: Border.all(
                       color: widget.node.color,
-                      borderRadius: BorderRadius.only(
-                        topLeft: const Radius.circular(7),
-                        topRight: const Radius.circular(7),
-                        bottomLeft: widget.node.state.isCollapsed
-                            ? const Radius.circular(7)
-                            : Radius.zero,
-                        bottomRight: widget.node.state.isCollapsed
-                            ? const Radius.circular(7)
-                            : Radius.zero,
-                      ),
+                      width: 1,
                     ),
-                    child: Text(
-                      widget.node.name,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
+                    borderRadius: BorderRadius.circular(8.0),
                   ),
-                  Visibility(
-                    visible: !widget.node.state.isCollapsed,
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                ),
+              ),
+              ...widget.node.ports.entries.map(
+                (entry) => _buildPortIndicator(entry.value),
+              ),
+              Container(
+                constraints: const BoxConstraints(minWidth: 100),
+                decoration: const BoxDecoration(
+                  color: Colors.transparent,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: widget.node.color,
+                        borderRadius: BorderRadius.only(
+                          topLeft: const Radius.circular(7),
+                          topRight: const Radius.circular(7),
+                          bottomLeft: widget.node.state.isCollapsed
+                              ? const Radius.circular(7)
+                              : Radius.zero,
+                          bottomRight: widget.node.state.isCollapsed
+                              ? const Radius.circular(7)
+                              : Radius.zero,
+                        ),
+                      ),
+                      child: Row(
                         children: [
-                          ...widget.node.ports.entries.map(
-                            (entry) => _buildPortRow(
-                              entry.value,
-                              isInput: true,
+                          InkWell(
+                            onTap: () {
+                              setState(() {
+                                widget.node.state.isCollapsed =
+                                    !widget.node.state.isCollapsed;
+                              });
+                            },
+                            child: Icon(
+                              widget.node.state.isCollapsed
+                                  ? Icons.expand_more
+                                  : Icons.expand_less,
+                              color: Colors.white,
                             ),
+                          ),
+                          const Gap(8),
+                          Text(
+                            widget.node.name,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                            ),
+                            textAlign: TextAlign.center,
                           ),
                         ],
                       ),
                     ),
-                  ),
-                ],
+                    Visibility(
+                      visible: !widget.node.state.isCollapsed,
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          spacing: 2.0,
+                          children: [
+                            ...widget.node.fields.entries.map(
+                              (entry) => _buildField(entry.value),
+                            ),
+                            if (widget.node.fields.isNotEmpty) const Gap(8),
+                            ...widget.node.ports.entries.map(
+                              (entry) => _buildPortRow(entry.value),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            ...widget.node.ports.entries.map(
-              (entry) => _buildPortIndicator(entry.value),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildPortRow(Port port, {required bool isInput}) {
+  void _removeOverlay(OverlayEntry? overlayEntry) {
+    overlayEntry?.remove();
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  Widget _buildField(Field field) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        GestureDetector(
+          onTapDown: (details) {
+            final overlay = Overlay.of(context);
+            OverlayEntry? overlayEntry;
+
+            overlayEntry = OverlayEntry(
+              builder: (context) {
+                return Stack(
+                  children: [
+                    GestureDetector(
+                      onTap: () => _removeOverlay(overlayEntry),
+                      child: Container(color: Colors.transparent),
+                    ),
+                    Positioned(
+                      left: details.globalPosition.dx,
+                      top: details.globalPosition.dy,
+                      child: Material(
+                        color: Colors.transparent,
+                        child: field.editorBuilder(
+                          context,
+                          () => _removeOverlay(overlayEntry),
+                          field,
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            );
+
+            overlay.insert(overlayEntry);
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: const Color(0xFF333333),
+              borderRadius: BorderRadius.circular(4.0),
+            ),
+            child: Text(
+              field.data.toString(),
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 13,
+              ),
+            ),
+          ),
+        ),
+        const Gap(4.0),
+        Text(
+          field.name,
+          style: const TextStyle(
+            color: Colors.white70,
+            fontSize: 13,
+          ),
+        ),
+        const Gap(4),
+        Text(
+          field.dataType.toString(),
+          style: const TextStyle(
+            color: Colors.white54,
+            fontSize: 12,
+            fontStyle: FontStyle.italic,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPortRow(Port port) {
     return Visibility(
       visible: !widget.node.state.isCollapsed,
       child: Row(
         mainAxisAlignment:
-            isInput ? MainAxisAlignment.start : MainAxisAlignment.end,
-        mainAxisSize: MainAxisSize.max,
+            port.isInput ? MainAxisAlignment.start : MainAxisAlignment.end,
+        mainAxisSize: MainAxisSize.min,
         key: port.key,
         children: [
-          Gap(isInput ? 4 : 0),
           Text(
             port.name,
             style: const TextStyle(
@@ -313,7 +430,6 @@ class _NodeWidgetState extends State<NodeWidget> {
               fontStyle: FontStyle.italic,
             ),
           ),
-          Gap(isInput ? 0 : 4),
         ],
       ),
     );

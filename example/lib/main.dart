@@ -107,6 +107,50 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
             isInput: false,
           ),
         ],
+        fields: [
+          FieldPrototype(
+            name: 'Decimals',
+            dataType: int,
+            defaultData: 2,
+            editorType: FieldEditorType.number,
+            editorBuilder: (context, removeOverlay, field) => Container(
+              constraints: const BoxConstraints(
+                minHeight: 20,
+                minWidth: 50,
+                maxWidth: 200,
+              ),
+              decoration: BoxDecoration(
+                color: Colors.grey[900],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey[800]!),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withAlpha(128),
+                    blurRadius: 2,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: TextFormField(
+                key: field.key,
+                initialValue: field.data.toString(),
+                onChanged: (value) => field.data = int.tryParse(value) ?? 0,
+                onFieldSubmitted: (value) {
+                  field.data = int.tryParse(value) ?? 0;
+                  removeOverlay.call();
+                },
+                decoration: const InputDecoration(
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.all(4),
+                ),
+              ),
+            ),
+          ),
+        ],
+        portToFieldMap: {
+          'Value': 'Decimals',
+          'Rounded': 'Decimals',
+        },
         onExecute: (inputIds, outputIds) {},
       ),
     );

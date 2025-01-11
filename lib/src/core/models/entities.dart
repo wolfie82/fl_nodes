@@ -1,8 +1,9 @@
-import 'package:fl_nodes/src/core/utils/serialization.dart';
 import 'package:flutter/material.dart';
 
 import 'package:tuple/tuple.dart';
 import 'package:uuid/uuid.dart';
+
+import 'package:fl_nodes/src/core/utils/serialization.dart';
 
 /// Entities are split in two categories: Prototypes and Instances.
 ///
@@ -104,7 +105,7 @@ final class PortPrototype {
 final class Port {
   final String id;
   final String name;
-  final dynamic data;
+  dynamic data;
   final Type dataType;
   final bool isInput;
   final bool allowMultipleLinks;
@@ -152,6 +153,8 @@ final class Port {
   }
 }
 
+enum FieldEditorType { text, number, dropdown, color, date, time, file, image }
+
 /// A field prototype is the blueprint for a field instance.
 ///
 /// It is used to store variables for use in the onExecute function of a node.
@@ -160,11 +163,21 @@ class FieldPrototype {
   final String name;
   final Type dataType;
   final bool isEditable;
+  final dynamic defaultData;
+  final FieldEditorType editorType;
+  final Function(
+    BuildContext context,
+    Function() removeOverlay,
+    Field field,
+  ) editorBuilder;
 
   FieldPrototype({
     required this.name,
     required this.dataType,
     this.isEditable = false,
+    this.defaultData,
+    this.editorType = FieldEditorType.text,
+    required this.editorBuilder,
   });
 }
 
@@ -175,7 +188,15 @@ class Field {
   final String id;
   final String name;
   final bool isEditable;
-  final dynamic data;
+  final FieldEditorType editorType;
+  final Function(
+    BuildContext context,
+    Function() removeOverlay,
+    Field field,
+  ) editorBuilder;
+  final editorOveralyController = OverlayPortalController();
+  dynamic data;
+  final dynamic defaultData;
   final Type dataType;
   final GlobalKey key = GlobalKey();
 
@@ -183,7 +204,10 @@ class Field {
     required this.id,
     required this.name,
     required this.isEditable,
+    required this.editorType,
+    required this.editorBuilder,
     required this.data,
+    required this.defaultData,
     required this.dataType,
   });
 
@@ -192,6 +216,7 @@ class Field {
       'name': name,
       'isEditable': isEditable,
       'data': data,
+      'defaultData': defaultData,
       'dataType': dataType.toString(),
     };
   }
@@ -202,6 +227,9 @@ class Field {
       name: json['name'],
       isEditable: prototype.isEditable,
       data: json['data'],
+      defaultData: prototype.defaultData,
+      editorType: prototype.editorType,
+      editorBuilder: prototype.editorBuilder,
       dataType: prototype.dataType,
     );
   }
@@ -216,6 +244,7 @@ final class NodePrototype {
   final Color color;
   final List<PortPrototype> ports;
   final List<FieldPrototype> fields;
+  final Map<String, String> portToFieldMap;
   final void Function(List<String> inputIds, List<String> outputIds) onExecute;
 
   NodePrototype({
@@ -224,6 +253,7 @@ final class NodePrototype {
     this.color = Colors.grey,
     this.ports = const [],
     this.fields = const [],
+    this.portToFieldMap = const {},
     required this.onExecute,
   });
 }
@@ -249,6 +279,7 @@ final class Node {
   final Color color;
   final Map<String, Port> ports;
   final Map<String, Field> fields;
+  final Map<String, String> portToFieldMap;
   final Function(List<String> inputIds, List<String> outputIds) onExecute;
   final void Function(Node node) onRendered;
   Offset offset;
@@ -262,6 +293,7 @@ final class Node {
     required this.color,
     required this.ports,
     required this.fields,
+    required this.portToFieldMap,
     required this.onExecute,
     required this.onRendered,
     this.offset = Offset.zero,
@@ -300,6 +332,7 @@ final class Node {
         );
         return MapEntry(fieldId, Field.fromJson(fieldJson, fieldPrototype));
       }),
+      portToFieldMap: prototype.portToFieldMap,
       onExecute: prototype.onExecute,
       onRendered: onRendered,
       offset: Offset(json['offset'][0], json['offset'][1]),
@@ -323,7 +356,10 @@ Field createField(FieldPrototype prototype) {
     id: const Uuid().v4(),
     name: prototype.name,
     isEditable: prototype.isEditable,
-    data: null,
+    editorType: prototype.editorType,
+    editorBuilder: prototype.editorBuilder,
+    data: prototype.defaultData,
+    defaultData: prototype.defaultData,
     dataType: prototype.dataType,
   );
 }
@@ -346,6 +382,7 @@ Node createNode(
       final field = createField(fieldPrototype);
       return MapEntry(field.id, field);
     }),
+    portToFieldMap: prototype.portToFieldMap,
     onExecute: prototype.onExecute,
     onRendered: onRendered,
     offset: offset ?? Offset.zero,

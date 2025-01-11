@@ -258,7 +258,7 @@ class NodeEditorRenderBox extends RenderBox
   }
 
   @override
-  void paint(PaintingContext context, Offset offset) async {
+  void paint(PaintingContext context, Offset offset) {
     final Canvas canvas = context.canvas;
 
     canvas.save();
@@ -406,6 +406,7 @@ class NodeEditorRenderBox extends RenderBox
     );
 
     final uRect = Rect.fromPoints(outPortOffset, inPortOffset);
+    if (uRect.width * uRect.height == 0) return;
 
     final defaultShader = gradient.createShader(uRect);
 
