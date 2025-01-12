@@ -85,7 +85,7 @@ final class Link {
 /// A port prototype is the blueprint for a port instance.
 ///
 /// It defines the name, data type, direction, and if it allows multiple links.
-final class PortPrototype {
+abstract class PortPrototype {
   final String name;
   final Type dataType;
   final bool isInput;
@@ -94,15 +94,31 @@ final class PortPrototype {
   PortPrototype({
     required this.name,
     this.dataType = dynamic,
-    this.isInput = true,
+    required this.isInput,
     this.allowMultipleLinks = true,
   });
+}
+
+class InputPortPrototype extends PortPrototype {
+  InputPortPrototype({
+    required super.name,
+    super.dataType,
+    super.allowMultipleLinks,
+  }) : super(isInput: true);
+}
+
+class OutputPortPrototype extends PortPrototype {
+  OutputPortPrototype({
+    required super.name,
+    super.dataType,
+    super.allowMultipleLinks,
+  }) : super(isInput: false);
 }
 
 /// A port is a connection point on a node.
 ///
 /// In addition to the prototype, it holds the data, links, and offset.
-final class Port {
+final class PortInstance {
   final String id;
   final String name;
   dynamic data;
@@ -113,7 +129,7 @@ final class Port {
   Offset offset;
   final GlobalKey key = GlobalKey();
 
-  Port({
+  PortInstance({
     required this.id,
     required this.name,
     required this.data,
@@ -133,8 +149,9 @@ final class Port {
     };
   }
 
-  factory Port.fromJson(Map<String, dynamic> json, PortPrototype prototype) {
-    final port = Port(
+  factory PortInstance.fromJson(
+      Map<String, dynamic> json, PortPrototype prototype) {
+    final port = PortInstance(
       id: const Uuid().v4(),
       name: json['name'],
       data: null,
@@ -168,7 +185,7 @@ class FieldPrototype {
   final Function(
     BuildContext context,
     Function() removeOverlay,
-    Field field,
+    FieldInstance field,
   ) editorBuilder;
 
   FieldPrototype({
@@ -184,15 +201,14 @@ class FieldPrototype {
 /// A field is a variable that can be used in the onExecute function of a node.
 ///
 /// In addition to the prototype, it holds the data.
-class Field {
+class FieldInstance {
   final String id;
   final String name;
   final bool isEditable;
-  final FieldEditorType editorType;
   final Function(
     BuildContext context,
     Function() removeOverlay,
-    Field field,
+    FieldInstance field,
   ) editorBuilder;
   final editorOverlayController = OverlayPortalController();
   dynamic data;
@@ -200,11 +216,10 @@ class Field {
   final Type dataType;
   final GlobalKey key = GlobalKey();
 
-  Field({
+  FieldInstance({
     required this.id,
     required this.name,
     required this.isEditable,
-    required this.editorType,
     required this.editorBuilder,
     required this.data,
     required this.defaultData,
@@ -221,14 +236,14 @@ class Field {
     };
   }
 
-  factory Field.fromJson(Map<String, dynamic> json, FieldPrototype prototype) {
-    return Field(
+  factory FieldInstance.fromJson(
+      Map<String, dynamic> json, FieldPrototype prototype) {
+    return FieldInstance(
       id: const Uuid().v4(),
       name: json['name'],
       isEditable: prototype.isEditable,
       data: json['data'],
       defaultData: prototype.defaultData,
-      editorType: prototype.editorType,
       editorBuilder: prototype.editorBuilder,
       dataType: prototype.dataType,
     );
@@ -244,7 +259,6 @@ final class NodePrototype {
   final Color color;
   final List<PortPrototype> ports;
   final List<FieldPrototype> fields;
-  final Map<String, String> portToFieldMap;
   final void Function(List<String> inputIds, List<String> outputIds) onExecute;
 
   NodePrototype({
@@ -253,7 +267,6 @@ final class NodePrototype {
     this.color = Colors.grey,
     this.ports = const [],
     this.fields = const [],
-    this.portToFieldMap = const {},
     required this.onExecute,
   });
 }
@@ -272,28 +285,26 @@ final class NodeState {
 /// A node is a component in the node editor.
 ///
 /// It holds the instances of the ports and fields, the offset, the data and the state.
-final class Node {
+final class NodeInstance {
   final String id;
   final String name;
   final String description;
   final Color color;
-  final Map<String, Port> ports;
-  final Map<String, Field> fields;
-  final Map<String, String> portToFieldMap;
+  final Map<String, PortInstance> ports;
+  final Map<String, FieldInstance> fields;
   final Function(List<String> inputIds, List<String> outputIds) onExecute;
-  final void Function(Node node) onRendered;
+  final void Function(NodeInstance node) onRendered;
   Offset offset;
   final NodeState state = NodeState();
   final GlobalKey key = GlobalKey();
 
-  Node({
+  NodeInstance({
     required this.id,
     required this.name,
     required this.description,
     required this.color,
     required this.ports,
     required this.fields,
-    required this.portToFieldMap,
     required this.onExecute,
     required this.onRendered,
     this.offset = Offset.zero,
@@ -310,12 +321,12 @@ final class Node {
     };
   }
 
-  factory Node.fromJson(
+  factory NodeInstance.fromJson(
     Map<String, dynamic> json,
     NodePrototype prototype, {
-    required void Function(Node node) onRendered,
+    required void Function(NodeInstance node) onRendered,
   }) {
-    return Node(
+    return NodeInstance(
       id: const Uuid().v4(),
       name: json['name'],
       description: prototype.description,
@@ -324,15 +335,15 @@ final class Node {
         final portPrototype = prototype.ports.firstWhere(
           (port) => port.name == portJson['name'],
         );
-        return MapEntry(portId, Port.fromJson(portJson, portPrototype));
+        return MapEntry(portId, PortInstance.fromJson(portJson, portPrototype));
       }),
       fields: json['fields'].map((fieldId, fieldJson) {
         final fieldPrototype = prototype.fields.firstWhere(
           (field) => field.name == fieldJson['name'],
         );
-        return MapEntry(fieldId, Field.fromJson(fieldJson, fieldPrototype));
+        return MapEntry(
+            fieldId, FieldInstance.fromJson(fieldJson, fieldPrototype));
       }),
-      portToFieldMap: prototype.portToFieldMap,
       onExecute: prototype.onExecute,
       onRendered: onRendered,
       offset: Offset(json['offset'][0], json['offset'][1]),
@@ -340,8 +351,8 @@ final class Node {
   }
 }
 
-Port createPort(PortPrototype prototype) {
-  return Port(
+PortInstance createPort(PortPrototype prototype) {
+  return PortInstance(
     id: const Uuid().v4(),
     name: prototype.name,
     data: null,
@@ -351,12 +362,11 @@ Port createPort(PortPrototype prototype) {
   );
 }
 
-Field createField(FieldPrototype prototype) {
-  return Field(
+FieldInstance createField(FieldPrototype prototype) {
+  return FieldInstance(
     id: const Uuid().v4(),
     name: prototype.name,
     isEditable: prototype.isEditable,
-    editorType: prototype.editorType,
     editorBuilder: prototype.editorBuilder,
     data: prototype.defaultData,
     defaultData: prototype.defaultData,
@@ -364,12 +374,12 @@ Field createField(FieldPrototype prototype) {
   );
 }
 
-Node createNode(
+NodeInstance createNode(
   NodePrototype prototype, {
   Offset? offset,
-  required void Function(Node node) onRendered,
+  required void Function(NodeInstance node) onRendered,
 }) {
-  return Node(
+  return NodeInstance(
     id: const Uuid().v4(),
     name: prototype.name,
     description: prototype.description,
@@ -382,7 +392,6 @@ Node createNode(
       final field = createField(fieldPrototype);
       return MapEntry(field.id, field);
     }),
-    portToFieldMap: prototype.portToFieldMap,
     onExecute: prototype.onExecute,
     onRendered: onRendered,
     offset: offset ?? Offset.zero,
