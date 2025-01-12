@@ -77,7 +77,6 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
   Offset _lastPositionDelta = Offset.zero;
   Offset _kineticEnergy = Offset.zero;
   Timer? _kineticTimer;
-  Timer? _edgeTimer;
   Offset _selectionStart = Offset.zero;
   Tuple2<String, String>? _tempLink;
 
@@ -312,45 +311,6 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
   void _resetKineticTimer() {
     _kineticTimer?.cancel();
     _startKineticTimer();
-  }
-
-  void _startEdgeTimer(Offset position) {
-    const edgeThreshold = 50.0; // Distance from edge to start moving
-    final moveAmount = 5.0 / widget.controller.zoom; // Amount to move per frame
-
-    final editorBounds = getEditorBoundsInScreen(kNodeEditorWidgetKey);
-    if (editorBounds == null) return;
-
-    _edgeTimer?.cancel();
-
-    _edgeTimer =
-        Timer.periodic(const Duration(milliseconds: 16), (timer) async {
-      double dx = 0;
-      double dy = 0;
-      final rect = editorBounds;
-
-      if (position.dx < rect.left + edgeThreshold) {
-        dx = -moveAmount;
-      } else if (position.dx > rect.right - edgeThreshold) {
-        dx = moveAmount;
-      }
-      if (position.dy < rect.top + edgeThreshold) {
-        dy = -moveAmount;
-      } else if (position.dy > rect.bottom - edgeThreshold) {
-        dy = moveAmount;
-      }
-
-      if (dx != 0 || dy != 0) {
-        _setOffset(
-          Offset(-dx / _zoom, -dy / _zoom),
-          animate: false,
-        );
-      }
-    });
-  }
-
-  void _resetEdgeTimer() {
-    _edgeTimer?.cancel();
   }
 
   void _setOffsetFromRawInput(Offset delta) {
@@ -634,11 +594,11 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
                   onPointerPressed: (event) {
                     _focusNode.requestFocus();
 
+                    final locator = _isNearPort(event.localPosition);
+
                     if (event.buttons == kMiddleMouseButton) {
                       _onDragStart();
                     } else if (event.buttons == kPrimaryMouseButton) {
-                      final locator = _isNearPort(event.localPosition);
-
                       if (locator != null) {
                         if (_isLinking && _tempLink != null) {
                           _onLinkEnd(locator);
@@ -649,10 +609,8 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
                         _onSelectStart(event.localPosition);
                       }
                     } else if (event.buttons == kSecondaryMouseButton) {
-                      /// If a port is near the cursor, show the port context menu
-                      final locator = _isNearPort(event.localPosition);
-
                       if (locator != null) {
+                        /// If a port is near the cursor, show the port context menu
                         createAndShowContextMenu(
                           context,
                           portContextMenuEntries(
@@ -662,7 +620,7 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
                           event.position,
                         );
                       } else if (!isContextMenuVisible) {
-                        // Otherwise, show the editor context menu
+                        // Else show the editor context menu
                         createAndShowContextMenu(
                           context,
                           editorContextMenuEntries(event.localPosition),
@@ -677,7 +635,6 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
                       _onDragUpdate(event.localDelta);
                     }
                     if (_isLinking) {
-                      _startEdgeTimer(event.position);
                       _onLinkUpdate(event.localPosition);
                     } else if (_isSelecting) {
                       _onSelectUpdate(event.localPosition);
@@ -687,8 +644,6 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
                     if (_isDragging) {
                       _onDragEnd();
                     } else if (_isLinking) {
-                      _resetEdgeTimer();
-
                       final locator = _isNearPort(event.localPosition);
 
                       if (locator != null) {

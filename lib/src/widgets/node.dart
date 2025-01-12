@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 
 import 'package:flutter_context_menu/flutter_context_menu.dart';
 import 'package:gap/gap.dart';
+import 'package:tuple/tuple.dart';
 
 import 'package:fl_nodes/src/core/controllers/node_editor.dart';
 import 'package:fl_nodes/src/utils/context_menu.dart';
@@ -33,10 +34,15 @@ class NodeWidget extends StatefulWidget {
 }
 
 class _NodeWidgetState extends State<NodeWidget> {
-  Timer? _edgeTimer;
+  // Interaction state
+  bool _isLinking = false;
 
-  double get zoom => widget.controller.zoom;
-  Offset get nodeOffset => widget.node.offset;
+  // Interaction kinematics
+  Timer? _edgeTimer;
+  Tuple2<String, String>? _tempLink;
+
+  double get _zoom => widget.controller.zoom;
+  Offset get _offset => widget.controller.offset;
 
   @override
   void initState() {
@@ -112,7 +118,7 @@ class _NodeWidgetState extends State<NodeWidget> {
       if (dx != 0 || dy != 0) {
         widget.controller.dragSelection(Offset(dx, dy));
         widget.controller.setViewportOffset(
-          Offset(-dx / zoom, -dy / zoom),
+          Offset(-dx / _zoom, -dy / _zoom),
           animate: false,
         );
       }
@@ -123,13 +129,79 @@ class _NodeWidgetState extends State<NodeWidget> {
     _edgeTimer?.cancel();
   }
 
+  Tuple2<String, String>? _isNearPort(Offset position) {
+    for (final port in widget.node.ports.values) {
+      final portScreenPosition = worldToScreen(
+        port.offset,
+        getSizeFromGlobalKey(kNodeEditorWidgetKey)!,
+        widget.controller.offset,
+        widget.controller.zoom,
+      );
+
+      final hitBox = Rect.fromCenter(
+        center: portScreenPosition,
+        width: 16,
+        height: 16,
+      );
+
+      if (hitBox.contains(position)) return Tuple2(widget.node.id, port.id);
+    }
+
+    return null;
+  }
+
+  // TODO: Find a way to decouple the link drawing code
+
+  void _onLinkStart(Tuple2<String, String> locator) {
+    _tempLink = Tuple2(locator.item1, locator.item2);
+    _isLinking = true;
+  }
+
+  void _onLinkUpdate(Offset position) {
+    final worldPosition = screenToWorld(
+      position,
+      getSizeFromGlobalKey(kNodeEditorWidgetKey)!,
+      _offset,
+      _zoom,
+    );
+
+    final nodeOffset = widget.controller.nodes[_tempLink!.item1]!.offset;
+    final portOffset = widget
+        .controller.nodes[_tempLink!.item1]!.ports[_tempLink!.item2]!.offset;
+    final absolutePortOffset = nodeOffset + portOffset;
+
+    widget.controller.drawTempLink(absolutePortOffset, worldPosition);
+  }
+
+  void _onLinkCancel() {
+    widget.controller.clearTempLink();
+    _isLinking = false;
+    _tempLink = null;
+  }
+
+  void _onLinkEnd(Tuple2<String, String> locator) {
+    widget.controller.addLink(
+      _tempLink!.item1,
+      _tempLink!.item2,
+      locator.item1,
+      locator.item2,
+    );
+
+    _isLinking = false;
+    _tempLink = null;
+
+    widget.controller.clearTempLink();
+  }
+
   @override
   Widget build(BuildContext context) {
     SchedulerBinding.instance.addPostFrameCallback((_) {
       if (mounted) widget.node.onRendered(widget.node);
     });
 
-    List<ContextMenuEntry> contextMenuEntries() {
+    // TODO: Find a way to decouple the context menu entries
+
+    List<ContextMenuEntry> nodeContextMenuEntries() {
       return [
         const MenuHeader(text: 'Node Menu'),
         MenuItem(
@@ -173,40 +245,160 @@ class _NodeWidgetState extends State<NodeWidget> {
       ];
     }
 
+    List<ContextMenuEntry> portContextMenuEntries(
+      Offset position, {
+      required Tuple2<String, String> locator,
+    }) {
+      return [
+        const MenuHeader(text: "Port Menu"),
+        MenuItem(
+          label: 'Remove Links',
+          icon: Icons.remove_circle,
+          onSelected: () {
+            widget.controller.removeLinks(
+              locator.item1,
+              locator.item2,
+            );
+          },
+        ),
+      ];
+    }
+
+    List<ContextMenuEntry> createSubmenuEntries(Offset position) {
+      final fromLink = _tempLink != null;
+
+      final List<MapEntry<String, NodePrototype>> compatiblePrototypes = [];
+
+      if (fromLink) {
+        final startPort =
+            widget.controller.nodes[_tempLink!.item1]!.ports[_tempLink!.item2]!;
+
+        widget.controller.nodePrototypes.forEach(
+          (key, value) {
+            if (value()
+                .ports
+                .any((port) => port.isInput != startPort.isInput)) {
+              compatiblePrototypes.add(MapEntry(key, value()));
+            }
+          },
+        );
+      } else {
+        widget.controller.nodePrototypes.forEach(
+          (key, value) => compatiblePrototypes.add(MapEntry(key, value())),
+        );
+      }
+
+      return compatiblePrototypes.map((entry) {
+        return MenuItem(
+          label: entry.value.name,
+          icon: Icons.widgets,
+          onSelected: () {
+            final worldPosition = screenToWorld(
+              position,
+              getSizeFromGlobalKey(kNodeEditorWidgetKey)!,
+              _offset,
+              _zoom,
+            );
+
+            widget.controller.addNode(
+              entry.key,
+              offset: worldPosition,
+            );
+
+            if (fromLink) {
+              widget.controller.addLink(
+                _tempLink!.item1,
+                _tempLink!.item2,
+                widget.controller.nodes.values.last.id,
+                widget.controller.nodes.values.last.ports.entries.first.key,
+              );
+
+              _isLinking = false;
+              _tempLink = null;
+
+              SchedulerBinding.instance.addPostFrameCallback((_) {
+                setState(() {});
+              });
+            }
+          },
+        );
+      }).toList();
+    }
+
     Widget controlsWrapper(Widget child) {
       return isMobile()
           ? child
           : ImprovedListener(
               behavior: HitTestBehavior.translucent,
               onPointerPressed: (event) {
-                if (event.buttons == kSecondaryMouseButton &&
-                    !isContextMenuVisible) {
+                final locator = _isNearPort(event.localPosition);
+
+                if (event.buttons == kSecondaryMouseButton) {
                   if (!widget.node.state.isSelected) {
                     widget.controller.clearSelection();
                   }
-                  createAndShowContextMenu(
-                    context,
-                    contextMenuEntries(),
-                    event.position,
-                  );
+
+                  if (locator != null) {
+                    /// If a port is near the cursor, show the port context menu
+                    createAndShowContextMenu(
+                      context,
+                      portContextMenuEntries(
+                        event.localPosition,
+                        locator: locator,
+                      ),
+                      event.position,
+                    );
+                  } else if (!isContextMenuVisible) {
+                    // Else show the node context menu
+                    createAndShowContextMenu(
+                      context,
+                      nodeContextMenuEntries(),
+                      event.position,
+                    );
+                  }
                 } else if (event.buttons == kPrimaryMouseButton) {
-                  widget.controller.selectNodesById(
-                    {widget.node.id},
-                    holdSelection: widget.node.state.isSelected
-                        ? true
-                        : HardwareKeyboard.instance.isControlPressed,
-                  );
+                  // Abort if the cursor is over a port
+                  if (locator != null) {
+                    if (_isLinking && _tempLink != null) {
+                      _onLinkEnd(locator);
+                    } else {
+                      _onLinkStart(locator);
+                    }
+                  } else {
+                    widget.controller.selectNodesById(
+                      {widget.node.id},
+                      holdSelection: widget.node.state.isSelected
+                          ? true
+                          : HardwareKeyboard.instance.isControlPressed,
+                    );
+                  }
                 }
               },
               onPointerMoved: (event) {
-                _startEdgeTimer(event.position);
-
-                if (event.buttons == kPrimaryMouseButton) {
+                if (_isLinking) {
+                  _onLinkUpdate(event.localPosition);
+                } else if (event.buttons == kPrimaryMouseButton) {
+                  _startEdgeTimer(event.position);
                   widget.controller.dragSelection(event.delta);
                 }
               },
               onPointerReleased: (event) {
-                _resetEdgeTimer();
+                if (_isLinking) {
+                  final locator = _isNearPort(event.localPosition);
+                  if (locator != null) {
+                    _onLinkEnd(locator);
+                  } else {
+                    createAndShowContextMenu(
+                      context,
+                      createSubmenuEntries(event.localPosition),
+                      event.position,
+                    ).then((value) {
+                      _onLinkCancel();
+                    });
+                  }
+                } else {
+                  _resetEdgeTimer();
+                }
               },
               child: child,
             );
@@ -224,17 +416,14 @@ class _NodeWidgetState extends State<NodeWidget> {
                 child: Container(
                   decoration: BoxDecoration(
                     color: const Color(0xFF212121),
-                    boxShadow: [
-                      BoxShadow(
-                        color: widget.node.state.isSelected
-                            ? widget.node.color.withAlpha(128)
-                            : Colors.black.withAlpha(64),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
                     border: Border.all(
-                      color: widget.node.color,
+                      color: widget.node.state.isSelected
+                          ? widget.node.color
+                          : widget.node.color.withValues(
+                              red: widget.node.color.r / 1.35,
+                              green: widget.node.color.g / 1.35,
+                              blue: widget.node.color.b / 1.35,
+                            ),
                       width: 1,
                     ),
                     borderRadius: BorderRadius.circular(8.0),
@@ -246,9 +435,6 @@ class _NodeWidgetState extends State<NodeWidget> {
               ),
               Container(
                 constraints: const BoxConstraints(minWidth: 100),
-                decoration: const BoxDecoration(
-                  color: Colors.transparent,
-                ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -256,7 +442,13 @@ class _NodeWidgetState extends State<NodeWidget> {
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: widget.node.color,
+                        color: widget.node.state.isSelected
+                            ? widget.node.color
+                            : widget.node.color.withValues(
+                                red: widget.node.color.r / 1.35,
+                                green: widget.node.color.g / 1.35,
+                                blue: widget.node.color.b / 1.35,
+                              ),
                         borderRadius: BorderRadius.only(
                           topLeft: const Radius.circular(7),
                           topRight: const Radius.circular(7),
@@ -271,6 +463,8 @@ class _NodeWidgetState extends State<NodeWidget> {
                       child: Row(
                         children: [
                           InkWell(
+                            splashColor: Colors.transparent,
+                            highlightColor: Colors.transparent,
                             onTap: () {
                               setState(() {
                                 widget.node.state.isCollapsed =
@@ -441,6 +635,18 @@ class _NodeWidgetState extends State<NodeWidget> {
       child: Positioned.fill(
         child: LayoutBuilder(
           builder: (context, constraints) {
+            final portColor =
+                port.isInput ? Colors.purple[200]! : Colors.green[300]!;
+
+            if (widget.node.state.isCollapsed) {
+              return CustomPaint(
+                painter: _PortDotPainter(
+                  position: Offset.zero,
+                  color: portColor,
+                ),
+              );
+            }
+
             final portKey = port.key;
             final RenderBox? portBox =
                 portKey.currentContext?.findRenderObject() as RenderBox?;
