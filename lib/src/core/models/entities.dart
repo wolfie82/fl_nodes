@@ -210,7 +210,7 @@ class FieldInstance {
     Function() removeOverlay,
     FieldInstance field,
   ) editorBuilder;
-  final editorOveralyController = OverlayPortalController();
+  final editorOverlayController = OverlayPortalController();
   dynamic data;
   final dynamic defaultData;
   final Type dataType;
