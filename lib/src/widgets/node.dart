@@ -7,7 +7,6 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 
 import 'package:flutter_context_menu/flutter_context_menu.dart';
-import 'package:gap/gap.dart';
 
 import 'package:fl_nodes/src/core/controllers/node_editor.dart';
 import 'package:fl_nodes/src/utils/context_menu.dart';
@@ -269,6 +268,7 @@ class _NodeWidgetState extends State<NodeWidget> {
                         ),
                       ),
                       child: Row(
+                        spacing: 8,
                         children: [
                           InkWell(
                             onTap: () {
@@ -284,7 +284,6 @@ class _NodeWidgetState extends State<NodeWidget> {
                               color: Colors.white,
                             ),
                           ),
-                          const Gap(8),
                           Text(
                             widget.node.name,
                             style: const TextStyle(
@@ -307,7 +306,8 @@ class _NodeWidgetState extends State<NodeWidget> {
                             ...widget.node.fields.entries.map(
                               (entry) => _buildField(entry.value),
                             ),
-                            if (widget.node.fields.isNotEmpty) const Gap(8),
+                            if (widget.node.fields.isNotEmpty)
+                              const SizedBox(height: 8),
                             ...widget.node.ports.entries.map(
                               (entry) => _buildPortRow(entry.value),
                             ),
@@ -336,6 +336,7 @@ class _NodeWidgetState extends State<NodeWidget> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
+      spacing: 4,
       children: [
         GestureDetector(
           onTapDown: (details) {
@@ -384,7 +385,6 @@ class _NodeWidgetState extends State<NodeWidget> {
             ),
           ),
         ),
-        const Gap(4.0),
         Text(
           field.name,
           style: const TextStyle(
@@ -392,7 +392,6 @@ class _NodeWidgetState extends State<NodeWidget> {
             fontSize: 13,
           ),
         ),
-        const Gap(4),
         Text(
           field.dataType.toString(),
           style: const TextStyle(
@@ -413,6 +412,7 @@ class _NodeWidgetState extends State<NodeWidget> {
             port.isInput ? MainAxisAlignment.start : MainAxisAlignment.end,
         mainAxisSize: MainAxisSize.min,
         key: port.key,
+        spacing: 4,
         children: [
           Text(
             port.name,
@@ -421,7 +421,6 @@ class _NodeWidgetState extends State<NodeWidget> {
               fontSize: 13,
             ),
           ),
-          const Gap(4),
           Text(
             port.dataType.toString(),
             style: const TextStyle(

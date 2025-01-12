@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-import 'package:gap/gap.dart';
-
 import '../core/controllers/node_editor.dart';
 import '../core/models/styles.dart';
 
@@ -152,7 +150,7 @@ class _FlSearchWidgetState extends State<FlSearchWidget> {
                             },
                           ),
                         ),
-                        const Gap(8),
+                        const SizedBox(width: 8),
                         if (_currentFocus != null)
                           IconButton(
                             icon: widget.style.nextResultIcon,
@@ -163,7 +161,7 @@ class _FlSearchWidgetState extends State<FlSearchWidget> {
                             icon: widget.style.previousResultIcon,
                             onPressed: _toNextResult,
                           ),
-                        const Gap(8),
+                        const SizedBox(width: 8),
                         Text(
                           _isSearching
                               ? 'Searching...'

@@ -2,8 +2,6 @@ import 'package:fl_nodes/src/core/models/styles.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'package:gap/gap.dart';
-
 import 'package:fl_nodes/src/core/controllers/node_editor_events.dart';
 
 import '../core/controllers/node_editor.dart';
@@ -51,6 +49,7 @@ class _FlHierarchyWidgetState extends State<FlHierarchyWidget> {
       decoration: widget.style.decoration,
       padding: widget.style.padding,
       child: Column(
+        spacing: 8,
         children: [
           const Text(
             'Hierarchy',
@@ -59,7 +58,6 @@ class _FlHierarchyWidgetState extends State<FlHierarchyWidget> {
               fontWeight: FontWeight.bold,
             ),
           ),
-          const Gap(8),
           Expanded(
             child: ListView.builder(
               shrinkWrap: true,
