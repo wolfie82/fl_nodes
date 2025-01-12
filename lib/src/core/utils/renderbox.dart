@@ -74,3 +74,15 @@ Offset screenToWorld(
   final translated = screenPosition - center;
   return translated / zoom - offset;
 }
+
+/// Converts a world (canvas) position to a screen position.
+Offset worldToScreen(
+  Offset worldPosition,
+  Size size,
+  Offset offset,
+  double zoom,
+) {
+  final center = Offset(size.width / 2, size.height / 2);
+  final translated = (worldPosition + offset) * zoom;
+  return translated + center;
+}
