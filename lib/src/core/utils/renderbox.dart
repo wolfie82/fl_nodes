@@ -36,7 +36,7 @@ Size? getSizeFromGlobalKey(GlobalKey key) {
 }
 
 /// Retrieves the bounds of a Node widget.
-Rect? getNodeBoundsInWorld(Node node) {
+Rect? getNodeBoundsInWorld(NodeInstance node) {
   final size = getSizeFromGlobalKey(node.key);
   if (size != null) {
     return Rect.fromLTWH(

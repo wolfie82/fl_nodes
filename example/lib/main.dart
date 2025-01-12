@@ -42,19 +42,9 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
         name: 'Add',
         color: Colors.amber,
         ports: [
-          PortPrototype(
-            name: 'A',
-            dataType: double,
-          ),
-          PortPrototype(
-            name: 'B',
-            dataType: double,
-          ),
-          PortPrototype(
-            name: 'Result',
-            dataType: double,
-            isInput: false,
-          ),
+          InputPortPrototype(name: 'A', dataType: double),
+          InputPortPrototype(name: 'B', dataType: double),
+          OutputPortPrototype(name: 'Result', dataType: double),
         ],
         onExecute: (inputIds, outputIds) {},
       ),
@@ -66,11 +56,7 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
         name: 'Input',
         color: Colors.red,
         ports: [
-          PortPrototype(
-            name: 'Value',
-            dataType: double,
-            isInput: false,
-          ),
+          OutputPortPrototype(name: 'Value', dataType: double),
         ],
         onExecute: (inputIds, outputIds) {},
       ),
@@ -82,7 +68,7 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
         name: 'Output',
         color: Colors.green,
         ports: [
-          PortPrototype(
+          InputPortPrototype(
             name: 'Value',
             dataType: double,
           ),
@@ -97,15 +83,8 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
         name: 'Round',
         color: Colors.blue,
         ports: [
-          PortPrototype(
-            name: 'Value',
-            dataType: double,
-          ),
-          PortPrototype(
-            name: 'Rounded',
-            dataType: int,
-            isInput: false,
-          ),
+          InputPortPrototype(name: 'Value', dataType: double),
+          OutputPortPrototype(name: 'Rounded', dataType: int),
         ],
         fields: [
           FieldPrototype(
@@ -147,10 +126,6 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
             ),
           ),
         ],
-        portToFieldMap: {
-          'Value': 'Decimals',
-          'Rounded': 'Decimals',
-        },
         onExecute: (inputIds, outputIds) {},
       ),
     );

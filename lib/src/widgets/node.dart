@@ -20,7 +20,7 @@ import '../core/utils/platform.dart';
 import '../core/utils/renderbox.dart';
 
 class NodeWidget extends StatefulWidget {
-  final Node node;
+  final NodeInstance node;
   final FlNodeEditorController controller;
   const NodeWidget({
     super.key,
@@ -332,7 +332,7 @@ class _NodeWidgetState extends State<NodeWidget> {
     });
   }
 
-  Widget _buildField(Field field) {
+  Widget _buildField(FieldInstance field) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
@@ -405,7 +405,7 @@ class _NodeWidgetState extends State<NodeWidget> {
     );
   }
 
-  Widget _buildPortRow(Port port) {
+  Widget _buildPortRow(PortInstance port) {
     return Visibility(
       visible: !widget.node.state.isCollapsed,
       child: Row(
@@ -435,7 +435,7 @@ class _NodeWidgetState extends State<NodeWidget> {
     );
   }
 
-  Widget _buildPortIndicator(Port port) {
+  Widget _buildPortIndicator(PortInstance port) {
     return Visibility(
       visible: !widget.node.state.isCollapsed,
       child: Positioned.fill(
@@ -518,5 +518,16 @@ class _PortDotPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _PortDotPainter oldDelegate) {
     return position != oldDelegate.position || color != oldDelegate.color;
+  }
+
+  @override
+  bool hitTest(Offset position) {
+    final hitBoxRect = Rect.fromCenter(
+      center: this.position,
+      width: hitBoxSize,
+      height: hitBoxSize,
+    );
+
+    return hitBoxRect.contains(position);
   }
 }

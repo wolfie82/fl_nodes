@@ -193,13 +193,13 @@ class FlNodeEditorController {
   // Nodes and links
   final Map<String, NodePrototype Function()> _nodePrototypes = {};
   final SpatialHashGrid _spatialHashGrid = SpatialHashGrid();
-  final Map<String, Node> _nodes = {};
+  final Map<String, NodeInstance> _nodes = {};
 
   List<NodePrototype> get nodePrototypesAsList =>
       _nodePrototypes.values.map((e) => e()).toList();
   Map<String, NodePrototype Function()> get nodePrototypes => _nodePrototypes;
 
-  List<Node> get nodesAsList {
+  List<NodeInstance> get nodesAsList {
     final nodesList = _nodes.values.toList();
 
     // We sort the nodes list so that selected nodes are rendered on top of others.
@@ -217,7 +217,7 @@ class FlNodeEditorController {
     return nodesList;
   }
 
-  Map<String, Node> get nodes => _nodes;
+  Map<String, NodeInstance> get nodes => _nodes;
   SpatialHashGrid get spatialHashGrid => _spatialHashGrid;
 
   void registerNodePrototype(String type, NodePrototype Function() node) {
@@ -228,7 +228,7 @@ class FlNodeEditorController {
     _nodePrototypes.remove(type);
   }
 
-  Node addNode(String type, {Offset? offset}) {
+  NodeInstance addNode(String type, {Offset? offset}) {
     final node = createNode(
       _nodePrototypes[type]!(),
       offset: offset,
