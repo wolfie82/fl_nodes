@@ -184,7 +184,7 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
                     intersectionRadius: 2,
                   ),
                 ),
-                overaly: () {
+                overlay: () {
                   return [
                     FlOverlayData(
                       child: Padding(

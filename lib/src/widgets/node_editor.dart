@@ -42,7 +42,7 @@ class FlNodeEditor extends StatefulWidget {
   final NodeEditorStyle style;
   final bool expandToParent;
   final Size? fixedSize;
-  final List<FlOverlayData> Function() overaly;
+  final List<FlOverlayData> Function() overlay;
 
   const FlNodeEditor({
     super.key,
@@ -52,7 +52,7 @@ class FlNodeEditor extends StatefulWidget {
     ),
     this.expandToParent = true,
     this.fixedSize,
-    required this.overaly,
+    required this.overlay,
   });
 
   @override
@@ -739,7 +739,7 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
                 ),
               ),
             ),
-            ...widget.overaly().map(
+            ...widget.overlay().map(
                   (overlayData) => Positioned(
                     top: overlayData.top,
                     left: overlayData.left,

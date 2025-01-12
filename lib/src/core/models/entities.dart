@@ -194,7 +194,7 @@ class Field {
     Function() removeOverlay,
     Field field,
   ) editorBuilder;
-  final editorOveralyController = OverlayPortalController();
+  final editorOverlayController = OverlayPortalController();
   dynamic data;
   final dynamic defaultData;
   final Type dataType;
