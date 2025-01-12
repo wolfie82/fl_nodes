@@ -305,11 +305,20 @@ class _NodeWidgetState extends State<NodeWidget> {
             );
 
             if (fromLink) {
+              final addedNode = widget.controller.nodes.values.last;
+              final startPort = widget
+                  .controller.nodes[_tempLink!.item1]!.ports[_tempLink!.item2]!;
+
               widget.controller.addLink(
                 _tempLink!.item1,
                 _tempLink!.item2,
-                widget.controller.nodes.values.last.id,
-                widget.controller.nodes.values.last.ports.entries.first.key,
+                addedNode.id,
+                addedNode.ports.entries
+                    .firstWhere(
+                      (element) => element.value.isInput != startPort.isInput,
+                    )
+                    .value
+                    .id,
               );
 
               _isLinking = false;
