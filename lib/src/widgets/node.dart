@@ -323,9 +323,7 @@ class _NodeWidgetState extends State<NodeWidget> {
               _isLinking = false;
               _tempLink = null;
 
-              SchedulerBinding.instance.addPostFrameCallback((_) {
-                setState(() {});
-              });
+              setState(() {});
             }
           },
         );
@@ -558,9 +556,7 @@ class _NodeWidgetState extends State<NodeWidget> {
 
   void _removeFieldEditorOverlay(OverlayEntry? overlayEntry) {
     overlayEntry?.remove();
-    SchedulerBinding.instance.addPostFrameCallback((_) {
-      if (mounted) setState(() {});
-    });
+    setState(() {});
   }
 
   Widget _buildField(FieldInstance field) {

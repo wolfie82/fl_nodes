@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 
 import 'package:flutter_context_menu/flutter_context_menu.dart';
@@ -113,12 +112,16 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
         _suppressEvents();
       } else if (event is AddNodeEvent ||
           event is RemoveNodesEvent ||
-          event is AddLinkEvent ||
           event is RemoveLinksEvent ||
           event is DrawTempLinkEvent ||
-          event is PasteSelectionEvent ||
           event is CutSelectionEvent) {
         setState(() {});
+      } else if (event is AddLinkEvent || event is PasteSelectionEvent) {
+        setState(() {});
+        // We perform a delayed setState to ensure that the UI has been built and updated the keys
+        Future.delayed(const Duration(milliseconds: 16), () {
+          if (mounted) setState(() {});
+        });
       }
     });
   }
@@ -484,9 +487,7 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
               _isLinking = false;
               _tempLink = null;
 
-              SchedulerBinding.instance.addPostFrameCallback((_) {
-                setState(() {});
-              });
+              setState(() {});
             }
           },
         );
