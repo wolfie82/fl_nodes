@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 
 import 'package:flutter_context_menu/flutter_context_menu.dart';
@@ -119,8 +120,8 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
       } else if (event is AddLinkEvent || event is PasteSelectionEvent) {
         setState(() {});
         // We perform a delayed setState to ensure that the UI has been built and updated the keys
-        Future.delayed(const Duration(milliseconds: 16), () {
-          if (mounted) setState(() {});
+        SchedulerBinding.instance.addPostFrameCallback((_) {
+          setState(() {});
         });
       }
     });
@@ -154,10 +155,9 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
       _isSelecting = true;
       _selectionStart = screenToWorld(
         position,
-        getSizeFromGlobalKey(kNodeEditorWidgetKey)!,
         _offset,
         _zoom,
-      );
+      )!;
     });
   }
 
@@ -168,10 +168,9 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
           _selectionStart,
           screenToWorld(
             position,
-            getSizeFromGlobalKey(kNodeEditorWidgetKey)!,
             _offset,
             _zoom,
-          ),
+          )!,
         ),
       );
     });
@@ -203,13 +202,12 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
   Tuple2<String, String>? _isNearPort(Offset position) {
     final worldPosition = screenToWorld(
       position,
-      getSizeFromGlobalKey(kNodeEditorWidgetKey)!,
       _offset,
       _zoom,
     );
 
     final near = Rect.fromCenter(
-      center: worldPosition,
+      center: worldPosition!,
       width: kSpatialHashingCellSize,
       height: kSpatialHashingCellSize,
     );
@@ -240,7 +238,6 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
   void _onLinkUpdate(Offset position) {
     final worldPosition = screenToWorld(
       position,
-      getSizeFromGlobalKey(kNodeEditorWidgetKey)!,
       _offset,
       _zoom,
     );
@@ -250,7 +247,7 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
         .controller.nodes[_tempLink!.item1]!.ports[_tempLink!.item2]!.offset;
     final absolutePortOffset = nodeOffset + portOffset;
 
-    widget.controller.drawTempLink(absolutePortOffset, worldPosition);
+    widget.controller.drawTempLink(absolutePortOffset, worldPosition!);
   }
 
   void _onLinkCancel() {
@@ -435,7 +432,7 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
 
   @override
   Widget build(BuildContext context) {
-    List<ContextMenuEntry> createSubmenuEntries(Offset worldPosition) {
+    List<ContextMenuEntry> createSubmenuEntries(Offset position) {
       final fromLink = _tempLink != null;
 
       final List<MapEntry<String, NodePrototype>> compatiblePrototypes = [];
@@ -456,6 +453,12 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
           (key, value) => compatiblePrototypes.add(MapEntry(key, value)),
         );
       }
+
+      final worldPosition = screenToWorld(
+        position,
+        _offset,
+        _zoom,
+      );
 
       return compatiblePrototypes.map((entry) {
         return MenuItem(
@@ -497,10 +500,11 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
     List<ContextMenuEntry> editorContextMenuEntries(Offset position) {
       final worldPosition = screenToWorld(
         position,
-        getSizeFromGlobalKey(kNodeEditorWidgetKey)!,
         _offset,
         _zoom,
-      );
+      )!;
+
+      print('worldPosition: $worldPosition');
 
       return [
         const MenuHeader(text: "Editor Menu"),
@@ -522,7 +526,7 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
         MenuItem.submenu(
           label: 'Create',
           icon: Icons.add,
-          items: createSubmenuEntries(worldPosition),
+          items: createSubmenuEntries(position),
         ),
         MenuItem(
           label: 'Paste',
@@ -629,7 +633,7 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
                 child: ImprovedListener(
                   onDoubleClick: () => widget.controller.clearSelection(),
                   onPointerPressed: (event) async {
-                    final locator = _isNearPort(event.localPosition);
+                    final locator = _isNearPort(event.position);
 
                     if (event.buttons == kMiddleMouseButton) {
                       _onDragStart();
@@ -641,7 +645,7 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
                           _onLinkStart(locator);
                         }
                       } else {
-                        _onSelectStart(event.localPosition);
+                        _onSelectStart(event.position);
                       }
                     } else if (event.buttons == kSecondaryMouseButton) {
                       if (locator != null) {
@@ -649,7 +653,7 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
                         await createAndShowContextMenu(
                           context,
                           portContextMenuEntries(
-                            event.localPosition,
+                            event.position,
                             locator: locator,
                           ),
                           event.position,
@@ -658,7 +662,7 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
                         // Else show the editor context menu
                         await createAndShowContextMenu(
                           context,
-                          editorContextMenuEntries(event.localPosition),
+                          editorContextMenuEntries(event.position),
                           event.position,
                         );
                       }
@@ -670,16 +674,16 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
                       _onDragUpdate(event.localDelta);
                     }
                     if (_isLinking) {
-                      _onLinkUpdate(event.localPosition);
+                      _onLinkUpdate(event.position);
                     } else if (_isSelecting) {
-                      _onSelectUpdate(event.localPosition);
+                      _onSelectUpdate(event.position);
                     }
                   },
                   onPointerReleased: (event) async {
                     if (_isDragging) {
                       _onDragEnd();
                     } else if (_isLinking) {
-                      final locator = _isNearPort(event.localPosition);
+                      final locator = _isNearPort(event.position);
 
                       if (locator != null) {
                         _onLinkEnd(locator);
@@ -687,7 +691,7 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
                         // Show the create submenu if no port is near the cursor
                         await createAndShowContextMenu(
                           context,
-                          createSubmenuEntries(event.localPosition),
+                          createSubmenuEntries(event.position),
                           event.position,
                         ).then((value) {
                           _onLinkCancel();
