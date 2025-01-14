@@ -87,6 +87,7 @@ final class Link {
 
   Map<String, dynamic> toJson() {
     return {
+      'id': id,
       'from': fromTo.item1,
       'to': fromTo.item2,
       'fromPort': fromTo.item3,
@@ -96,7 +97,7 @@ final class Link {
 
   factory Link.fromJson(Map<String, dynamic> json) {
     return Link(
-      id: const Uuid().v4(),
+      id: json['id'],
       fromTo: Tuple4(
         json['from'],
         json['to'],
@@ -105,6 +106,17 @@ final class Link {
       ),
     );
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Link &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          fromTo == other.fromTo;
+
+  @override
+  int get hashCode => id.hashCode ^ fromTo.hashCode;
 }
 
 /// A port prototype is the blueprint for a port instance.
