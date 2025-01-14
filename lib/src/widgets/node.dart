@@ -205,6 +205,28 @@ class _NodeWidgetState extends State<NodeWidget> {
       return [
         const MenuHeader(text: 'Node Menu'),
         MenuItem(
+          label: 'See Description',
+          icon: Icons.info,
+          onSelected: () {
+            showDialog(
+              context: context,
+              builder: (context) {
+                return AlertDialog(
+                  title: Text(widget.node.name),
+                  content: Text(widget.node.description),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('Close'),
+                    ),
+                  ],
+                );
+              },
+            );
+          },
+        ),
+        const MenuDivider(),
+        MenuItem(
           label: widget.node.state.isCollapsed ? 'Expand' : 'Collapse',
           icon: widget.node.state.isCollapsed
               ? Icons.arrow_drop_down
