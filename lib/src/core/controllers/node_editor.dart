@@ -331,12 +331,9 @@ class FlNodeEditorController {
   }
 
   void setFieldData(String nodeId, String fieldId, dynamic data) {
-    final node = _nodes[nodeId];
-    final field = node?.fields[fieldId];
-
-    if (field != null) {
-      field.data = data;
-    }
+    final node = _nodes[nodeId]!;
+    final field = node.fields[fieldId]!;
+    field.data = data;
 
     eventBus.emit(NodeFieldEditEvent(nodeId, fieldId, data));
   }

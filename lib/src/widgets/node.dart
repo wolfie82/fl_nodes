@@ -555,7 +555,11 @@ class _NodeWidgetState extends State<NodeWidget> {
     );
   }
 
-  void _showFieldEditorOverlay(FieldInstance field, TapDownDetails details) {
+  void _showFieldEditorOverlay(
+    String nodeId,
+    FieldInstance field,
+    TapDownDetails details,
+  ) {
     final overlay = Overlay.of(context);
     OverlayEntry? overlayEntry;
 
@@ -578,7 +582,7 @@ class _NodeWidgetState extends State<NodeWidget> {
                   field.data,
                   (value) {
                     widget.controller.setFieldData(
-                      widget.node.id,
+                      nodeId,
                       field.id,
                       value,
                     );
@@ -604,6 +608,7 @@ class _NodeWidgetState extends State<NodeWidget> {
           onTapDown: (details) =>
               field.onVisualizerTap ??
               _showFieldEditorOverlay(
+                widget.node.id,
                 field,
                 details,
               ),
