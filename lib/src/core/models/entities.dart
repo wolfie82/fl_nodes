@@ -345,7 +345,11 @@ final class NodePrototype {
   final Color color;
   final List<PortPrototype> ports;
   final List<FieldPrototype> fields;
-  final void Function(List<String> inputIds, List<String> outputIds) onExecute;
+  final void Function(
+    Map<String, PortInstance> inputs,
+    Map<String, FieldInstance> fields,
+    Map<String, PortInstance> outputs,
+  ) onExecute;
 
   NodePrototype({
     required this.name,
@@ -386,7 +390,11 @@ final class NodeInstance {
   final Map<String, PortInstance> ports;
   final Map<String, FieldInstance> fields;
   final NodeState state = NodeState();
-  final Function(List<String> inputIds, List<String> outputIds) onExecute;
+  final Function(
+    Map<String, PortInstance> inputs,
+    Map<String, FieldInstance> fields,
+    Map<String, PortInstance> outputs,
+  ) onExecute;
   final void Function(NodeInstance node) onRendered;
   Offset offset; // User or system defined offset
   final GlobalKey key = GlobalKey(); // Determined by Flutter
@@ -412,7 +420,11 @@ final class NodeInstance {
     Map<String, PortInstance>? ports,
     Map<String, FieldInstance>? fields,
     NodeState? state,
-    Function(List<String> inputIds, List<String> outputIds)? onExecute,
+    Function(
+      Map<String, PortInstance> inputs,
+      Map<String, FieldInstance> fields,
+      Map<String, PortInstance> outputs,
+    )? onExecute,
     void Function(NodeInstance node)? onRendered,
     Offset? offset,
   }) {

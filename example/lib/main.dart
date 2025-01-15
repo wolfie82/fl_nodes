@@ -53,7 +53,7 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
           InputPortPrototype(name: 'B', dataType: double),
           OutputPortPrototype(name: 'Result', dataType: double),
         ],
-        onExecute: (inputIds, outputIds) {},
+        onExecute: (inputs, fields, outputs) {},
       ),
     );
 
@@ -65,7 +65,7 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
         ports: [
           OutputPortPrototype(name: 'Value', dataType: double),
         ],
-        onExecute: (inputIds, outputIds) {},
+        onExecute: (inputs, fields, outputs) {},
       ),
     );
 
@@ -80,7 +80,7 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
             dataType: double,
           ),
         ],
-        onExecute: (inputIds, outputIds) {},
+        onExecute: (inputs, fields, outputs) {},
       ),
     );
 
@@ -132,7 +132,7 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
             ),
           ),
         ],
-        onExecute: (inputIds, outputIds) {},
+        onExecute: (input, fields, outputs) {},
       ),
     );
   }
