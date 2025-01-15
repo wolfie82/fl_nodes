@@ -128,3 +128,15 @@ class NodeFieldEditEvent extends NodeEditorEvent {
   NodeFieldEditEvent(this.id, this.field, this.value, {super.isHandled})
       : super(isUndoable: true);
 }
+
+class SaveProjectEvent extends NodeEditorEvent {
+  SaveProjectEvent() : super(isHandled: false, isUndoable: false);
+}
+
+class LoadProjectEvent extends NodeEditorEvent {
+  LoadProjectEvent() : super(isHandled: false, isUndoable: false);
+}
+
+class NewProjectEvent extends NodeEditorEvent {
+  NewProjectEvent() : super(isHandled: false, isUndoable: false);
+}
