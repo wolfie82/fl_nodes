@@ -18,6 +18,7 @@ final class Group {
   final String description;
   final Color color;
   final Rect area;
+  bool isHovered = false;
 
   Group({
     required this.name,
@@ -68,6 +69,7 @@ final class Group {
 final class Link {
   final String id;
   final Tuple4<String, String, String, String> fromTo;
+  bool isHovered = false;
 
   Link({
     required this.id,
@@ -233,8 +235,6 @@ final class PortInstance {
   }
 }
 
-enum FieldEditorType { text, number, dropdown, color, date, time, file, image }
-
 /// A field prototype is the blueprint for a field instance.
 ///
 /// It is used to store variables for use in the onExecute function of a node.
@@ -244,22 +244,24 @@ class FieldPrototype {
   final Type dataType;
   final bool isEditable;
   final dynamic defaultData;
-  final FieldEditorType editorType;
+  final Widget Function(dynamic data) visualizerBuilder;
+  final Function(FieldInstance field)? onVisualizerTap;
   final Widget Function(
     BuildContext context,
     Function() removeOverlay,
     dynamic data,
     Function(dynamic data) setData,
-  ) editorBuilder;
+  )? editorBuilder;
 
   FieldPrototype({
     required this.name,
     required this.dataType,
     this.isEditable = false,
     this.defaultData,
-    this.editorType = FieldEditorType.text,
-    required this.editorBuilder,
-  });
+    required this.visualizerBuilder,
+    this.onVisualizerTap,
+    this.editorBuilder,
+  }) : assert(onVisualizerTap != null || editorBuilder != null);
 }
 
 /// A field is a variable that can be used in the onExecute function of a node.
@@ -269,12 +271,14 @@ class FieldInstance {
   final String id;
   final String name;
   final bool isEditable;
+  final Widget Function(dynamic data) visualizerBuilder;
+  final Function(FieldInstance field)? onVisualizerTap;
   final Widget Function(
     BuildContext context,
     Function() removeOverlay,
     dynamic data,
     Function(dynamic data) setData,
-  ) editorBuilder;
+  )? editorBuilder;
   final editorOverlayController = OverlayPortalController();
   dynamic data;
   final Type dataType;
@@ -284,6 +288,8 @@ class FieldInstance {
     required this.id,
     required this.name,
     required this.isEditable,
+    required this.visualizerBuilder,
+    required this.onVisualizerTap,
     required this.editorBuilder,
     required this.data,
     required this.dataType,
@@ -306,6 +312,8 @@ class FieldInstance {
       id: json['id'],
       name: json['name'],
       isEditable: json['isEditable'],
+      visualizerBuilder: prototype.visualizerBuilder,
+      onVisualizerTap: prototype.onVisualizerTap,
       editorBuilder: prototype.editorBuilder,
       data: json['data'],
       dataType: prototype.dataType,
@@ -316,7 +324,9 @@ class FieldInstance {
     String? id,
     String? name,
     bool? isEditable,
-    final Widget Function(
+    Widget Function(dynamic data)? visualizerBuilder,
+    Function(FieldInstance field)? onVisualizerTap,
+    Widget Function(
       BuildContext context,
       Function() removeOverlay,
       dynamic data,
@@ -329,6 +339,8 @@ class FieldInstance {
       id: id ?? this.id,
       name: name ?? this.name,
       isEditable: isEditable ?? this.isEditable,
+      visualizerBuilder: visualizerBuilder ?? this.visualizerBuilder,
+      onVisualizerTap: onVisualizerTap ?? this.onVisualizerTap,
       editorBuilder: editorBuilder ?? this.editorBuilder,
       data: data ?? this.data,
       dataType: dataType ?? this.dataType,
@@ -345,7 +357,7 @@ final class NodePrototype {
   final Color color;
   final List<PortPrototype> ports;
   final List<FieldPrototype> fields;
-  final void Function(
+  final Function(
     Map<String, PortInstance> inputs,
     Map<String, FieldInstance> fields,
     Map<String, PortInstance> outputs,
@@ -395,7 +407,7 @@ final class NodeInstance {
     Map<String, FieldInstance> fields,
     Map<String, PortInstance> outputs,
   ) onExecute;
-  final void Function(NodeInstance node) onRendered;
+  final Function(NodeInstance node) onRendered;
   Offset offset; // User or system defined offset
   final GlobalKey key = GlobalKey(); // Determined by Flutter
 
@@ -425,7 +437,7 @@ final class NodeInstance {
       Map<String, FieldInstance> fields,
       Map<String, PortInstance> outputs,
     )? onExecute,
-    void Function(NodeInstance node)? onRendered,
+    Function(NodeInstance node)? onRendered,
     Offset? offset,
   }) {
     return NodeInstance(
@@ -457,7 +469,7 @@ final class NodeInstance {
   factory NodeInstance.fromJson(
     Map<String, dynamic> json, {
     required Map<String, NodePrototype> prototypes,
-    required void Function(NodeInstance node) onRendered,
+    required Function(NodeInstance node) onRendered,
   }) {
     final prototype = prototypes[json['name'].toString()]!;
 
@@ -515,6 +527,8 @@ FieldInstance createField(FieldPrototype prototype) {
     id: const Uuid().v4(),
     name: prototype.name,
     isEditable: prototype.isEditable,
+    visualizerBuilder: prototype.visualizerBuilder,
+    onVisualizerTap: prototype.onVisualizerTap,
     editorBuilder: prototype.editorBuilder,
     data: prototype.defaultData,
     dataType: prototype.dataType,
@@ -524,7 +538,7 @@ FieldInstance createField(FieldPrototype prototype) {
 NodeInstance createNode(
   NodePrototype prototype, {
   Offset? offset,
-  required void Function(NodeInstance node) onRendered,
+  required Function(NodeInstance node) onRendered,
 }) {
   return NodeInstance(
     id: const Uuid().v4(),

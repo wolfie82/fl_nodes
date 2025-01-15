@@ -572,7 +572,7 @@ class _NodeWidgetState extends State<NodeWidget> {
               top: details.globalPosition.dy,
               child: Material(
                 color: Colors.transparent,
-                child: field.editorBuilder(
+                child: field.editorBuilder!(
                   context,
                   () => overlayEntry?.remove(),
                   field.data,
@@ -601,20 +601,19 @@ class _NodeWidgetState extends State<NodeWidget> {
       spacing: 4,
       children: [
         GestureDetector(
-          onTapDown: (details) => _showFieldEditorOverlay(field, details),
+          onTapDown: (details) =>
+              field.onVisualizerTap ??
+              _showFieldEditorOverlay(
+                field,
+                details,
+              ),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             decoration: BoxDecoration(
               color: const Color(0xFF333333),
               borderRadius: BorderRadius.circular(4.0),
             ),
-            child: Text(
-              field.data.toString(),
-              style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 13,
-              ),
-            ),
+            child: field.visualizerBuilder(field.data),
           ),
         ),
         Text(
@@ -625,7 +624,7 @@ class _NodeWidgetState extends State<NodeWidget> {
           ),
         ),
         Text(
-          field.dataType.toString(),
+          field.dataType.runtimeType.toString(),
           style: const TextStyle(
             color: Colors.white54,
             fontSize: 12,

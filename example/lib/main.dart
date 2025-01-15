@@ -98,7 +98,29 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
             name: 'Decimals',
             dataType: int,
             defaultData: 2,
-            editorType: FieldEditorType.number,
+            visualizerBuilder: (data) => Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFF333333),
+                borderRadius: BorderRadius.circular(4.0),
+              ),
+              child: Row(
+                spacing: 4,
+                children: [
+                  Text(
+                    data.toString(),
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 13,
+                    ),
+                  ),
+                  const Icon(
+                    Icons.edit,
+                    size: 16,
+                    color: Colors.white70,
+                  ),
+                ],
+              ),
+            ),
             editorBuilder: (context, removeOverlay, data, setData) => Container(
               constraints: const BoxConstraints(
                 minHeight: 20,
