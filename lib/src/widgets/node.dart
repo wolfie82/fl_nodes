@@ -84,6 +84,10 @@ class _NodeWidgetState extends State<NodeWidget> {
         if (event.ids.contains(widget.node.id)) {
           setState(() {});
         }
+      } else if (event is NodeFieldEditEvent) {
+        if (event.id == widget.node.id) {
+          setState(() {});
+        }
       }
     });
   }
@@ -560,7 +564,7 @@ class _NodeWidgetState extends State<NodeWidget> {
         return Stack(
           children: [
             GestureDetector(
-              onTap: () => _removeFieldEditorOverlay(overlayEntry),
+              onTap: () => overlayEntry?.remove(),
               child: Container(color: Colors.transparent),
             ),
             Positioned(
@@ -570,8 +574,15 @@ class _NodeWidgetState extends State<NodeWidget> {
                 color: Colors.transparent,
                 child: field.editorBuilder(
                   context,
-                  () => _removeFieldEditorOverlay(overlayEntry),
-                  field,
+                  () => overlayEntry?.remove(),
+                  field.data,
+                  (value) {
+                    widget.controller.setFieldData(
+                      widget.node.id,
+                      field.id,
+                      value,
+                    );
+                  },
                 ),
               ),
             ),
@@ -581,11 +592,6 @@ class _NodeWidgetState extends State<NodeWidget> {
     );
 
     overlay.insert(overlayEntry);
-  }
-
-  void _removeFieldEditorOverlay(OverlayEntry? overlayEntry) {
-    overlayEntry?.remove();
-    setState(() {});
   }
 
   Widget _buildField(FieldInstance field) {

@@ -248,7 +248,8 @@ class FieldPrototype {
   final Widget Function(
     BuildContext context,
     Function() removeOverlay,
-    FieldInstance field,
+    dynamic data,
+    Function(dynamic data) setData,
   ) editorBuilder;
 
   FieldPrototype({
@@ -271,7 +272,8 @@ class FieldInstance {
   final Widget Function(
     BuildContext context,
     Function() removeOverlay,
-    FieldInstance field,
+    dynamic data,
+    Function(dynamic data) setData,
   ) editorBuilder;
   final editorOverlayController = OverlayPortalController();
   dynamic data;
@@ -314,10 +316,11 @@ class FieldInstance {
     String? id,
     String? name,
     bool? isEditable,
-    Widget Function(
+    final Widget Function(
       BuildContext context,
       Function() removeOverlay,
-      FieldInstance field,
+      dynamic data,
+      Function(dynamic data) setData,
     )? editorBuilder,
     dynamic data,
     Type? dataType,

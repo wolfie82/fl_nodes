@@ -103,3 +103,11 @@ final class CutSelectionEvent extends NodeEditorEvent {
 
   CutSelectionEvent(this.ids, {super.isHandled});
 }
+
+class NodeFieldEditEvent extends NodeEditorEvent {
+  final String id;
+  final String field;
+  final dynamic value;
+
+  NodeFieldEditEvent(this.id, this.field, this.value, {super.isHandled});
+}

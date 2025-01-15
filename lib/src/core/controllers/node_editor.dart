@@ -380,6 +380,17 @@ class FlNodeEditorController {
     eventBus.emit(RemoveLinksEvent('$nodeId-$portId', isHandled: isHandled));
   }
 
+  void setFieldData(String nodeId, String fieldId, dynamic data) {
+    final node = _nodes[nodeId];
+    final field = node?.fields[fieldId];
+
+    if (field != null) {
+      field.data = data;
+    }
+
+    eventBus.emit(NodeFieldEditEvent(nodeId, fieldId, data));
+  }
+
   void setNodeOffset(String id, Offset offset) {
     final node = _nodes[id];
     node?.offset = offset;

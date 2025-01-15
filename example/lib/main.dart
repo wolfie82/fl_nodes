@@ -99,7 +99,7 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
             dataType: int,
             defaultData: 2,
             editorType: FieldEditorType.number,
-            editorBuilder: (context, removeOverlay, field) => Container(
+            editorBuilder: (context, removeOverlay, data, setData) => Container(
               constraints: const BoxConstraints(
                 minHeight: 20,
                 minWidth: 50,
@@ -118,11 +118,10 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
                 ],
               ),
               child: TextFormField(
-                key: field.key,
-                initialValue: field.data.toString(),
-                onChanged: (value) => field.data = int.tryParse(value) ?? 0,
+                initialValue: data.toString(),
+                onChanged: (value) => setData(int.tryParse(value) ?? 0),
                 onFieldSubmitted: (value) {
-                  field.data = int.tryParse(value) ?? 0;
+                  setData(int.tryParse(value) ?? 0);
                   removeOverlay.call();
                 },
                 decoration: const InputDecoration(
