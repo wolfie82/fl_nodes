@@ -429,6 +429,8 @@ class FlNodeEditorController {
     _spatialHashGrid.clear();
     _selectedNodeIds.clear();
     _renderLinks.clear();
+    viewportOffset = Offset.zero;
+    viewportZoom = 1.0;
     _selectionArea = Rect.zero;
   }
 
@@ -600,12 +602,27 @@ class FlNodeEditorController {
     final nodesJson = _nodes.values.map((node) => node.toJson()).toList();
 
     return {
+      'viewport': {
+        'offset': [viewportOffset.dx, viewportOffset.dy],
+        'zoom': viewportZoom,
+      },
       'nodes': nodesJson,
     };
   }
 
   void _fromJson(Map<String, dynamic> json) {
     if (json.isEmpty) return;
+
+    final viewportJson = json['viewport'] as Map<String, dynamic>;
+
+    viewportOffset = Offset(
+      viewportJson['offset'][0] as double,
+      viewportJson['offset'][1] as double,
+    );
+    viewportZoom = viewportJson['zoom'] as double;
+
+    setViewportOffset(viewportOffset, absolute: true, animate: false);
+    setViewportZoom(viewportZoom, animate: false);
 
     final nodesJson = json['nodes'] as List<dynamic>;
 
