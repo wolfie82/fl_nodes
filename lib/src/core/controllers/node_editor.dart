@@ -660,6 +660,7 @@ class FlNodeEditorController {
       return;
     }
 
+    _clearAll();
     _fromJson(jsonData);
     eventBus.emit(LoadProjectEvent());
 
