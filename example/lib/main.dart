@@ -232,9 +232,15 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
               ),
               child: TextFormField(
                 initialValue: data.toString(),
-                onChanged: (value) => setData(int.tryParse(value) ?? 0),
+                onChanged: (value) => setData(
+                  int.tryParse(value) ?? 0,
+                  eventType: FieldEventType.change,
+                ),
                 onFieldSubmitted: (value) {
-                  setData(int.tryParse(value) ?? 0);
+                  setData(
+                    int.tryParse(value) ?? 0,
+                    eventType: FieldEventType.submit,
+                  );
                   removeOverlay.call();
                 },
                 decoration: const InputDecoration(

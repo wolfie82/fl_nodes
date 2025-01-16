@@ -84,10 +84,10 @@ class _NodeWidgetState extends State<NodeWidget> {
         if (event.ids.contains(widget.node.id)) {
           setState(() {});
         }
-      } else if (event is NodeFieldEditEvent) {
-        if (event.id == widget.node.id) {
-          setState(() {});
-        }
+      } else if (event is NodeFieldEvent &&
+          event.id == widget.node.id &&
+          event.eventType == FieldEventType.submit) {
+        setState(() {});
       }
     });
   }
@@ -580,11 +580,12 @@ class _NodeWidgetState extends State<NodeWidget> {
                   context,
                   () => overlayEntry?.remove(),
                   field.data,
-                  (value) {
+                  (dynamic data, {required FieldEventType eventType}) {
                     widget.controller.setFieldData(
                       nodeId,
                       field.id,
-                      value,
+                      data: data,
+                      eventType: eventType,
                     );
                   },
                 ),
@@ -629,7 +630,7 @@ class _NodeWidgetState extends State<NodeWidget> {
           ),
         ),
         Text(
-          field.dataType.runtimeType.toString(),
+          field.dataType.toString(),
           style: const TextStyle(
             color: Colors.white54,
             fontSize: 12,

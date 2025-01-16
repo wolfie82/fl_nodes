@@ -120,13 +120,24 @@ final class CutSelectionEvent extends NodeEditorEvent {
   CutSelectionEvent(this.ids, {super.isHandled});
 }
 
-class NodeFieldEditEvent extends NodeEditorEvent {
-  final String id;
-  final String field;
-  final dynamic value;
+enum FieldEventType {
+  change,
+  submit,
+  cancel,
+}
 
-  NodeFieldEditEvent(this.id, this.field, this.value, {super.isHandled})
-      : super(isUndoable: true);
+class NodeFieldEvent extends NodeEditorEvent {
+  final String id;
+  final dynamic value;
+  final FieldEventType eventType;
+
+  NodeFieldEvent(
+    this.id,
+    this.value,
+    this.eventType, {
+    super.isHandled,
+    super.isUndoable,
+  });
 }
 
 class SaveProjectEvent extends NodeEditorEvent {

@@ -120,7 +120,8 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
       } else if (event is AddLinkEvent ||
           event is PasteSelectionEvent ||
           event is LoadProjectEvent ||
-          event is NewProjectEvent) {
+          event is NewProjectEvent ||
+          event is NodeFieldEvent && event.eventType == FieldEventType.submit) {
         setState(() {});
         // We perform a delayed setState to ensure that the UI has been built and updated the keys
         SchedulerBinding.instance.addPostFrameCallback((_) {

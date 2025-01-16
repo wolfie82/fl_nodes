@@ -1,3 +1,4 @@
+import 'package:fl_nodes/src/core/controllers/node_editor_events.dart';
 import 'package:flutter/material.dart';
 
 import 'package:tuple/tuple.dart';
@@ -250,7 +251,7 @@ class FieldPrototype {
     BuildContext context,
     Function() removeOverlay,
     dynamic data,
-    Function(dynamic data) setData,
+    Function(dynamic data, {required FieldEventType eventType}) setData,
   )? editorBuilder;
 
   FieldPrototype({
@@ -277,7 +278,7 @@ class FieldInstance {
     BuildContext context,
     Function() removeOverlay,
     dynamic data,
-    Function(dynamic data) setData,
+    Function(dynamic data, {required FieldEventType eventType}) setData,
   )? editorBuilder;
   final editorOverlayController = OverlayPortalController();
   dynamic data;
@@ -330,7 +331,7 @@ class FieldInstance {
       BuildContext context,
       Function() removeOverlay,
       dynamic data,
-      Function(dynamic data) setData,
+      Function(dynamic data, {required FieldEventType eventType}) setData,
     )? editorBuilder,
     dynamic data,
     Type? dataType,
