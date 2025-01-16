@@ -187,9 +187,9 @@ class _NodeWidgetState extends State<NodeWidget> {
   }
 
   void _onLinkCancel() {
-    widget.controller.clearTempLink();
     _isLinking = false;
     _tempLink = null;
+    widget.controller.clearTempLink();
   }
 
   void _onLinkEnd(Tuple2<String, String> locator) {
@@ -202,7 +202,6 @@ class _NodeWidgetState extends State<NodeWidget> {
 
     _isLinking = false;
     _tempLink = null;
-
     widget.controller.clearTempLink();
   }
 
@@ -370,6 +369,9 @@ class _NodeWidgetState extends State<NodeWidget> {
           : ImprovedListener(
               behavior: HitTestBehavior.translucent,
               onPointerPressed: (event) async {
+                _isLinking = false;
+                _tempLink = null;
+
                 final locator = _isNearPort(event.position);
 
                 if (event.buttons == kSecondaryMouseButton) {
@@ -380,7 +382,7 @@ class _NodeWidgetState extends State<NodeWidget> {
 
                   if (locator != null) {
                     /// If a port is near the cursor, show the port context menu
-                    await createAndShowContextMenu(
+                    createAndShowContextMenu(
                       context,
                       portContextMenuEntries(
                         event.position,
@@ -390,7 +392,7 @@ class _NodeWidgetState extends State<NodeWidget> {
                     );
                   } else if (!isContextMenuVisible) {
                     // Else show the node context menu
-                    await createAndShowContextMenu(
+                    createAndShowContextMenu(
                       context,
                       nodeContextMenuEntries(),
                       event.position,
@@ -398,12 +400,8 @@ class _NodeWidgetState extends State<NodeWidget> {
                   }
                 } else if (event.buttons == kPrimaryMouseButton) {
                   // Abort if the cursor is over a port
-                  if (locator != null) {
-                    if (_isLinking && _tempLink != null) {
-                      _onLinkEnd(locator);
-                    } else {
-                      _onLinkStart(locator);
-                    }
+                  if (locator != null && !_isLinking && _tempLink == null) {
+                    _onLinkStart(locator);
                   } else if (!widget.controller.selectedNodeIds
                       .contains(widget.node.id)) {
                     widget.controller.selectNodesById(
@@ -427,13 +425,12 @@ class _NodeWidgetState extends State<NodeWidget> {
                   if (locator != null) {
                     _onLinkEnd(locator);
                   } else {
-                    await createAndShowContextMenu(
+                    createAndShowContextMenu(
                       context,
                       createSubmenuEntries(event.position),
                       event.position,
-                    ).then((value) {
-                      _onLinkCancel();
-                    });
+                      onDismiss: (value) => _onLinkCancel(),
+                    );
                   }
                 } else {
                   _resetEdgeTimer();

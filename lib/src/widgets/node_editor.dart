@@ -255,9 +255,9 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
   }
 
   void _onLinkCancel() {
-    widget.controller.clearTempLink();
     _isLinking = false;
     _tempLink = null;
+    widget.controller.clearTempLink();
   }
 
   void _onLinkEnd(Tuple2<String, String> locator) {
@@ -270,7 +270,6 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
 
     _isLinking = false;
     _tempLink = null;
-
     widget.controller.clearTempLink();
   }
 
@@ -467,6 +466,7 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
       return compatiblePrototypes.map((entry) {
         return MenuItem(
           label: entry.value.name,
+          value: entry.value.name,
           icon: Icons.widgets,
           onSelected: () {
             widget.controller.addNode(
@@ -654,24 +654,24 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
                 child: ImprovedListener(
                   onDoubleClick: () => widget.controller.clearSelection(),
                   onPointerPressed: (event) async {
+                    _isLinking = false;
+                    _tempLink = null;
+                    _isSelecting = false;
+
                     final locator = _isNearPort(event.position);
 
                     if (event.buttons == kMiddleMouseButton) {
                       _onDragStart();
                     } else if (event.buttons == kPrimaryMouseButton) {
-                      if (locator != null) {
-                        if (_isLinking && _tempLink != null) {
-                          _onLinkEnd(locator);
-                        } else {
-                          _onLinkStart(locator);
-                        }
+                      if (locator != null && !_isLinking && _tempLink == null) {
+                        _onLinkStart(locator);
                       } else {
                         _onSelectStart(event.position);
                       }
                     } else if (event.buttons == kSecondaryMouseButton) {
                       if (locator != null) {
                         /// If a port is near the cursor, show the port context menu
-                        await createAndShowContextMenu(
+                        createAndShowContextMenu(
                           context,
                           portContextMenuEntries(
                             event.position,
@@ -681,7 +681,7 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
                         );
                       } else if (!isContextMenuVisible) {
                         // Else show the editor context menu
-                        await createAndShowContextMenu(
+                        createAndShowContextMenu(
                           context,
                           editorContextMenuEntries(event.position),
                           event.position,
@@ -693,8 +693,7 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
                     if (_isDragging &&
                         widget.controller.behavior.panSensitivity > 0) {
                       _onDragUpdate(event.localDelta);
-                    }
-                    if (_isLinking) {
+                    } else if (_isLinking) {
                       _onLinkUpdate(event.position);
                     } else if (_isSelecting) {
                       _onSelectUpdate(event.position);
@@ -710,13 +709,12 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
                         _onLinkEnd(locator);
                       } else if (!isContextMenuVisible) {
                         // Show the create submenu if no port is near the cursor
-                        await createAndShowContextMenu(
+                        createAndShowContextMenu(
                           context,
                           createSubmenuEntries(event.position),
                           event.position,
-                        ).then((value) {
-                          _onLinkCancel();
-                        });
+                          onDismiss: (value) => _onLinkCancel(),
+                        );
                       }
                     } else if (_isSelecting) {
                       _onSelectEnd();
@@ -769,6 +767,7 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
               DebugInfoWidget(
                 offset: widget.controller.viewportOffset,
                 zoom: widget.controller.viewportZoom,
+                selectionCount: widget.controller.selectedNodeIds.length,
               ),
           ],
         ),
