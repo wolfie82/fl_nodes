@@ -384,12 +384,30 @@ final class NodeState {
     this.isCollapsed = false,
   });
 
+  factory NodeState.fromJson(Map<String, dynamic> json) {
+    return NodeState(
+      isSelected: json['isSelected'],
+      isCollapsed: json['isCollapsed'],
+    );
+  }
+
   Map<String, dynamic> toJson() {
     return {
       'isSelected': isSelected,
       'isCollapsed': isCollapsed,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is NodeState &&
+          runtimeType == other.runtimeType &&
+          isSelected == other.isSelected &&
+          isCollapsed == other.isCollapsed;
+
+  @override
+  int get hashCode => isSelected.hashCode ^ isCollapsed.hashCode;
 }
 
 /// A node is a component in the node editor.

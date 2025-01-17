@@ -121,9 +121,11 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
           event is PasteSelectionEvent ||
           event is LoadProjectEvent ||
           event is NewProjectEvent ||
+          event is CollapseNodeEvent ||
+          event is ExpandNodeEvent ||
           event is NodeFieldEvent && event.eventType == FieldEventType.submit) {
         setState(() {});
-        // We perform a delayed setState to ensure that the UI has been built and updated the keys
+        // We delay the second setState to ensure that the UI has been built and  the keys updated
         SchedulerBinding.instance.addPostFrameCallback((_) {
           setState(() {});
         });
@@ -669,7 +671,9 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
                         _onSelectStart(event.position);
                       }
                     } else if (event.buttons == kSecondaryMouseButton) {
-                      if (locator != null) {
+                      if (locator != null &&
+                          !widget.controller.nodes[locator.item1]!.state
+                              .isCollapsed) {
                         /// If a port is near the cursor, show the port context menu
                         createAndShowContextMenu(
                           context,

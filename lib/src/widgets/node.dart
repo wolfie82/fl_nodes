@@ -76,14 +76,6 @@ class _NodeWidgetState extends State<NodeWidget> {
             widget.node.offset += event.delta / widget.controller.viewportZoom;
           });
         }
-      } else if (event is CollapseNodeEvent) {
-        if (event.ids.contains(widget.node.id)) {
-          setState(() {});
-        }
-      } else if (event is ExpandNodeEvent) {
-        if (event.ids.contains(widget.node.id)) {
-          setState(() {});
-        }
       } else if (event is NodeFieldEvent &&
           event.id == widget.node.id &&
           event.eventType == FieldEventType.submit) {
@@ -380,7 +372,7 @@ class _NodeWidgetState extends State<NodeWidget> {
                     widget.controller.selectNodesById({widget.node.id});
                   }
 
-                  if (locator != null) {
+                  if (locator != null && !widget.node.state.isCollapsed) {
                     /// If a port is near the cursor, show the port context menu
                     createAndShowContextMenu(
                       context,
@@ -440,110 +432,128 @@ class _NodeWidgetState extends State<NodeWidget> {
             );
     }
 
+    late Color bodyColor;
+    late Color headerColor;
+
+    if (widget.node.state.isCollapsed) {
+      headerColor = Colors.transparent;
+      if (widget.node.state.isSelected) {
+        bodyColor = widget.node.color;
+      } else {
+        bodyColor = widget.node.color.withValues(
+          red: widget.node.color.r / 1.35,
+          green: widget.node.color.g / 1.35,
+          blue: widget.node.color.b / 1.35,
+        );
+      }
+    } else {
+      bodyColor = const Color(0xFF212121);
+      if (widget.node.state.isSelected) {
+        headerColor = widget.node.color;
+      } else {
+        headerColor = widget.node.color.withValues(
+          red: widget.node.color.r / 1.35,
+          green: widget.node.color.g / 1.35,
+          blue: widget.node.color.b / 1.35,
+        );
+      }
+    }
+
     return controlsWrapper(
-      IntrinsicWidth(
-        child: IntrinsicHeight(
-          key: widget.node.key,
+      IntrinsicHeight(
+        child: IntrinsicWidth(
           child: Stack(
+            key: widget.node.key,
             clipBehavior: Clip.none,
             children: [
-              Visibility(
-                visible: !widget.node.state.isCollapsed,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF212121),
-                    border: Border.all(
-                      color: widget.node.state.isSelected
-                          ? widget.node.color
-                          : Colors.transparent,
-                      width: 1,
-                    ),
-                    borderRadius: BorderRadius.circular(8.0),
+              Container(
+                decoration: BoxDecoration(
+                  color: bodyColor,
+                  border: Border.all(
+                    color: widget.node.state.isSelected
+                        ? widget.node.color
+                        : Colors.transparent,
                   ),
+                  borderRadius: BorderRadius.circular(8.0),
                 ),
               ),
               ...widget.node.ports.entries.map(
                 (entry) => _buildPortIndicator(entry.value),
               ),
-              Container(
-                constraints: const BoxConstraints(minWidth: 100),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: widget.node.state.isSelected
-                            ? widget.node.color
-                            : widget.node.color.withValues(
-                                red: widget.node.color.r / 1.35,
-                                green: widget.node.color.g / 1.35,
-                                blue: widget.node.color.b / 1.35,
-                              ),
-                        borderRadius: BorderRadius.only(
-                          topLeft: const Radius.circular(7),
-                          topRight: const Radius.circular(7),
-                          bottomLeft: widget.node.state.isCollapsed
-                              ? const Radius.circular(7)
-                              : Radius.zero,
-                          bottomRight: widget.node.state.isCollapsed
-                              ? const Radius.circular(7)
-                              : Radius.zero,
-                        ),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: headerColor,
+                      borderRadius: BorderRadius.only(
+                        topLeft: const Radius.circular(7),
+                        topRight: const Radius.circular(7),
+                        bottomLeft: widget.node.state.isCollapsed
+                            ? const Radius.circular(7)
+                            : Radius.zero,
+                        bottomRight: widget.node.state.isCollapsed
+                            ? const Radius.circular(7)
+                            : Radius.zero,
                       ),
-                      child: Row(
-                        spacing: 8,
-                        children: [
-                          InkWell(
-                            splashColor: Colors.transparent,
-                            highlightColor: Colors.transparent,
-                            onTap: () {
-                              setState(() {
-                                widget.node.state.isCollapsed =
-                                    !widget.node.state.isCollapsed;
-                              });
-                            },
-                            child: Icon(
-                              widget.node.state.isCollapsed
-                                  ? Icons.expand_more
-                                  : Icons.expand_less,
-                              color: Colors.white,
-                            ),
+                    ),
+                    child: Row(
+                      spacing: 8,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        InkWell(
+                          splashColor: Colors.transparent,
+                          highlightColor: Colors.transparent,
+                          onTap: () {
+                            if (widget.node.state.isCollapsed) {
+                              widget.controller.expandSelectedNodes();
+                            } else {
+                              widget.controller.collapseSelectedNodes();
+                            }
+                          },
+                          child: Icon(
+                            widget.node.state.isCollapsed
+                                ? Icons.expand_more
+                                : Icons.expand_less,
+                            color: Colors.white,
                           ),
-                          Text(
-                            widget.node.name,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                            ),
-                            textAlign: TextAlign.center,
+                        ),
+                        Text(
+                          widget.node.name,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                  Offstage(
+                    offstage: widget.node.state.isCollapsed,
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        spacing: widget.node.state.isCollapsed ? 0 : 2,
+                        children: [
+                          ...widget.node.fields.entries.map(
+                            (entry) => _buildField(entry.value),
+                          ),
+                          ...widget.node.ports.entries.map(
+                            (entry) => _buildPortRow(entry.value),
                           ),
                         ],
                       ),
                     ),
-                    Visibility(
-                      visible: !widget.node.state.isCollapsed,
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          spacing: 2.0,
-                          children: [
-                            ...widget.node.fields.entries.map(
-                              (entry) => _buildField(entry.value),
-                            ),
-                            if (widget.node.fields.isNotEmpty)
-                              const SizedBox(height: 8),
-                            ...widget.node.ports.entries.map(
-                              (entry) => _buildPortRow(entry.value),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -597,6 +607,14 @@ class _NodeWidgetState extends State<NodeWidget> {
   }
 
   Widget _buildField(FieldInstance field) {
+    if (widget.node.state.isCollapsed) {
+      return SizedBox(
+        key: field.key,
+        height: 0,
+        width: 0,
+      );
+    }
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
@@ -639,83 +657,80 @@ class _NodeWidgetState extends State<NodeWidget> {
   }
 
   Widget _buildPortRow(PortInstance port) {
-    return Visibility(
-      visible: !widget.node.state.isCollapsed,
-      child: Row(
-        mainAxisAlignment:
-            port.isInput ? MainAxisAlignment.start : MainAxisAlignment.end,
-        mainAxisSize: MainAxisSize.min,
+    if (widget.node.state.isCollapsed) {
+      return SizedBox(
         key: port.key,
-        spacing: 4,
-        children: [
-          Text(
-            port.name,
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 13,
-            ),
+        height: 0,
+        width: 0,
+      );
+    }
+
+    return Row(
+      mainAxisAlignment:
+          port.isInput ? MainAxisAlignment.start : MainAxisAlignment.end,
+      mainAxisSize: MainAxisSize.min,
+      key: port.key,
+      spacing: 4,
+      children: [
+        Text(
+          port.name,
+          style: const TextStyle(
+            color: Colors.white70,
+            fontSize: 13,
           ),
-          Text(
-            port.dataType.toString(),
-            style: const TextStyle(
-              color: Colors.white54,
-              fontSize: 12,
-              fontStyle: FontStyle.italic,
-            ),
+        ),
+        Text(
+          port.dataType.toString(),
+          style: const TextStyle(
+            color: Colors.white54,
+            fontSize: 12,
+            fontStyle: FontStyle.italic,
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
   Widget _buildPortIndicator(PortInstance port) {
-    return Visibility(
-      visible: !widget.node.state.isCollapsed,
-      child: Positioned.fill(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final portColor =
-                port.isInput ? Colors.purple[200]! : Colors.green[300]!;
+    return Positioned.fill(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final portKey = port.key;
+          final RenderBox? portBox =
+              portKey.currentContext?.findRenderObject() as RenderBox?;
 
-            if (widget.node.state.isCollapsed) {
-              return CustomPaint(
-                painter: _PortDotPainter(
-                  position: Offset.zero,
-                  color: portColor,
-                ),
-              );
-            }
+          if (portBox == null) return const SizedBox();
 
-            final portKey = port.key;
-            final RenderBox? portBox =
-                portKey.currentContext?.findRenderObject() as RenderBox?;
+          final nodeBox =
+              widget.node.key.currentContext?.findRenderObject() as RenderBox?;
+          if (nodeBox == null) return const SizedBox();
 
-            if (portBox == null) return const SizedBox();
+          final portOffset = portBox.localToGlobal(Offset.zero);
+          final nodeOffset = nodeBox.localToGlobal(Offset.zero);
+          var relativeOffset = portOffset - nodeOffset;
 
-            final nodeBox = widget.node.key.currentContext?.findRenderObject()
-                as RenderBox?;
-            if (nodeBox == null) return const SizedBox();
-
-            final portOffset = portBox.localToGlobal(Offset.zero);
-            final nodeOffset = nodeBox.localToGlobal(Offset.zero);
-            final relativeOffset = portOffset - nodeOffset;
-
-            port.offset = Offset(
-              port.isInput ? 0 : constraints.maxWidth,
-              relativeOffset.dy + portBox.size.height / 2,
+          if (widget.node.state.isCollapsed) {
+            relativeOffset = Offset(
+              relativeOffset.dx,
+              relativeOffset.dy - constraints.maxHeight + 8,
             );
+          }
 
-            return CustomPaint(
-              painter: _PortDotPainter(
-                position: Offset(
-                  port.isInput ? 0 : constraints.maxWidth,
-                  relativeOffset.dy + portBox.size.height / 2,
-                ),
-                color: port.isInput ? Colors.purple[200]! : Colors.green[300]!,
+          port.offset = Offset(
+            port.isInput ? 0 : constraints.maxWidth,
+            relativeOffset.dy + portBox.size.height / 2,
+          );
+
+          return CustomPaint(
+            painter: _PortDotPainter(
+              position: Offset(
+                port.isInput ? 0 : constraints.maxWidth,
+                relativeOffset.dy + portBox.size.height / 2,
               ),
-            );
-          },
-        ),
+              color: port.isInput ? Colors.purple[200]! : Colors.green[300]!,
+            ),
+          );
+        },
       ),
     );
   }
