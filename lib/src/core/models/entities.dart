@@ -490,6 +490,10 @@ final class NodeInstance {
     required Map<String, NodePrototype> prototypes,
     required Function(NodeInstance node) onRendered,
   }) {
+    if (!prototypes.containsKey(json['name'].toString())) {
+      throw Exception('Node prototype not found');
+    }
+
     final prototype = prototypes[json['name'].toString()]!;
 
     // Ensure `json['ports']` is properly typed
