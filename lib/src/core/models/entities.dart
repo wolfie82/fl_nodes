@@ -520,7 +520,7 @@ final class NodeInstance {
       },
     );
 
-    return NodeInstance(
+    final instance = NodeInstance(
       id: json['id'],
       name: json['name'],
       description: json['description'],
@@ -531,6 +531,11 @@ final class NodeInstance {
       onRendered: onRendered,
       offset: Offset(json['offset'][0], json['offset'][1]),
     );
+
+    instance.state.isSelected = NodeState.fromJson(json['state']).isSelected;
+    instance.state.isCollapsed = NodeState.fromJson(json['state']).isCollapsed;
+
+    return instance;
   }
 }
 
