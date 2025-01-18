@@ -739,16 +739,16 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
     final Widget editor = Container(
       decoration: widget.style.decoration,
       padding: widget.style.padding,
-      child: controlsWrapper(
-        Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Positioned(
-              top: 0,
-              right: 0,
-              bottom: 0,
-              left: 0,
-              child: RepaintBoundary(
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned(
+            top: 0,
+            right: 0,
+            bottom: 0,
+            left: 0,
+            child: controlsWrapper(
+              RepaintBoundary(
                 child: NodeEditorRenderWidget(
                   key: kNodeEditorWidgetKey,
                   controller: widget.controller,
@@ -756,25 +756,25 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
                 ),
               ),
             ),
-            ...widget.overlay().map(
-                  (overlayData) => Positioned(
-                    top: overlayData.top,
-                    left: overlayData.left,
-                    bottom: overlayData.bottom,
-                    right: overlayData.right,
-                    child: RepaintBoundary(
-                      child: overlayData.child,
-                    ),
+          ),
+          ...widget.overlay().map(
+                (overlayData) => Positioned(
+                  top: overlayData.top,
+                  left: overlayData.left,
+                  bottom: overlayData.bottom,
+                  right: overlayData.right,
+                  child: RepaintBoundary(
+                    child: overlayData.child,
                   ),
                 ),
-            if (kDebugMode)
-              DebugInfoWidget(
-                offset: widget.controller.viewportOffset,
-                zoom: widget.controller.viewportZoom,
-                selectionCount: widget.controller.selectedNodeIds.length,
               ),
-          ],
-        ),
+          if (kDebugMode)
+            DebugInfoWidget(
+              offset: widget.controller.viewportOffset,
+              zoom: widget.controller.viewportZoom,
+              selectionCount: widget.controller.selectedNodeIds.length,
+            ),
+        ],
       ),
     );
 
