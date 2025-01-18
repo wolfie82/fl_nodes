@@ -15,12 +15,12 @@ class NodeParentData extends ContainerBoxParentData<RenderBox> {
   NodeState state = NodeState();
 }
 
-class NodeEditorRenderWidget extends MultiChildRenderObjectWidget {
+class NodeEditorRenderObjectWidget extends MultiChildRenderObjectWidget {
   final FlNodeEditorController controller;
   final NodeEditorBehavior behavior;
   final FlNodeEditorStyle style;
 
-  NodeEditorRenderWidget({
+  NodeEditorRenderObjectWidget({
     super.key,
     required this.controller,
     required this.style,

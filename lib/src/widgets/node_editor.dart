@@ -15,7 +15,7 @@ import 'package:fl_nodes/src/core/utils/platform.dart';
 import 'package:fl_nodes/src/core/utils/renderbox.dart';
 import 'package:fl_nodes/src/utils/context_menu.dart';
 import 'package:fl_nodes/src/utils/improved_listener.dart';
-import 'package:fl_nodes/src/widgets/node_editor_render.dart';
+import 'package:fl_nodes/src/widgets/node_editor_render_object.dart';
 
 import '../core/controllers/node_editor_events.dart';
 import '../core/utils/constants.dart';
@@ -38,14 +38,14 @@ class FlOverlayData {
   });
 }
 
-class FlNodeEditor extends StatefulWidget {
+class FlNodeEditorWidget extends StatelessWidget {
   final FlNodeEditorController controller;
   final FlNodeEditorStyle style;
   final bool expandToParent;
   final Size? fixedSize;
   final List<FlOverlayData> Function() overlay;
 
-  const FlNodeEditor({
+  const FlNodeEditorWidget({
     super.key,
     required this.controller,
     this.style = const FlNodeEditorStyle(
@@ -57,10 +57,87 @@ class FlNodeEditor extends StatefulWidget {
   });
 
   @override
-  State<FlNodeEditor> createState() => _FlNodeEditorWidgetState();
+  Widget build(BuildContext context) {
+    final Widget editor = Container(
+      decoration: style.decoration,
+      padding: style.padding,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned(
+            top: 0,
+            right: 0,
+            bottom: 0,
+            left: 0,
+            child: _NodeEditorDataLayer(
+              controller: controller,
+              style: style,
+              expandToParent: expandToParent,
+              fixedSize: fixedSize,
+              overlay: overlay,
+            ),
+          ),
+          ...overlay().map(
+            (overlayData) => Positioned(
+              top: overlayData.top,
+              left: overlayData.left,
+              bottom: overlayData.bottom,
+              right: overlayData.right,
+              child: RepaintBoundary(
+                child: overlayData.child,
+              ),
+            ),
+          ),
+          if (kDebugMode)
+            DebugInfoWidget(
+              offset: controller.viewportOffset,
+              zoom: controller.viewportZoom,
+              selectionCount: controller.selectedNodeIds.length,
+            ),
+        ],
+      ),
+    );
+
+    if (expandToParent) {
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          return SizedBox(
+            width: constraints.maxWidth,
+            height: constraints.maxHeight,
+            child: editor,
+          );
+        },
+      );
+    } else {
+      return SizedBox(
+        width: fixedSize?.width ?? 100,
+        height: fixedSize?.height ?? 100,
+        child: editor,
+      );
+    }
+  }
 }
 
-class _FlNodeEditorWidgetState extends State<FlNodeEditor>
+class _NodeEditorDataLayer extends StatefulWidget {
+  final FlNodeEditorController controller;
+  final FlNodeEditorStyle style;
+  final bool expandToParent;
+  final Size? fixedSize;
+  final List<FlOverlayData> Function() overlay;
+
+  const _NodeEditorDataLayer({
+    required this.controller,
+    required this.style,
+    required this.expandToParent,
+    required this.fixedSize,
+    required this.overlay,
+  });
+
+  @override
+  State<_NodeEditorDataLayer> createState() => _NodeEditorDataLayerState();
+}
+
+class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
     with TickerProviderStateMixin {
   // Core state
   Offset _offset = Offset.zero;
@@ -736,64 +813,14 @@ class _FlNodeEditorWidgetState extends State<FlNodeEditor>
             );
     }
 
-    final Widget editor = Container(
-      decoration: widget.style.decoration,
-      padding: widget.style.padding,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Positioned(
-            top: 0,
-            right: 0,
-            bottom: 0,
-            left: 0,
-            child: controlsWrapper(
-              RepaintBoundary(
-                child: NodeEditorRenderWidget(
-                  key: kNodeEditorWidgetKey,
-                  controller: widget.controller,
-                  style: widget.style,
-                ),
-              ),
-            ),
-          ),
-          ...widget.overlay().map(
-                (overlayData) => Positioned(
-                  top: overlayData.top,
-                  left: overlayData.left,
-                  bottom: overlayData.bottom,
-                  right: overlayData.right,
-                  child: RepaintBoundary(
-                    child: overlayData.child,
-                  ),
-                ),
-              ),
-          if (kDebugMode)
-            DebugInfoWidget(
-              offset: widget.controller.viewportOffset,
-              zoom: widget.controller.viewportZoom,
-              selectionCount: widget.controller.selectedNodeIds.length,
-            ),
-        ],
+    return controlsWrapper(
+      RepaintBoundary(
+        child: NodeEditorRenderObjectWidget(
+          key: kNodeEditorWidgetKey,
+          controller: widget.controller,
+          style: widget.style,
+        ),
       ),
     );
-
-    if (widget.expandToParent) {
-      return LayoutBuilder(
-        builder: (context, constraints) {
-          return SizedBox(
-            width: constraints.maxWidth,
-            height: constraints.maxHeight,
-            child: editor,
-          );
-        },
-      );
-    } else {
-      return SizedBox(
-        width: widget.fixedSize?.width ?? 100,
-        height: widget.fixedSize?.height ?? 100,
-        child: editor,
-      );
-    }
   }
 }
