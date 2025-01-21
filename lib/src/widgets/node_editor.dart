@@ -161,6 +161,9 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
   late Animation<Offset> _offsetAnimation;
   late Animation<double> _zoomAnimation;
 
+  // Gesture recognizers
+  late final ScaleGestureRecognizer _trackpadGestureRecognizer;
+
   @override
   void initState() {
     super.initState();
@@ -169,12 +172,17 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
 
     _offsetAnimationController = AnimationController(vsync: this);
     _zoomAnimationController = AnimationController(vsync: this);
+    _trackpadGestureRecognizer = ScaleGestureRecognizer()
+      ..onStart = ((details) => _onDragStart())
+      ..onUpdate = _onScaleUpdate
+      ..onEnd = ((details) => _onDragEnd());
   }
 
   @override
   void dispose() {
     _offsetAnimationController.dispose();
     _zoomAnimationController.dispose();
+    _trackpadGestureRecognizer.dispose();
     super.dispose();
   }
 
@@ -211,7 +219,9 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
   }
 
   void _onDragStart() {
-    _isDragging = true;
+    setState(() {
+      _isDragging = true;
+    });
     _offsetAnimationController.stop();
     _startKineticTimer();
   }
@@ -219,9 +229,9 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
   void _onDragUpdate(Offset delta) {
     setState(() {
       _lastPositionDelta = delta;
-      _resetKineticTimer();
-      _setOffsetFromRawInput(delta);
     });
+    _resetKineticTimer();
+    _setOffsetFromRawInput(delta);
   }
 
   void _onDragCancel() => _onDragEnd();
@@ -231,6 +241,18 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
       _isDragging = false;
       _kineticEnergy = _lastPositionDelta;
     });
+  }
+
+  void _onScaleUpdate(ScaleUpdateDetails details) {
+    if (widget.controller.behavior.zoomSensitivity > 0 &&
+        details.scale != 1.0) {
+      _setZoomFromRawInput(details.scale);
+    }
+
+    if (widget.controller.behavior.panSensitivity > 0 &&
+        details.focalPointDelta != const Offset(10, 10)) {
+      _onDragUpdate(details.focalPointDelta);
+    }
   }
 
   void _onSelectStart(Offset position) {
@@ -379,7 +401,7 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
 
       final Offset adjustedKineticEnergy = _kineticEnergy / _zoom;
 
-      _setOffset(_offset + adjustedKineticEnergy, animate: false);
+      _setOffset(_offset + adjustedKineticEnergy);
 
       _kineticEnergy *= decayFactor;
 
@@ -401,30 +423,10 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
 
     final Offset targetOffset = _offset + offsetFactor;
 
-    _setOffset(targetOffset, animate: false);
+    _setOffset(targetOffset);
   }
 
-  void _setZoomFromRawInput(double amount) {
-    const double baseSpeed =
-        0.05; // Base zoom speed and damping factor (magic number)
-    const double scaleFactor =
-        1.5; // Controls how zoom speed scales with zoom level (magic number)
-
-    final double sensitivity = widget.controller.behavior.zoomSensitivity;
-
-    final double dynamicZoomFactor =
-        baseSpeed * (1 + scaleFactor * _zoom) * sensitivity;
-
-    final double zoomFactor =
-        (amount * dynamicZoomFactor).abs().clamp(0.1, 10.0);
-
-    final double targetZoom =
-        (amount < 0 ? _zoom * (1 + zoomFactor) : _zoom / (1 + zoomFactor));
-
-    _setZoom(targetZoom, animate: true);
-  }
-
-  void _setOffset(Offset targetOffset, {bool animate = true}) {
+  void _setOffset(Offset targetOffset, {bool animate = false}) {
     if (_offset == targetOffset) return;
 
     final beginOffset = _offset;
@@ -473,7 +475,27 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
     }
   }
 
-  void _setZoom(double targetZoom, {bool animate = true}) {
+  void _setZoomFromRawInput(double amount) {
+    const double baseSpeed =
+        0.05; // Base zoom speed and damping factor (magic number)
+    const double scaleFactor =
+        1.5; // Controls how zoom speed scales with zoom level (magic number)
+
+    final double sensitivity = widget.controller.behavior.zoomSensitivity;
+
+    final double dynamicZoomFactor =
+        baseSpeed * (1 + scaleFactor * _zoom) * sensitivity;
+
+    final double zoomFactor =
+        (amount * dynamicZoomFactor).abs().clamp(0.1, 10.0);
+
+    final double targetZoom =
+        (amount > 1 ? _zoom * (1 + zoomFactor) : _zoom / (1 + zoomFactor));
+
+    _setZoom(targetZoom);
+  }
+
+  void _setZoom(double targetZoom, {bool animate = false}) {
     if (_zoom == targetZoom) return;
 
     final beginZoom = _zoom;
@@ -653,17 +675,7 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
           ? GestureDetector(
               onDoubleTap: () => widget.controller.clearSelection(),
               onScaleStart: (details) => _onDragStart(),
-              onScaleUpdate: (details) {
-                if (widget.controller.behavior.zoomSensitivity > 0 &&
-                    details.scale.abs() > 0.01) {
-                  _setZoomFromRawInput(details.scale);
-                }
-
-                if (widget.controller.behavior.panSensitivity > 0 &&
-                    details.focalPointDelta > const Offset(10, 10)) {
-                  _setOffsetFromRawInput(details.focalPointDelta);
-                }
-              },
+              onScaleUpdate: (details) => _onScaleUpdate(details),
               onScaleEnd: (details) => _onDragEnd(),
               child: child,
             )
@@ -732,7 +744,7 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
                     : SystemMouseCursors.basic,
                 child: ImprovedListener(
                   onDoubleClick: () => widget.controller.clearSelection(),
-                  onPointerPressed: (event) async {
+                  onPointerPressed: (event) {
                     _isLinking = false;
                     _tempLink = null;
                     _isSelecting = false;
@@ -770,7 +782,7 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
                       }
                     }
                   },
-                  onPointerMoved: (event) async {
+                  onPointerMoved: (event) {
                     if (_isDragging &&
                         widget.controller.behavior.panSensitivity > 0) {
                       _onDragUpdate(event.localDelta);
@@ -780,7 +792,7 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
                       _onSelectUpdate(event.position);
                     }
                   },
-                  onPointerReleased: (event) async {
+                  onPointerReleased: (event) {
                     if (_isDragging) {
                       _onDragEnd();
                     } else if (_isLinking) {
@@ -807,6 +819,8 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
                       _setZoomFromRawInput(event.scrollDelta.dy);
                     }
                   },
+                  onPointerPanZoomStart:
+                      _trackpadGestureRecognizer.addPointerPanZoom,
                   child: child,
                 ),
               ),
