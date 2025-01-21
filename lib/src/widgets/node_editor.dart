@@ -173,9 +173,9 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
     _offsetAnimationController = AnimationController(vsync: this);
     _zoomAnimationController = AnimationController(vsync: this);
     _trackpadGestureRecognizer = ScaleGestureRecognizer()
-      ..onStart = ((details) => _onDragStart())
+      ..onStart = ((details) => _onDragStart)
       ..onUpdate = _onScaleUpdate
-      ..onEnd = ((details) => _onDragEnd());
+      ..onEnd = ((details) => _onDragEnd);
   }
 
   @override
@@ -247,9 +247,7 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
     if (widget.controller.behavior.zoomSensitivity > 0 &&
         details.scale != 1.0) {
       _setZoomFromRawInput(details.scale);
-    }
-
-    if (widget.controller.behavior.panSensitivity > 0 &&
+    } else if (widget.controller.behavior.panSensitivity > 0 &&
         details.focalPointDelta != const Offset(10, 10)) {
       _onDragUpdate(details.focalPointDelta);
     }
