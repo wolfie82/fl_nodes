@@ -954,8 +954,9 @@ class FlNodeEditorController {
 
   Rect _calculateEncompassingRect(
     Set<String> ids,
-    Map<String, NodeInstance> nodes,
-  ) {
+    Map<String, NodeInstance> nodes, {
+    double margin = 100.0,
+  }) {
     Rect encompassingRect = Rect.zero;
 
     for (final id in ids) {
@@ -969,6 +970,6 @@ class FlNodeEditorController {
       }
     }
 
-    return encompassingRect;
+    return encompassingRect.inflate(margin);
   }
 }
