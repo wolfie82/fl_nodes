@@ -9,11 +9,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_context_menu/flutter_context_menu.dart';
 import 'package:tuple/tuple.dart';
 
-import 'package:fl_nodes/src/core/controllers/node_editor.dart';
+import 'package:fl_nodes/src/core/controllers/node_editor/node_editor_main.dart';
 import 'package:fl_nodes/src/utils/context_menu.dart';
 import 'package:fl_nodes/src/utils/improved_listener.dart';
 
-import '../core/controllers/node_editor_events.dart';
+import '../core/models/events.dart';
 import '../core/models/entities.dart';
 import '../core/utils/constants.dart';
 import '../core/utils/platform.dart';

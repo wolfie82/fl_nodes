@@ -1,6 +1,6 @@
 import 'dart:ui' as ui;
 
-import 'package:fl_nodes/src/core/controllers/node_editor_config.dart';
+import 'package:fl_nodes/src/core/controllers/node_editor/config.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';

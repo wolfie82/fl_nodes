@@ -2,9 +2,9 @@ import 'package:fl_nodes/src/core/models/styles.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'package:fl_nodes/src/core/controllers/node_editor_events.dart';
+import 'package:fl_nodes/src/core/models/events.dart';
 
-import '../core/controllers/node_editor.dart';
+import '../core/controllers/node_editor/node_editor_main.dart';
 
 class FlHierarchyWidget extends StatefulWidget {
   final FlNodeEditorController controller;

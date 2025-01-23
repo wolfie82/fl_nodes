@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../models/entities.dart';
+import 'entities.dart';
 
 /// Events are used to communicate between the [FlNodeEditorController] and the Widgets composing the Node Editor.
 /// Events can (where applicable) carry data to be used by the Widgets to update their state.

@@ -1,4 +1,4 @@
-import 'package:fl_nodes/src/core/controllers/node_editor_events.dart';
+import 'package:fl_nodes/src/core/models/events.dart';
 import 'package:flutter/material.dart';
 
 import 'package:tuple/tuple.dart';

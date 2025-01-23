@@ -13,11 +13,11 @@ import 'package:fl_nodes/src/core/utils/snackbar.dart';
 import 'package:fl_nodes/src/core/utils/spatial_hash_grid.dart';
 import 'package:fl_nodes/src/core/utils/stack.dart';
 
-import '../models/entities.dart';
+import '../../models/entities.dart';
+import '../../models/events.dart';
 
-import 'node_editor_config.dart';
-import 'node_editor_event_bus.dart';
-import 'node_editor_events.dart';
+import 'config.dart';
+import 'event_bus.dart';
 
 /// A controller class for the Node Editor.
 ///

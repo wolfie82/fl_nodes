@@ -18,7 +18,7 @@ import 'package:fl_nodes/src/utils/improved_listener.dart';
 import 'package:fl_nodes/src/widgets/debug_info.dart';
 import 'package:fl_nodes/src/widgets/node_editor_render_object.dart';
 
-import '../core/controllers/node_editor_events.dart';
+import '../core/models/events.dart';
 import '../core/utils/constants.dart';
 
 class FlOverlayData {
