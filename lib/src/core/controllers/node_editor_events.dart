@@ -11,23 +11,30 @@ import '../models/entities.dart';
 /// if there is data to be passed or rebuilds to be triggered.
 
 /// Event base class for the [FlNodeEditorController] events bus.
+@immutable
 abstract class NodeEditorEvent {
   final String id;
   final bool isHandled;
   final bool isUndoable;
 
-  NodeEditorEvent({
+  const NodeEditorEvent({
     required this.id,
     this.isHandled = false,
     this.isUndoable = false,
   });
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'isHandled': isHandled,
+        'isUndoable': isUndoable,
+      };
 }
 
 final class ViewportOffsetEvent extends NodeEditorEvent {
   final Offset offset;
   final bool animate;
 
-  ViewportOffsetEvent(
+  const ViewportOffsetEvent(
     this.offset, {
     this.animate = true,
     required super.id,
@@ -39,7 +46,7 @@ final class ViewportZoomEvent extends NodeEditorEvent {
   final double zoom;
   final bool animate;
 
-  ViewportZoomEvent(
+  const ViewportZoomEvent(
     this.zoom, {
     this.animate = true,
     required super.id,
@@ -50,66 +57,154 @@ final class ViewportZoomEvent extends NodeEditorEvent {
 final class SelectionAreaEvent extends NodeEditorEvent {
   final Rect area;
 
-  SelectionAreaEvent(this.area, {required super.id, super.isHandled});
+  const SelectionAreaEvent(this.area, {required super.id, super.isHandled});
 }
 
 final class DragSelectionEvent extends NodeEditorEvent {
   final Set<String> nodeIds;
   final Offset delta;
 
-  DragSelectionEvent(
+  const DragSelectionEvent(
     this.nodeIds,
     this.delta, {
     required super.id,
     super.isHandled,
   }) : super(isUndoable: true);
+
+  @override
+  Map<String, dynamic> toJson() => {
+        ...super.toJson(),
+        'nodeIds': nodeIds.toList(),
+        'delta': [delta.dx, delta.dy],
+      };
+
+  factory DragSelectionEvent.fromJson(Map<String, dynamic> json) {
+    return DragSelectionEvent(
+      (json['nodeIds'] as List).cast<String>().toSet(),
+      Offset(json['delta'][0], json['delta'][1]),
+      id: json['id'] as String,
+      isHandled: json['isHandled'] as bool,
+    );
+  }
 }
 
 final class SelectionEvent extends NodeEditorEvent {
   final Set<String> nodeIds;
 
-  SelectionEvent(this.nodeIds, {required super.id, super.isHandled});
+  const SelectionEvent(this.nodeIds, {required super.id, super.isHandled});
 }
 
 final class AddNodeEvent extends NodeEditorEvent {
   final NodeInstance node;
 
-  AddNodeEvent(
+  const AddNodeEvent(
     this.node, {
     required super.id,
     super.isHandled,
   }) : super(isUndoable: true);
+
+  @override
+  Map<String, dynamic> toJson() => {
+        ...super.toJson(),
+        'node': node.toJson(),
+      };
+
+  factory AddNodeEvent.fromJson(
+    Map<String, dynamic> json, {
+    required Map<String, NodePrototype> prototypes,
+    required Function(NodeInstance node) onRendered,
+  }) {
+    return AddNodeEvent(
+      NodeInstance.fromJson(
+        json['node'] as Map<String, dynamic>,
+        prototypes: prototypes,
+        onRendered: onRendered,
+      ),
+      id: json['id'] as String,
+      isHandled: json['isHandled'] as bool,
+    );
+  }
 }
 
 final class RemoveNodeEvent extends NodeEditorEvent {
   final NodeInstance node;
 
-  RemoveNodeEvent(this.node, {required super.id, super.isHandled})
+  const RemoveNodeEvent(this.node, {required super.id, super.isHandled})
       : super(isUndoable: true);
+
+  @override
+  Map<String, dynamic> toJson() => {
+        ...super.toJson(),
+        'node': node.toJson(),
+      };
+
+  factory RemoveNodeEvent.fromJson(
+    Map<String, dynamic> json, {
+    required Map<String, NodePrototype> prototypes,
+    required Function(NodeInstance node) onRendered,
+  }) {
+    return RemoveNodeEvent(
+      NodeInstance.fromJson(
+        json['node'] as Map<String, dynamic>,
+        prototypes: prototypes,
+        onRendered: onRendered,
+      ),
+      id: json['id'] as String,
+      isHandled: json['isHandled'] as bool,
+    );
+  }
 }
 
 final class AddLinkEvent extends NodeEditorEvent {
   final Link link;
 
-  AddLinkEvent(
+  const AddLinkEvent(
     this.link, {
     required super.id,
     super.isHandled,
   }) : super(isUndoable: true);
+
+  @override
+  Map<String, dynamic> toJson() => {
+        ...super.toJson(),
+        'link': link.toJson(),
+      };
+
+  factory AddLinkEvent.fromJson(Map<String, dynamic> json) {
+    return AddLinkEvent(
+      Link.fromJson(json['link'] as Map<String, dynamic>),
+      id: json['id'] as String,
+      isHandled: json['isHandled'] as bool,
+    );
+  }
 }
 
 final class RemoveLinkEvent extends NodeEditorEvent {
   final Link link;
 
-  RemoveLinkEvent(this.link, {required super.id, super.isHandled})
+  const RemoveLinkEvent(this.link, {required super.id, super.isHandled})
       : super(isUndoable: true);
+
+  @override
+  Map<String, dynamic> toJson() => {
+        ...super.toJson(),
+        'link': link.toJson(),
+      };
+
+  factory RemoveLinkEvent.fromJson(Map<String, dynamic> json) {
+    return RemoveLinkEvent(
+      Link.fromJson(json['link'] as Map<String, dynamic>),
+      id: json['id'] as String,
+      isHandled: json['isHandled'] as bool,
+    );
+  }
 }
 
 final class DrawTempLinkEvent extends NodeEditorEvent {
   final Offset from;
   final Offset to;
 
-  DrawTempLinkEvent(
+  const DrawTempLinkEvent(
     this.from,
     this.to, {
     required super.id,
@@ -120,20 +215,20 @@ final class DrawTempLinkEvent extends NodeEditorEvent {
 final class CollapseNodeEvent extends NodeEditorEvent {
   final Set<String> nodeIds;
 
-  CollapseNodeEvent(this.nodeIds, {required super.id, super.isHandled});
+  const CollapseNodeEvent(this.nodeIds, {required super.id, super.isHandled});
 }
 
 final class ExpandNodeEvent extends NodeEditorEvent {
   final Set<String> nodeIds;
 
-  ExpandNodeEvent(this.nodeIds, {required super.id, super.isHandled});
+  const ExpandNodeEvent(this.nodeIds, {required super.id, super.isHandled});
 }
 
 final class PasteSelectionEvent extends NodeEditorEvent {
   final Offset position;
   final String clipboardContent;
 
-  PasteSelectionEvent(
+  const PasteSelectionEvent(
     this.position,
     this.clipboardContent, {
     required super.id,
@@ -144,7 +239,7 @@ final class PasteSelectionEvent extends NodeEditorEvent {
 final class CutSelectionEvent extends NodeEditorEvent {
   final String clipboardContent;
 
-  CutSelectionEvent(
+  const CutSelectionEvent(
     this.clipboardContent, {
     required super.id,
     super.isHandled,
@@ -162,7 +257,7 @@ final class NodeFieldEvent extends NodeEditorEvent {
   final dynamic value;
   final FieldEventType eventType;
 
-  NodeFieldEvent(
+  const NodeFieldEvent(
     this.nodeId,
     this.value,
     this.eventType, {
@@ -172,13 +267,13 @@ final class NodeFieldEvent extends NodeEditorEvent {
 }
 
 class SaveProjectEvent extends NodeEditorEvent {
-  SaveProjectEvent({required super.id});
+  const SaveProjectEvent({required super.id});
 }
 
 class LoadProjectEvent extends NodeEditorEvent {
-  LoadProjectEvent({required super.id});
+  const LoadProjectEvent({required super.id});
 }
 
 class NewProjectEvent extends NodeEditorEvent {
-  NewProjectEvent({required super.id});
+  const NewProjectEvent({required super.id});
 }
