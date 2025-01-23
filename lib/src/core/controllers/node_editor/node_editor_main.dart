@@ -522,23 +522,28 @@ class FlNodeEditorController {
   }
 
   void focusNodesById(Set<String> ids) {
-    final encompassingRect = _calculateEncompassingRect(ids, _nodes);
+    final encompassingRect = _calculateEncompassingRect(
+      ids,
+      _nodes,
+      margin: 256,
+    );
 
     selectNodesById(ids, holdSelection: false);
 
     final nodeEditorSize = getSizeFromGlobalKey(kNodeEditorWidgetKey)!;
-    final paddedEncompassingRect = encompassingRect.inflate(50.0);
-    final fitZoom = min(
-      nodeEditorSize.width / paddedEncompassingRect.width,
-      nodeEditorSize.height / paddedEncompassingRect.height,
-    );
 
-    setViewportZoom(fitZoom, animate: true);
     setViewportOffset(
       -encompassingRect.center,
       animate: true,
       absolute: true,
     );
+
+    final fitZoom = min(
+      nodeEditorSize.width / encompassingRect.width,
+      nodeEditorSize.height / encompassingRect.height,
+    );
+
+    setViewportZoom(fitZoom, animate: true);
   }
 
   Future<List<String>> searchNodesByName(String name) async {
