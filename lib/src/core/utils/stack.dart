@@ -1,46 +1,23 @@
-/// FIFO Stack: Operates like a queue (First-In-First-Out)
-class FIFOStack<T> {
+/// Stack: Operates like a traditional stack (Last-In-First-Out)
+class Stack<T> {
   final List<T> _list = [];
+  final int? _maxSize;
+
+  Stack([this._maxSize]) {
+    assert(
+      _maxSize == null || _maxSize! > 0,
+      "Max size must be null or a positive integer.",
+    );
+  }
 
   /// Pushes an element to the end of the stack.
+  /// Throws an exception if the stack is at its size limit.
   void push(T element) {
-    _list.add(element); // Add to the end of the list
-  }
-
-  /// Pops the first element (FIFO behavior).
-  T? pop() {
-    if (_list.isEmpty) {
-      return null;
+    if (_maxSize != null && _list.length >= _maxSize!) {
+      throw StateError(
+        "Stack overflow: Cannot add more elements, stack is full.",
+      );
     }
-    return _list.removeAt(0); // Remove from the front of the list
-  }
-
-  /// Peeks at the first element without removing it.
-  T? peek() {
-    if (_list.isEmpty) {
-      return null;
-    }
-    return _list.first; // Look at the front element
-  }
-
-  /// Clears the stack.
-  void clear() {
-    _list.clear();
-  }
-
-  /// Checks if the stack is empty.
-  bool get isEmpty => _list.isEmpty;
-
-  /// Returns the number of elements in the stack.
-  int get length => _list.length;
-}
-
-/// LIFO Stack: Operates like a traditional stack (Last-In-First-Out)
-class LIFOStack<T> {
-  final List<T> _list = [];
-
-  /// Pushes an element to the end of the stack.
-  void push(T element) {
     _list.add(element); // Add to the end of the list
   }
 
@@ -65,9 +42,22 @@ class LIFOStack<T> {
     _list.clear();
   }
 
+  /// Maps each element of the stack to a new value.
+  List<R> map<R>(R Function(T) transform) {
+    return _list.map(transform).toList();
+  }
+
+  /// Returns the stack as a list.
+  List<T> toList() {
+    return List<T>.from(_list);
+  }
+
   /// Checks if the stack is empty.
   bool get isEmpty => _list.isEmpty;
 
   /// Returns the number of elements in the stack.
   int get length => _list.length;
+
+  /// Checks if the stack is full (only applicable if a max size is set).
+  bool get isFull => _maxSize != null && _list.length >= _maxSize!;
 }

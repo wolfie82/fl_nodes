@@ -15,65 +15,9 @@ import 'package:fl_nodes/src/core/utils/stack.dart';
 
 import '../models/entities.dart';
 
+import 'node_editor_config.dart';
+import 'node_editor_event_bus.dart';
 import 'node_editor_events.dart';
-
-/// A class that acts as an event bus for the Node Editor.
-///
-/// This class is responsible for handling and dispatching events
-/// related to the node editor. It allows different parts of the
-/// application to communicate with each other by sending and
-/// receiving events.
-///
-/// Events can object instances should extend the [NodeEditorEvent] class.
-class _NodeEditorEventBus {
-  final _streamController = StreamController<NodeEditorEvent>.broadcast();
-  final _undoStack = LIFOStack<NodeEditorEvent>();
-  final _redoStack = FIFOStack<NodeEditorEvent>();
-  bool _isSaved = true;
-
-  void emit(NodeEditorEvent event) {
-    _streamController.add(event);
-  }
-
-  void dispose() {
-    _streamController.close();
-    _undoStack.clear();
-    _redoStack.clear();
-  }
-
-  void clear() {
-    _undoStack.clear();
-    _redoStack.clear();
-  }
-
-  Stream<NodeEditorEvent> get events => _streamController.stream;
-  bool get isSaved => _isSaved;
-}
-
-/// A class that defines the behavior of a node editor.
-///
-/// This class is responsible for handling the interactions and
-/// behaviors associated with a node editor, such as node selection,
-/// movement, and other editor-specific functionalities.
-class NodeEditorBehavior {
-  final double zoomSensitivity;
-  final double minZoom;
-  final double maxZoom;
-  final double panSensitivity;
-  final double maxPanX;
-  final double maxPanY;
-  final bool enableKineticScrolling;
-
-  const NodeEditorBehavior({
-    this.zoomSensitivity = 0.1,
-    this.minZoom = 0.1,
-    this.maxZoom = 10.0,
-    this.panSensitivity = 1.0,
-    this.maxPanX = 100000.0,
-    this.maxPanY = 100000.0,
-    this.enableKineticScrolling = true,
-  });
-}
 
 /// A controller class for the Node Editor.
 ///
@@ -85,44 +29,101 @@ class NodeEditorBehavior {
 /// different parts of the application to communicate with each other by
 /// sending and receiving events.
 class FlNodeEditorController {
-  final eventBus = _NodeEditorEventBus();
-  final NodeEditorBehavior behavior;
-  final Function(Map<String, dynamic> jsonData)? projectSaver;
+  final eventBus = NodeEditorEventBus();
+  final NodeEditorConfig behavior;
+  final Future<bool> Function(Map<String, dynamic> jsonData)? projectSaver;
   final Future<Map<String, dynamic>?> Function(bool isSaved)? projectLoader;
   final Future<bool> Function(bool isSaved)? projectCreator;
 
   FlNodeEditorController({
-    this.behavior = const NodeEditorBehavior(),
+    this.behavior = const NodeEditorConfig(),
     this.projectSaver,
     this.projectLoader,
     this.projectCreator,
-  });
+  }) {
+    eventBus.events.listen((event) {
+      // This ensures a reliable order of execution for event handlers.
+      _handleUndoableEvents(event);
+      _handleProjectEvents(event);
+    });
+  }
 
   void dispose() {
     eventBus.dispose();
+    _nodes.clear();
+    _spatialHashGrid.clear();
+    _selectedNodeIds.clear();
+    _renderLinks.clear();
+    _undoStack.clear();
+    _redoStack.clear();
   }
 
   // Viewport
-  Offset viewportOffset = Offset.zero;
-  double viewportZoom = 1.0;
+  Offset _viewportOffset = Offset.zero;
+  double _viewportZoom = 1.0;
+
+  Offset get viewportOffset => _viewportOffset;
+  double get viewportZoom => _viewportZoom;
+
+  set viewportOffset(Offset offset) {
+    _viewportOffset = offset;
+    eventBus.emit(
+      ViewportOffsetEvent(
+        id: const Uuid().v4(),
+        _viewportOffset,
+        animate: false,
+        isHandled: true,
+      ),
+    );
+  }
+
+  set viewportZoom(double zoom) {
+    _viewportZoom = zoom;
+    eventBus.emit(
+      ViewportZoomEvent(
+        id: const Uuid().v4(),
+        _viewportZoom,
+        isHandled: true,
+      ),
+    );
+  }
 
   void setViewportOffset(
     Offset coords, {
     bool animate = true,
     bool absolute = false,
+    bool isHandled = false,
   }) {
     if (absolute) {
-      viewportOffset = coords;
+      _viewportOffset = coords;
     } else {
-      viewportOffset += coords;
+      _viewportOffset += coords;
     }
 
-    eventBus.emit(ViewportOffsetEvent(viewportOffset, animate: animate));
+    eventBus.emit(
+      ViewportOffsetEvent(
+        id: const Uuid().v4(),
+        _viewportOffset,
+        animate: animate,
+        isHandled: isHandled,
+      ),
+    );
   }
 
-  void setViewportZoom(double amount, {bool animate = true}) {
-    viewportZoom = amount;
-    eventBus.emit(ViewportZoomEvent(viewportZoom));
+  void setViewportZoom(
+    double amount, {
+    bool animate = true,
+    bool isHandled = false,
+  }) {
+    _viewportZoom = amount;
+
+    eventBus.emit(
+      ViewportZoomEvent(
+        id: const Uuid().v4(),
+        _viewportZoom,
+        isHandled: isHandled,
+      ),
+    );
   }
 
   // Nodes, links and groups
@@ -139,10 +140,10 @@ class FlNodeEditorController {
 
     // We sort the nodes list so that selected nodes are rendered on top of others.
     nodesList.sort((a, b) {
-      if (_selectedNodeIds.contains(a.id) && !_selectedNodeIds.contains(b.id)) {
+      if (selectedNodeIds.contains(a.id) && !selectedNodeIds.contains(b.id)) {
         return 1;
-      } else if (!_selectedNodeIds.contains(a.id) &&
-          _selectedNodeIds.contains(b.id)) {
+      } else if (!selectedNodeIds.contains(a.id) &&
+          selectedNodeIds.contains(b.id)) {
         return -1;
       } else {
         return 0;
@@ -189,76 +190,84 @@ class FlNodeEditorController {
       () => instance,
     );
 
-    eventBus.emit(AddNodeEvent(instance.id));
-
-    return instance;
-  }
-
-  NodeInstance addNodeFromInstance(
-    NodeInstance instance, {
-    bool isHandled = false,
-  }) {
-    _nodes.putIfAbsent(
-      instance.id,
-      () => instance,
+    eventBus.emit(
+      AddNodeEvent(id: const Uuid().v4(), instance),
     );
 
-    for (final port in instance.ports.values) {
-      for (final link in port.links) {
-        _renderLinks.putIfAbsent(
-          link.id,
-          () => link,
-        );
-      }
-    }
-
-    eventBus.emit(AddNodeEvent(instance.id, isHandled: isHandled));
-
     return instance;
   }
 
-  void removeNodes(Set<String> ids, {bool isHandled = false}) async {
-    if (ids.isEmpty) return;
+  void _addNodeFromExisting(
+    NodeInstance node, {
+    bool isHandled = false,
+    String? eventId,
+  }) {
+    if (_nodes.containsKey(node.id)) return;
 
-    // Collect all links associated with the nodes to be removed
-    final Set<String> linksToRemove = {};
+    _nodes.putIfAbsent(
+      node.id,
+      () => node,
+    );
 
-    for (final id in ids) {
-      for (final port in _nodes[id]!.ports.values) {
-        linksToRemove.addAll(port.links.map((link) => link.id));
+    eventBus.emit(
+      AddNodeEvent(
+        id: eventId ?? const Uuid().v4(),
+        node,
+        isHandled: isHandled,
+      ),
+    );
+
+    for (final port in node.ports.values) {
+      for (final link in port.links) {
+        _addLinkFromExisting(link, isHandled: isHandled);
+      }
+    }
+  }
+
+  void removeNode(
+    String id, {
+    String? eventId,
+    bool isHandled = false,
+  }) async {
+    if (!_nodes.containsKey(id)) return;
+
+    final node = _nodes[id]!;
+
+    for (final port in node.ports.values) {
+      final linksToRemove = port.links.map((link) => link.id).toList();
+
+      for (final linkId in linksToRemove) {
+        removeLinkById(linkId, isHandled: true);
       }
     }
 
-    // Remove the links associated with the nodes
-    for (final linkId in linksToRemove) {
-      removeLinkById(linkId, isHandled: true);
-    }
+    _spatialHashGrid.remove(id);
+    _nodes.remove(id);
 
-    // Remove the nodes themselves
-    for (final id in ids) {
-      if (_nodes.containsKey(id)) {
-        _spatialHashGrid.remove(id);
-        _nodes.remove(id);
-      }
-    }
-
-    // Emit the event after the cleanup is complete
-    eventBus.emit(RemoveNodesEvent(ids, isHandled: isHandled));
+    eventBus.emit(
+      RemoveNodeEvent(
+        id: eventId ?? const Uuid().v4(),
+        node,
+        isHandled: isHandled,
+      ),
+    );
   }
 
   Link? addLink(
     String fromNodeId,
     String fromPortId,
     String toNodeId,
-    String toPortId,
-  ) {
+    String toPortId, {
+    String? eventId,
+  }) {
+    if (fromPortId == toPortId) return null;
+
     final fromPort = _nodes[fromNodeId]!.ports[fromPortId]!;
     final toPort = _nodes[toNodeId]!.ports[toPortId]!;
 
     if (fromPort.isInput == toPort.isInput) return null;
-
-    if (fromPort.links.isNotEmpty && !fromPort.allowMultipleLinks) return null;
-    if (toPort.links.isNotEmpty && !toPort.allowMultipleLinks) return null;
+    if (fromPort.links.length > 1 && !fromPort.allowMultipleLinks) return null;
+    if (toPort.links.length > 1 && !toPort.allowMultipleLinks) return null;
 
     for (final link in toPort.links) {
       if (link.fromTo.item1 == fromNodeId && link.fromTo.item2 == fromPortId) {
@@ -279,13 +288,59 @@ class FlNodeEditorController {
       () => link,
     );
 
-    eventBus.emit(AddLinkEvent(link.id));
+    eventBus.emit(
+      AddLinkEvent(id: eventId ?? const Uuid().v4(), link),
+    );
 
     return link;
   }
 
-  void removeLinkById(String linkId, {bool isHandled = false}) {
-    final link = _renderLinks[linkId]!;
+  void _addLinkFromExisting(
+    Link link, {
+    String? eventId,
+    bool isHandled = false,
+  }) {
+    if (!_nodes.containsKey(link.fromTo.item1) ||
+        !_nodes.containsKey(link.fromTo.item3)) {
+      return;
+    }
+
+    final fromNode = _nodes[link.fromTo.item1]!;
+    final toNode = _nodes[link.fromTo.item3]!;
+
+    if (!fromNode.ports.containsKey(link.fromTo.item2) ||
+        !toNode.ports.containsKey(link.fromTo.item4)) {
+      return;
+    }
+
+    final fromPort = _nodes[link.fromTo.item1]!.ports[link.fromTo.item2]!;
+    final toPort = _nodes[link.fromTo.item3]!.ports[link.fromTo.item4]!;
+
+    fromPort.links.add(link);
+    toPort.links.add(link);
+
+    _renderLinks.putIfAbsent(
+      link.id,
+      () => link,
+    );
+
+    eventBus.emit(
+      AddLinkEvent(
+        id: eventId ?? const Uuid().v4(),
+        link,
+        isHandled: isHandled,
+      ),
+    );
+  }
+
+  void removeLinkById(
+    String id, {
+    String? eventId,
+    bool isHandled = false,
+  }) {
+    if (!_renderLinks.containsKey(id)) return;
+
+    final link = _renderLinks[id]!;
 
     // Remove the link from its associated ports
     final fromPort = _nodes[link.fromTo.item1]?.ports[link.fromTo.item2];
@@ -294,9 +349,15 @@ class FlNodeEditorController {
     fromPort?.links.remove(link);
     toPort?.links.remove(link);
 
-    _renderLinks.remove(linkId);
+    _renderLinks.remove(id);
 
-    eventBus.emit(RemoveLinksEvent(linkId, isHandled: isHandled));
+    eventBus.emit(
+      RemoveLinkEvent(
+        id: eventId ?? const Uuid().v4(),
+        link,
+        isHandled: isHandled,
+      ),
+    );
   }
 
   // This is used for rendering purposes only. For computation, use the links list in the Port class.
@@ -308,26 +369,28 @@ class FlNodeEditorController {
 
   void drawTempLink(Offset from, Offset to) {
     _renderTempLink = Tuple2(from, to);
-    eventBus.emit(DrawTempLinkEvent(from, to));
+    eventBus.emit(DrawTempLinkEvent(id: const Uuid().v4(), from, to));
   }
 
   void clearTempLink() {
     _renderTempLink = null;
-    eventBus.emit(DrawTempLinkEvent(Offset.zero, Offset.zero));
+    eventBus.emit(
+      DrawTempLinkEvent(id: const Uuid().v4(), Offset.zero, Offset.zero),
+    );
   }
 
   void breakPortLinks(String nodeId, String portId, {bool isHandled = false}) {
-    final node = _nodes[nodeId]!;
-    final port = node.ports[portId]!;
+    if (!_nodes.containsKey(nodeId)) return;
+    if (!_nodes[nodeId]!.ports.containsKey(portId)) return;
+
+    final port = _nodes[nodeId]!.ports[portId]!;
 
     // Collect all link IDs associated with the port
-    final linkIds = port.links.map((link) => link.id).toList();
+    final linksToRemove = port.links.map((link) => link.id).toList();
 
-    for (final linkId in linkIds) {
+    for (final linkId in linksToRemove) {
       removeLinkById(linkId, isHandled: true);
     }
-
-    eventBus.emit(RemoveLinksEvent('$nodeId-$portId', isHandled: isHandled));
   }
 
   void setFieldData(
@@ -336,16 +399,18 @@ class FlNodeEditorController {
     dynamic data,
     required FieldEventType eventType,
   }) {
+    if (eventType == FieldEventType.change) return;
+
     final node = _nodes[nodeId]!;
     final field = node.fields[fieldId]!;
     field.data = data;
 
     eventBus.emit(
       NodeFieldEvent(
-        fieldId,
+        id: const Uuid().v4(),
+        nodeId,
         data,
         eventType,
-        isUndoable: eventType == FieldEventType.cancel ? false : true,
       ),
     );
   }
@@ -361,7 +426,7 @@ class FlNodeEditorController {
       node?.state.isCollapsed = true;
     }
 
-    eventBus.emit(CollapseNodeEvent(_selectedNodeIds));
+    eventBus.emit(CollapseNodeEvent(id: const Uuid().v4(), _selectedNodeIds));
   }
 
   void expandSelectedNodes() {
@@ -370,7 +435,7 @@ class FlNodeEditorController {
       node?.state.isCollapsed = false;
     }
 
-    eventBus.emit(CollapseNodeEvent(_selectedNodeIds));
+    eventBus.emit(CollapseNodeEvent(id: const Uuid().v4(), _selectedNodeIds));
   }
 
   // Selection
@@ -380,16 +445,33 @@ class FlNodeEditorController {
   Set<String> get selectedNodeIds => _selectedNodeIds;
   Rect get selectionArea => _selectionArea;
 
-  void dragSelection(Offset delta) {
-    eventBus.emit(DragSelectionEvent(_selectedNodeIds.toSet(), delta));
+  void dragSelection(Offset delta, {String? eventId}) {
+    if (_selectedNodeIds.isEmpty) return;
+
+    for (final id in _selectedNodeIds) {
+      final node = _nodes[id];
+      node?.offset += delta / _viewportZoom;
+    }
+
+    eventBus.emit(
+      DragSelectionEvent(
+        id: eventId ?? const Uuid().v4(),
+        _selectedNodeIds.toSet(),
+        delta / _viewportZoom,
+      ),
+    );
   }
 
   void setSelectionArea(Rect area) {
     _selectionArea = area;
-    eventBus.emit(SelectionAreaEvent(area));
+    eventBus.emit(SelectionAreaEvent(id: const Uuid().v4(), area));
   }
 
-  void selectNodesById(Set<String> ids, {bool holdSelection = false}) async {
+  void selectNodesById(
+    Set<String> ids, {
+    bool holdSelection = false,
+    bool isHandled = false,
+  }) async {
     if (ids.isEmpty) {
       clearSelection();
       return;
@@ -411,7 +493,9 @@ class FlNodeEditorController {
       node?.state.isSelected = true;
     }
 
-    eventBus.emit(SelectionEvent(_selectedNodeIds.toSet()));
+    eventBus.emit(
+      SelectionEvent(id: const Uuid().v4(), _selectedNodeIds.toSet()),
+    );
   }
 
   void selectNodesByArea({bool holdSelection = false}) async {
@@ -429,18 +513,12 @@ class FlNodeEditorController {
     _selectedNodeIds.clear();
 
     eventBus.emit(
-      SelectionEvent(_selectedNodeIds.toSet(), isHandled: isHandled),
+      SelectionEvent(
+        id: const Uuid().v4(),
+        _selectedNodeIds.toSet(),
+        isHandled: isHandled,
+      ),
     );
-  }
-
-  void _clearAll() {
-    _nodes.clear();
-    _spatialHashGrid.clear();
-    _selectedNodeIds.clear();
-    _renderLinks.clear();
-    viewportOffset = Offset.zero;
-    viewportZoom = 1.0;
-    _selectionArea = Rect.zero;
   }
 
   void focusNodesById(Set<String> ids) {
@@ -478,8 +556,8 @@ class FlNodeEditorController {
   }
 
   // Clipboard
-  Future copySelection() async {
-    if (_selectedNodeIds.isEmpty) return;
+  Future<String> copySelection() async {
+    if (_selectedNodeIds.isEmpty) return '';
 
     final encompassingRect =
         _calculateEncompassingRect(_selectedNodeIds, _nodes);
@@ -494,7 +572,7 @@ class FlNodeEditorController {
         final deepCopiedLinks = port.links.where((link) {
           return _selectedNodeIds.contains(link.fromTo.item1) &&
               _selectedNodeIds.contains(link.fromTo.item3);
-        }).toList();
+        }).toSet();
 
         return MapEntry(
           portId,
@@ -518,6 +596,8 @@ class FlNodeEditorController {
       'Nodes copied to clipboard.',
       SnackbarType.success,
     );
+
+    return base64Data;
   }
 
   void pasteSelection({Offset? position}) async {
@@ -541,8 +621,8 @@ class FlNodeEditorController {
       final viewportSize = getSizeFromGlobalKey(kNodeEditorWidgetKey)!;
 
       position = Rect.fromLTWH(
-        -viewportOffset.dx - viewportSize.width / 2,
-        -viewportOffset.dy - viewportSize.height / 2,
+        -_viewportOffset.dx - viewportSize.width / 2,
+        -_viewportOffset.dy - viewportSize.height / 2,
         viewportSize.width,
         viewportSize.height,
       ).center;
@@ -560,61 +640,187 @@ class FlNodeEditorController {
     // Called on each paste, see [FlNodeEditorController._mapToNewIds] for more info.
     final newIds = await _mapToNewIds(instances);
 
-    for (final instance in instances) {
-      addNodeFromInstance(
-        isHandled: true,
-        instance.copyWith(
-          id: newIds[instance.id],
-          offset: instance.offset + position,
-          fields: instance.fields.map((key, field) {
-            return MapEntry(
-              newIds[field.id]!,
-              field.copyWith(id: newIds[field.id]),
-            );
-          }),
-          ports: instance.ports.map((key, port) {
-            return MapEntry(
-              newIds[port.id]!,
-              port.copyWith(
-                id: newIds[port.id]!,
-                links: port.links.map((link) {
-                  return link.copyWith(
-                    id: newIds[link.id],
-                    fromTo: Tuple4(
-                      newIds[link.fromTo.item1]!,
-                      newIds[link.fromTo.item2]!,
-                      newIds[link.fromTo.item3]!,
-                      newIds[link.fromTo.item4]!,
-                    ),
-                  );
-                }).toList(),
-              ),
-            );
-          }),
-        ),
+    final deepCopiedNodes = instances.map((instance) {
+      return instance.copyWith(
+        id: newIds[instance.id],
+        offset: instance.offset + position!,
+        fields: instance.fields.map((key, field) {
+          return MapEntry(
+            newIds[field.id]!,
+            field.copyWith(id: newIds[field.id]),
+          );
+        }),
+        ports: instance.ports.map((key, port) {
+          return MapEntry(
+            newIds[port.id]!,
+            port.copyWith(
+              id: newIds[port.id]!,
+              links: port.links.map((link) {
+                return link.copyWith(
+                  id: newIds[link.id],
+                  fromTo: Tuple4(
+                    newIds[link.fromTo.item1]!,
+                    newIds[link.fromTo.item2]!,
+                    newIds[link.fromTo.item3]!,
+                    newIds[link.fromTo.item4]!,
+                  ),
+                );
+              }).toSet(),
+            ),
+          );
+        }),
       );
+    }).toList();
+
+    for (final node in deepCopiedNodes) {
+      _addNodeFromExisting(node, isHandled: true);
     }
 
-    eventBus.emit(PasteSelectionEvent(newIds.values.toSet(), position));
+    eventBus.emit(
+      PasteSelectionEvent(
+        id: const Uuid().v4(),
+        position,
+        clipboardData.text!,
+      ),
+    );
   }
 
   void cutSelection() async {
-    await copySelection();
-    removeNodes(_selectedNodeIds, isHandled: true);
+    final clipboardContent = await copySelection();
+    for (final id in selectedNodeIds) {
+      removeNode(id, isHandled: true);
+    }
     clearSelection(isHandled: true);
 
-    eventBus.emit(CutSelectionEvent(_selectedNodeIds));
+    eventBus.emit(
+      CutSelectionEvent(
+        id: const Uuid().v4(),
+        clipboardContent,
+      ),
+    );
+  }
+
+  // History
+  bool _isTraversingHistory = false;
+  final _undoStack = Stack<NodeEditorEvent>(kMaxEventUndoHistory);
+  final _redoStack = Stack<NodeEditorEvent>(kMaxEventRedoHistory);
+
+  void _handleUndoableEvents(NodeEditorEvent event) {
+    if (!event.isUndoable || _isTraversingHistory) return;
+
+    final previousEvent = _undoStack.peek();
+    final nextEvent = _redoStack.peek();
+
+    if (event.id != previousEvent?.id && event.id != nextEvent?.id) {
+      _redoStack.clear();
+    } else {
+      return;
+    }
+
+    if (event is DragSelectionEvent && previousEvent is DragSelectionEvent) {
+      if (event.nodeIds.length == previousEvent.nodeIds.length &&
+          event.nodeIds.every(previousEvent.nodeIds.contains)) {
+        _undoStack.pop();
+        _undoStack.push(
+          DragSelectionEvent(
+            id: event.id,
+            event.nodeIds,
+            event.delta + previousEvent.delta,
+          ),
+        );
+        return;
+      }
+    }
+
+    _undoStack.push(event);
+  }
+
+  void undo() {
+    if (_undoStack.isEmpty) return;
+
+    _isTraversingHistory = true;
+    final event = _undoStack.pop()!;
+    _redoStack.push(event);
+
+    try {
+      if (event is DragSelectionEvent) {
+        selectNodesById(event.nodeIds, isHandled: true);
+        dragSelection(-event.delta, eventId: event.id);
+        clearSelection();
+      } else if (event is AddNodeEvent) {
+        removeNode(event.node.id, eventId: event.id);
+      } else if (event is RemoveNodeEvent) {
+        _addNodeFromExisting(event.node, eventId: event.id);
+      } else if (event is AddLinkEvent) {
+        removeLinkById(event.link.id, eventId: event.id);
+      } else if (event is RemoveLinkEvent) {
+        _addLinkFromExisting(event.link, eventId: event.id);
+      }
+    } finally {
+      _isTraversingHistory = false;
+    }
+  }
+
+  void redo() {
+    if (_redoStack.isEmpty) return;
+
+    _isTraversingHistory = true;
+    final event = _redoStack.pop()!;
+    _undoStack.push(event);
+
+    try {
+      if (event is DragSelectionEvent) {
+        selectNodesById(event.nodeIds, isHandled: true);
+        dragSelection(event.delta, eventId: event.id);
+        clearSelection();
+      } else if (event is AddNodeEvent) {
+        _addNodeFromExisting(event.node, eventId: event.id);
+      } else if (event is RemoveNodeEvent) {
+        removeNode(event.node.id, eventId: event.id);
+      } else if (event is AddLinkEvent) {
+        _addLinkFromExisting(event.link, eventId: event.id);
+      } else if (event is RemoveLinkEvent) {
+        removeLinkById(
+          event.link.id,
+          eventId: event.id,
+        );
+      }
+    } finally {
+      _isTraversingHistory = false;
+    }
   }
 
   // Serialization and deserialization
+  bool _isSaved = true;
+  bool get isSaved => _isSaved;
+
+  void _handleProjectEvents(NodeEditorEvent event) {
+    if (event.isUndoable) _isSaved = false;
+
+    if (event is SaveProjectEvent) {
+      _isSaved = true;
+    } else if (event is LoadProjectEvent) {
+      _isSaved = true;
+      _undoStack.clear();
+      _redoStack.clear();
+    } else if (event is NewProjectEvent) {
+      _nodes.clear();
+      _spatialHashGrid.clear();
+      _selectedNodeIds.clear();
+      _renderLinks.clear();
+      _isSaved = true;
+      _undoStack.clear();
+      _redoStack.clear();
+    }
+  }
 
   Map<String, dynamic> _toJson() {
     final nodesJson = _nodes.values.map((node) => node.toJson()).toList();
 
     return {
       'viewport': {
-        'offset': [viewportOffset.dx, viewportOffset.dy],
-        'zoom': viewportZoom,
+        'offset': [_viewportOffset.dx, _viewportOffset.dy],
+        'zoom': _viewportZoom,
       },
       'nodes': nodesJson,
     };
@@ -625,33 +831,42 @@ class FlNodeEditorController {
 
     final viewportJson = json['viewport'] as Map<String, dynamic>;
 
-    viewportOffset = Offset(
+    _viewportOffset = Offset(
       viewportJson['offset'][0] as double,
       viewportJson['offset'][1] as double,
     );
-    viewportZoom = viewportJson['zoom'] as double;
 
-    setViewportOffset(viewportOffset, absolute: true, animate: false);
-    setViewportZoom(viewportZoom, animate: false);
+    setViewportOffset(_viewportOffset, absolute: true);
+
+    _viewportZoom = viewportJson['zoom'] as double;
+
+    setViewportZoom(_viewportZoom);
 
     final nodesJson = json['nodes'] as List<dynamic>;
 
-    for (final nodeJson in nodesJson) {
-      final node = NodeInstance.fromJson(
-        nodeJson,
+    final node = nodesJson.map((node) {
+      return NodeInstance.fromJson(
+        node,
         prototypes: _nodePrototypes,
         onRendered: _onRenderedCallback,
       );
+    }).toSet();
 
-      addNodeFromInstance(node, isHandled: true);
+    for (final node in node) {
+      _addNodeFromExisting(node, isHandled: true);
     }
   }
 
-  void saveProject() {
+  void saveProject() async {
     final jsonData = _toJson();
-    projectSaver?.call(jsonData);
-    eventBus.emit(SaveProjectEvent());
-    eventBus._isSaved = true;
+    if (jsonData.isEmpty) return;
+
+    final hasSaved = await projectSaver?.call(jsonData);
+    if (hasSaved == false) return;
+
+    _isSaved = true;
+
+    eventBus.emit(SaveProjectEvent(id: const Uuid().v4()));
 
     showNodeEditorSnackbar(
       'Project saved successfully.',
@@ -660,7 +875,7 @@ class FlNodeEditorController {
   }
 
   void loadProject() async {
-    final jsonData = await projectLoader?.call(eventBus._isSaved);
+    final jsonData = await projectLoader?.call(isSaved);
 
     if (jsonData == null) {
       showNodeEditorSnackbar(
@@ -670,9 +885,14 @@ class FlNodeEditorController {
       return;
     }
 
-    _clearAll();
+    _nodes.clear();
+    _spatialHashGrid.clear();
+    _selectedNodeIds.clear();
+    _renderLinks.clear();
+
     _fromJson(jsonData);
-    eventBus.emit(LoadProjectEvent());
+
+    eventBus.emit(LoadProjectEvent(id: const Uuid().v4()));
 
     showNodeEditorSnackbar(
       'Project loaded successfully.',
@@ -681,12 +901,11 @@ class FlNodeEditorController {
   }
 
   void newProject() async {
-    final shouldProceed = await projectCreator?.call(eventBus._isSaved);
+    final shouldProceed = await projectCreator?.call(isSaved);
 
-    if (shouldProceed == true) {
-      _clearAll();
-      eventBus.emit(NewProjectEvent());
-    }
+    if (shouldProceed == false) return;
+
+    eventBus.emit(NewProjectEvent(id: const Uuid().v4()));
 
     showNodeEditorSnackbar(
       'New project created successfully.',

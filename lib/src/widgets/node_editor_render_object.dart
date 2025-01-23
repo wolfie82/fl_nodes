@@ -1,5 +1,6 @@
 import 'dart:ui' as ui;
 
+import 'package:fl_nodes/src/core/controllers/node_editor_config.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -17,7 +18,7 @@ class NodeParentData extends ContainerBoxParentData<RenderBox> {
 
 class NodeEditorRenderObjectWidget extends MultiChildRenderObjectWidget {
   final FlNodeEditorController controller;
-  final NodeEditorBehavior behavior;
+  final NodeEditorConfig behavior;
   final FlNodeEditorStyle style;
 
   NodeEditorRenderObjectWidget({
@@ -96,7 +97,7 @@ class NodeEditorRenderBox extends RenderBox
         RenderBoxContainerDefaultsMixin<RenderBox, NodeParentData> {
   NodeEditorRenderBox({
     required FlNodeEditorStyle style,
-    required NodeEditorBehavior behavior,
+    required NodeEditorConfig behavior,
     required Offset offset,
     required double zoom,
     required Tuple2<Offset, Offset>? tempLink,
@@ -113,9 +114,9 @@ class NodeEditorRenderBox extends RenderBox
     shouldUpdateNodes(nodesData);
   }
 
-  NodeEditorBehavior _behavior;
-  NodeEditorBehavior get behavior => _behavior;
-  set behavior(NodeEditorBehavior value) {
+  NodeEditorConfig _behavior;
+  NodeEditorConfig get behavior => _behavior;
+  set behavior(NodeEditorConfig value) {
     if (_behavior == value) return;
     _behavior = value;
     markNeedsPaint();
@@ -359,6 +360,20 @@ class NodeEditorRenderBox extends RenderBox
     canvas.drawRect(viewport, debugPaint);
   }
 
+  @visibleForTesting
+  void paintDebugOffset(Canvas canvas, Size size) {
+    final Paint debugPaint = Paint()
+      ..color = Colors.green.withAlpha(200)
+      ..style = PaintingStyle.fill;
+
+    // Draw the offset point
+    canvas.drawCircle(Offset.zero, 5, debugPaint);
+  }
+
+  double _calculateStart(double viewportEdge, double gridSpacing) {
+    return (viewportEdge / gridSpacing).floor() * gridSpacing;
+  }
+
   void _paintLinks(Canvas canvas) {
     void paintLinksAsBeziers(Canvas canvas) {
       for (final link in linkPositions) {
@@ -519,20 +534,6 @@ class NodeEditorRenderBox extends RenderBox
       ..strokeWidth = 0.5;
 
     canvas.drawRect(selectionArea, borderPaint);
-  }
-
-  @visibleForTesting
-  void paintDebugOffset(Canvas canvas, Size size) {
-    final Paint debugPaint = Paint()
-      ..color = Colors.green.withAlpha(200)
-      ..style = PaintingStyle.fill;
-
-    // Draw the offset point
-    canvas.drawCircle(Offset.zero, 5, debugPaint);
-  }
-
-  double _calculateStart(double viewportEdge, double gridSpacing) {
-    return (viewportEdge / gridSpacing).floor() * gridSpacing;
   }
 
   @override

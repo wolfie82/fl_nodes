@@ -40,14 +40,14 @@ class _NodeWidgetState extends State<NodeWidget> {
   Timer? _edgeTimer;
   Tuple2<String, String>? _tempLink;
 
-  double get _zoom => widget.controller.viewportZoom;
-  Offset get _offset => widget.controller.viewportOffset;
+  double get viewportZoom => widget.controller.viewportZoom;
+  Offset get viewportOffset => widget.controller.viewportOffset;
 
   @override
   void initState() {
     super.initState();
 
-    _handleControllerEvents();
+    widget.controller.eventBus.events.listen(_handleControllerEvents);
   }
 
   @override
@@ -56,38 +56,35 @@ class _NodeWidgetState extends State<NodeWidget> {
     super.dispose();
   }
 
-  void _handleControllerEvents() {
-    widget.controller.eventBus.events.listen((event) {
-      if (event.isHandled || !mounted) return;
+  void _handleControllerEvents(NodeEditorEvent event) {
+    if (!mounted || event.isHandled) return;
 
-      if (event is SelectionEvent) {
-        if (event.ids.contains(widget.node.id)) {
-          setState(() {
-            widget.node.state.isSelected = true;
-          });
-        } else {
-          setState(() {
-            widget.node.state.isSelected = false;
-          });
-        }
-      } else if (event is DragSelectionEvent) {
-        if (event.ids.contains(widget.node.id)) {
-          setState(() {
-            widget.node.offset += event.delta / widget.controller.viewportZoom;
-          });
-        }
-      } else if (event is NodeFieldEvent &&
-          event.id == widget.node.id &&
-          event.eventType == FieldEventType.submit) {
+    if (event is SelectionEvent) {
+      if (event.nodeIds.contains(widget.node.id)) {
+        setState(() {
+          widget.node.state.isSelected = true;
+        });
+      } else {
+        setState(() {
+          widget.node.state.isSelected = false;
+        });
+      }
+    } else if (event is DragSelectionEvent) {
+      if (event.nodeIds.contains(widget.node.id)) {
         setState(() {});
       }
-    });
+    } else if (event is NodeFieldEvent &&
+        event.nodeId == widget.node.id &&
+        event.eventType == FieldEventType.submit) {
+      setState(() {});
+    }
   }
 
   void _startEdgeTimer(Offset position) {
-    const edgeThreshold = 50.0; // Distance from edge to start moving
-    final moveAmount =
-        5.0 / widget.controller.viewportZoom; // Amount to move per frame
+    // Distance from edge to start moving
+    const edgeThreshold = 50.0;
+    // Amount to move per frame
+    final moveAmount = 5.0 / widget.controller.viewportZoom;
 
     final editorBounds = getEditorBoundsInScreen(kNodeEditorWidgetKey);
     if (editorBounds == null) return;
@@ -114,7 +111,7 @@ class _NodeWidgetState extends State<NodeWidget> {
       if (dx != 0 || dy != 0) {
         widget.controller.dragSelection(Offset(dx, dy));
         widget.controller.setViewportOffset(
-          Offset(-dx / _zoom, -dy / _zoom),
+          Offset(-dx / viewportZoom, -dy / viewportZoom),
           animate: false,
         );
       }
@@ -128,8 +125,8 @@ class _NodeWidgetState extends State<NodeWidget> {
   Tuple2<String, String>? _isNearPort(Offset position) {
     final worldPosition = screenToWorld(
       position,
-      _offset,
-      _zoom,
+      viewportOffset,
+      viewportZoom,
     );
 
     final near = Rect.fromCenter(
@@ -166,8 +163,8 @@ class _NodeWidgetState extends State<NodeWidget> {
   void _onLinkUpdate(Offset position) {
     final worldPosition = screenToWorld(
       position,
-      _offset,
-      _zoom,
+      viewportOffset,
+      viewportZoom,
     );
 
     final nodeOffset = widget.controller.nodes[_tempLink!.item1]!.offset;
@@ -249,11 +246,13 @@ class _NodeWidgetState extends State<NodeWidget> {
           icon: Icons.delete,
           onSelected: () {
             if (widget.node.state.isSelected) {
-              widget.controller.removeNodes(
-                widget.controller.selectedNodeIds,
-              );
+              for (final nodeId in widget.controller.selectedNodeIds) {
+                widget.controller.removeNode(nodeId);
+              }
             } else {
-              widget.controller.removeNodes({widget.node.id});
+              for (final nodeId in widget.controller.selectedNodeIds) {
+                widget.controller.removeNode(nodeId);
+              }
             }
             widget.controller.clearSelection();
           },
@@ -314,8 +313,8 @@ class _NodeWidgetState extends State<NodeWidget> {
 
       final worldPosition = screenToWorld(
         position,
-        _offset,
-        _zoom,
+        viewportOffset,
+        viewportZoom,
       );
 
       return compatiblePrototypes.map((entry) {

@@ -15,12 +15,11 @@ import 'package:fl_nodes/src/core/utils/platform.dart';
 import 'package:fl_nodes/src/core/utils/renderbox.dart';
 import 'package:fl_nodes/src/utils/context_menu.dart';
 import 'package:fl_nodes/src/utils/improved_listener.dart';
+import 'package:fl_nodes/src/widgets/debug_info.dart';
 import 'package:fl_nodes/src/widgets/node_editor_render_object.dart';
 
 import '../core/controllers/node_editor_events.dart';
 import '../core/utils/constants.dart';
-
-import 'debug_info.dart';
 
 class FlOverlayData {
   final Widget child;
@@ -88,12 +87,7 @@ class FlNodeEditorWidget extends StatelessWidget {
               ),
             ),
           ),
-          if (kDebugMode)
-            DebugInfoWidget(
-              offset: controller.viewportOffset,
-              zoom: controller.viewportZoom,
-              selectionCount: controller.selectedNodeIds.length,
-            ),
+          if (kDebugMode) DebugInfoWidget(controller: controller),
         ],
       ),
     );
@@ -168,7 +162,7 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
   void initState() {
     super.initState();
 
-    _handleControllerEvents();
+    widget.controller.eventBus.events.listen(_handleControllerEvents);
 
     _offsetAnimationController = AnimationController(vsync: this);
     _zoomAnimationController = AnimationController(vsync: this);
@@ -186,36 +180,38 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
     super.dispose();
   }
 
-  void _handleControllerEvents() {
-    widget.controller.eventBus.events.listen((event) {
-      if (event.isHandled || !mounted) return;
+  void _handleControllerEvents(NodeEditorEvent event) {
+    if (!mounted || event.isHandled) return;
 
-      if (event is ViewportOffsetEvent) {
-        _setOffset(event.offset, animate: event.animate);
-      } else if (event is ViewportZoomEvent) {
-        _setZoom(event.zoom, animate: event.animate);
-      } else if (event is DragSelectionEvent) {
+    if (event is ViewportOffsetEvent) {
+      _setOffset(event.offset, animate: event.animate);
+    } else if (event is ViewportZoomEvent) {
+      _setZoom(event.zoom, animate: event.animate);
+    } else if (event is DragSelectionEvent) {
+      setState(() {
         _suppressEvents();
-      } else if (event is AddNodeEvent ||
-          event is RemoveNodesEvent ||
-          event is RemoveLinksEvent ||
-          event is DrawTempLinkEvent ||
-          event is CutSelectionEvent) {
+      });
+    } else if (event is AddNodeEvent ||
+        event is RemoveNodeEvent ||
+        event is RemoveLinkEvent ||
+        event is DrawTempLinkEvent ||
+        event is CutSelectionEvent) {
+      setState(() {});
+    } else if (event is AddLinkEvent ||
+        event is PasteSelectionEvent ||
+        event is LoadProjectEvent ||
+        event is NewProjectEvent ||
+        event is CollapseNodeEvent ||
+        event is ExpandNodeEvent ||
+        event is NodeFieldEvent &&
+            (event.eventType == FieldEventType.submit ||
+                event.eventType == FieldEventType.cancel)) {
+      setState(() {});
+      // We delay the second setState to ensure that the UI has been built and  the keys updated
+      SchedulerBinding.instance.addPostFrameCallback((_) {
         setState(() {});
-      } else if (event is AddLinkEvent ||
-          event is PasteSelectionEvent ||
-          event is LoadProjectEvent ||
-          event is NewProjectEvent ||
-          event is CollapseNodeEvent ||
-          event is ExpandNodeEvent ||
-          event is NodeFieldEvent && event.eventType == FieldEventType.submit) {
-        setState(() {});
-        // We delay the second setState to ensure that the UI has been built and  the keys updated
-        SchedulerBinding.instance.addPostFrameCallback((_) {
-          setState(() {});
-        });
-      }
-    });
+      });
+    }
   }
 
   void _onDragStart() {
@@ -617,12 +613,11 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
             absolute: true,
           ),
         ),
-        if (_zoom != 1.0)
-          MenuItem(
-            label: 'Reset Zoom',
-            icon: _zoom < 1.0 ? Icons.zoom_in_map : Icons.zoom_out_map,
-            onSelected: () => widget.controller.setViewportZoom(1.0),
-          ),
+        MenuItem(
+          label: 'Reset Zoom',
+          icon: Icons.zoom_in,
+          onSelected: () => widget.controller.setViewportZoom(1.0),
+        ),
         const MenuDivider(),
         MenuItem.submenu(
           label: 'Create',
@@ -636,15 +631,36 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
               widget.controller.pasteSelection(position: worldPosition),
         ),
         const MenuDivider(),
-        MenuItem(
-          label: 'Undo',
-          icon: Icons.undo,
-          onSelected: () {},
-        ),
-        MenuItem(
-          label: 'Redo',
-          icon: Icons.redo,
-          onSelected: () {},
+        MenuItem.submenu(
+          label: 'Project',
+          icon: Icons.folder,
+          items: [
+            MenuItem(
+              label: 'Undo',
+              icon: Icons.undo,
+              onSelected: () => widget.controller.undo(),
+            ),
+            MenuItem(
+              label: 'Redo',
+              icon: Icons.redo,
+              onSelected: () => widget.controller.redo(),
+            ),
+            MenuItem(
+              label: 'Save',
+              icon: Icons.save,
+              onSelected: () => widget.controller.saveProject(),
+            ),
+            MenuItem(
+              label: 'Open',
+              icon: Icons.folder_open,
+              onSelected: () => widget.controller.loadProject(),
+            ),
+            MenuItem(
+              label: 'New',
+              icon: Icons.new_label,
+              onSelected: () => widget.controller.newProject(),
+            ),
+          ],
         ),
       ];
     }
@@ -683,18 +699,26 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
                   LogicalKeyboardKey.delete,
                   "Remove selected nodes",
                   () {
-                    widget.controller.removeNodes(
-                      widget.controller.selectedNodeIds,
-                    );
+                    for (final nodeId in widget.controller.selectedNodeIds) {
+                      widget.controller.removeNode(
+                        nodeId,
+                        isHandled:
+                            nodeId != widget.controller.selectedNodeIds.last,
+                      );
+                    }
                   },
                 ),
                 KeyAction(
                   LogicalKeyboardKey.backspace,
                   "Remove selected nodes",
                   () {
-                    widget.controller.removeNodes(
-                      widget.controller.selectedNodeIds,
-                    );
+                    for (final nodeId in widget.controller.selectedNodeIds) {
+                      widget.controller.removeNode(
+                        nodeId,
+                        isHandled:
+                            nodeId != widget.controller.selectedNodeIds.last,
+                      );
+                    }
                     widget.controller.clearSelection();
                   },
                 ),
@@ -734,6 +758,18 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
                   () => widget.controller.newProject(),
                   isControlPressed: true,
                   isShiftPressed: true,
+                ),
+                KeyAction(
+                  LogicalKeyboardKey.keyZ,
+                  "Undo",
+                  () => widget.controller.undo(),
+                  isControlPressed: true,
+                ),
+                KeyAction(
+                  LogicalKeyboardKey.keyY,
+                  "Redo",
+                  () => widget.controller.redo(),
+                  isControlPressed: true,
                 ),
               ],
               child: MouseRegion(
