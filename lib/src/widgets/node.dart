@@ -13,8 +13,8 @@ import 'package:fl_nodes/src/core/controllers/node_editor/node_editor_main.dart'
 import 'package:fl_nodes/src/utils/context_menu.dart';
 import 'package:fl_nodes/src/utils/improved_listener.dart';
 
-import '../core/models/events.dart';
 import '../core/models/entities.dart';
+import '../core/models/events.dart';
 import '../core/utils/constants.dart';
 import '../core/utils/platform.dart';
 import '../core/utils/renderbox.dart';
@@ -300,7 +300,8 @@ class _NodeWidgetState extends State<NodeWidget> {
 
         widget.controller.nodePrototypes.forEach(
           (key, value) {
-            if (value.ports.any((port) => port.isInput != startPort.isInput)) {
+            if (value.ports
+                .any((port) => port.portType != startPort.portType)) {
               compatiblePrototypes.add(MapEntry(key, value));
             }
           },
@@ -338,7 +339,7 @@ class _NodeWidgetState extends State<NodeWidget> {
                 addedNode.id,
                 addedNode.ports.entries
                     .firstWhere(
-                      (element) => element.value.isInput != startPort.isInput,
+                      (element) => element.value.portType != startPort.portType,
                     )
                     .value
                     .id,
@@ -665,8 +666,9 @@ class _NodeWidgetState extends State<NodeWidget> {
     }
 
     return Row(
-      mainAxisAlignment:
-          port.isInput ? MainAxisAlignment.start : MainAxisAlignment.end,
+      mainAxisAlignment: port.portType == PortType.input
+          ? MainAxisAlignment.start
+          : MainAxisAlignment.end,
       mainAxisSize: MainAxisSize.min,
       key: port.key,
       spacing: 4,
@@ -715,18 +717,20 @@ class _NodeWidgetState extends State<NodeWidget> {
             );
           }
 
+          final isInput = port.portType == PortType.input;
+
           port.offset = Offset(
-            port.isInput ? 0 : constraints.maxWidth,
+            isInput ? 0 : constraints.maxWidth,
             relativeOffset.dy + portBox.size.height / 2,
           );
 
           return CustomPaint(
             painter: _PortDotPainter(
               position: Offset(
-                port.isInput ? 0 : constraints.maxWidth,
+                isInput ? 0 : constraints.maxWidth,
                 relativeOffset.dy + portBox.size.height / 2,
               ),
-              color: port.isInput ? Colors.purple[200]! : Colors.green[300]!,
+              color: isInput ? Colors.purple[200]! : Colors.green[300]!,
             ),
           );
         },

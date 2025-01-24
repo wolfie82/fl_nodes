@@ -254,30 +254,44 @@ class FlNodeEditorController {
   }
 
   Link? addLink(
-    String fromNodeId,
-    String fromPortId,
-    String toNodeId,
-    String toPortId, {
+    String node1Id,
+    String port1Id,
+    String node2Id,
+    String port2Id, {
     String? eventId,
   }) {
-    if (fromPortId == toPortId) return null;
+    if (port1Id == port2Id) return null;
 
-    final fromPort = _nodes[fromNodeId]!.ports[fromPortId]!;
-    final toPort = _nodes[toNodeId]!.ports[toPortId]!;
+    final port1 = _nodes[node1Id]!.ports[port1Id]!;
+    final port2 = _nodes[node2Id]!.ports[port2Id]!;
 
-    if (fromPort.isInput == toPort.isInput) return null;
-    if (fromPort.links.length > 1 && !fromPort.allowMultipleLinks) return null;
-    if (toPort.links.length > 1 && !toPort.allowMultipleLinks) return null;
+    if (port1.portType == port2.portType) return null;
+    if (port1.links.length > 1 && !port1.allowMultipleLinks ||
+        port2.links.length > 1 && !port2.allowMultipleLinks) {
+      return null;
+    }
+
+    late PortInstance fromPort;
+    late PortInstance toPort;
+
+    // Determine the direction of the link based on the port types as we're building a directed graph.
+    if (port1.portType == PortType.output) {
+      fromPort = port1;
+      toPort = port2;
+    } else {
+      fromPort = port2;
+      toPort = port1;
+    }
 
     for (final link in toPort.links) {
-      if (link.fromTo.item1 == fromNodeId && link.fromTo.item2 == fromPortId) {
+      if (link.fromTo.item1 == node1Id && link.fromTo.item2 == port1Id) {
         return null;
       }
     }
 
     final link = Link(
       id: const Uuid().v4(),
-      fromTo: Tuple4(fromNodeId, fromPortId, toNodeId, toPortId),
+      fromTo: Tuple4(node1Id, port1Id, node2Id, port2Id),
     );
 
     fromPort.links.add(link);

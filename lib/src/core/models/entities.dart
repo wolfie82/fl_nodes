@@ -1,9 +1,9 @@
-import 'package:fl_nodes/src/core/models/events.dart';
 import 'package:flutter/material.dart';
 
 import 'package:tuple/tuple.dart';
 import 'package:uuid/uuid.dart';
 
+import 'package:fl_nodes/src/core/models/events.dart';
 import 'package:fl_nodes/src/core/utils/serialization.dart';
 
 /// Entities are split in two categories: Prototypes and Instances.
@@ -122,19 +122,21 @@ final class Link {
   int get hashCode => id.hashCode ^ fromTo.hashCode;
 }
 
+enum PortType { input, output }
+
 /// A port prototype is the blueprint for a port instance.
 ///
 /// It defines the name, data type, direction, and if it allows multiple links.
 abstract class PortPrototype {
   final String name;
   final Type dataType;
-  final bool isInput;
+  final PortType portType;
   final bool allowMultipleLinks;
 
   PortPrototype({
     required this.name,
     this.dataType = dynamic,
-    required this.isInput,
+    required this.portType,
     this.allowMultipleLinks = true,
   });
 }
@@ -144,7 +146,7 @@ class InputPortPrototype extends PortPrototype {
     required super.name,
     super.dataType,
     super.allowMultipleLinks,
-  }) : super(isInput: true);
+  }) : super(portType: PortType.input);
 }
 
 class OutputPortPrototype extends PortPrototype {
@@ -152,7 +154,7 @@ class OutputPortPrototype extends PortPrototype {
     required super.name,
     super.dataType,
     super.allowMultipleLinks,
-  }) : super(isInput: false);
+  }) : super(portType: PortType.output);
 }
 
 /// A port is a connection point on a node.
@@ -163,7 +165,7 @@ final class PortInstance {
   final String name;
   dynamic data;
   final Type dataType;
-  final bool isInput;
+  final PortType portType;
   final bool allowMultipleLinks;
   Set<Link> links = {};
   Offset offset; // Determined by Flutter
@@ -174,7 +176,7 @@ final class PortInstance {
     required this.name,
     required this.data,
     required this.dataType,
-    required this.isInput,
+    required this.portType,
     required this.allowMultipleLinks,
     this.offset = Offset.zero,
   });
@@ -184,7 +186,6 @@ final class PortInstance {
       'id': id,
       'name': name,
       'data': data,
-      'isInput': isInput,
       'allowMultipleLinks': allowMultipleLinks,
       'links': links.map((link) => link.toJson()).toList(),
     };
@@ -199,7 +200,7 @@ final class PortInstance {
       name: json['name'],
       data: json['data'],
       dataType: prototype.dataType,
-      isInput: json['isInput'],
+      portType: prototype.portType,
       allowMultipleLinks: json['allowMultipleLinks'],
     );
 
@@ -215,7 +216,7 @@ final class PortInstance {
     String? name,
     dynamic data,
     Type? dataType,
-    bool? isInput,
+    PortType? portType,
     bool? allowMultipleLinks,
     Set<Link>? links,
     Offset? offset,
@@ -225,7 +226,7 @@ final class PortInstance {
       name: name ?? this.name,
       data: data ?? this.data,
       dataType: dataType ?? this.dataType,
-      isInput: isInput ?? this.isInput,
+      portType: portType ?? this.portType,
       allowMultipleLinks: allowMultipleLinks ?? this.allowMultipleLinks,
       offset: offset ?? this.offset,
     );
@@ -545,7 +546,7 @@ PortInstance createPort(PortPrototype prototype) {
     name: prototype.name,
     data: null,
     dataType: prototype.dataType,
-    isInput: prototype.isInput,
+    portType: prototype.portType,
     allowMultipleLinks: prototype.allowMultipleLinks,
   );
 }
