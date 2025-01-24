@@ -27,6 +27,12 @@ class FlNodeEditorClipboard {
 
   FlNodeEditorClipboard(this.controller);
 
+  /// Copies the selected nodes to the clipboard.
+  ///
+  /// The copied nodes are deep copied to avoid altering the original nodes in the
+  /// copyWith operations to reset the state of the nodes. The copied nodes are encoded
+  /// to JSON and then encoded to base64 (to avoid direct tampering with the JSON data)
+  /// and then copied to the clipboard.
   Future<String> copySelection() async {
     if (selectedNodeIds.isEmpty) return '';
 
@@ -70,6 +76,14 @@ class FlNodeEditorClipboard {
     return base64Data;
   }
 
+  /// Pastes the nodes from the clipboard to the node editor.
+  ///
+  /// The clipboard data is decoded from base64 and then decoded from JSON.
+  /// The JSON data is then used to create instances of the nodes. All entities
+  /// are then mapped to new IDs to avoid conflicts with existing nodes.
+  /// The nodes are then deep copied with the new IDs and added to the node editor.
+  ///
+  /// See [mapToNewIds] for more info on how the new IDs are generated.
   void pasteSelection({Offset? position}) async {
     final clipboardData = await Clipboard.getData('text/plain');
     if (clipboardData == null || clipboardData.text!.isEmpty) return;
@@ -155,6 +169,10 @@ class FlNodeEditorClipboard {
     );
   }
 
+  /// Cuts the selected nodes to the clipboard.
+  ///
+  /// The selected nodes are copied to the clipboard and then removed from the node editor.
+  /// The nodes are then removed from the node editor and the selection is cleared.
   void cutSelection() async {
     final clipboardContent = await copySelection();
     for (final id in selectedNodeIds) {
