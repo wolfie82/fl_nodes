@@ -13,10 +13,12 @@ import 'package:fl_nodes/src/core/models/events.dart';
 class NodeEditorEventBus {
   final _streamController = StreamController<NodeEditorEvent>.broadcast();
 
+  /// Emits an event to the event bus.
   void emit(NodeEditorEvent event) {
     _streamController.add(event);
   }
 
+  /// Closes the underlying stream controller.
   void close() {
     _streamController.close();
   }

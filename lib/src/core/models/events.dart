@@ -212,16 +212,16 @@ final class DrawTempLinkEvent extends NodeEditorEvent {
   });
 }
 
-final class CollapseNodeEvent extends NodeEditorEvent {
+final class NodeRenderModeEvent extends NodeEditorEvent {
+  final bool collpased;
   final Set<String> nodeIds;
 
-  const CollapseNodeEvent(this.nodeIds, {required super.id, super.isHandled});
-}
-
-final class ExpandNodeEvent extends NodeEditorEvent {
-  final Set<String> nodeIds;
-
-  const ExpandNodeEvent(this.nodeIds, {required super.id, super.isHandled});
+  const NodeRenderModeEvent(
+    this.collpased,
+    this.nodeIds, {
+    required super.id,
+    super.isHandled,
+  });
 }
 
 final class PasteSelectionEvent extends NodeEditorEvent {

@@ -52,17 +52,16 @@ class FlNodeEditorController {
     );
   }
 
+  /// This method is used to dispose of the node editor controller and all of its resources, subsystems and members.
   void dispose() {
     eventBus.close();
     history.clear();
     project.clear();
 
-    _nodes.clear();
-    _spatialHashGrid.clear();
-    _selectedNodeIds.clear();
-    _renderLinks.clear();
+    clear();
   }
 
+  /// This method is used to clear all members of the node editor controller.
   void clear() {
     _nodes.clear();
     _spatialHashGrid.clear();
@@ -74,6 +73,11 @@ class FlNodeEditorController {
   Offset viewportOffset = Offset.zero;
   double viewportZoom = 1.0;
 
+  /// This method is used to set the offset of the viewport.
+  ///
+  /// The 'animate' parameter is used to animate the transition to the new offset.
+  /// The 'absolute' parameter is used to choose whether the offset is added to the the current
+  /// offset or set as an absolute value. The 'isHandled' parameter is used to indicate whether
   void setViewportOffset(
     Offset coords, {
     bool animate = true,
@@ -96,6 +100,9 @@ class FlNodeEditorController {
     );
   }
 
+  /// This method is used to set the zoom level of the viewport.
+  ///
+  /// The 'animate' parameter is used to animate the zoom transition.
   void setViewportZoom(
     double amount, {
     bool animate = true,
@@ -142,6 +149,8 @@ class FlNodeEditorController {
   Map<String, NodeInstance> get nodes => _nodes;
   SpatialHashGrid get spatialHashGrid => _spatialHashGrid;
 
+  /// This method is used to register a node prototype with the node editor.
+  ///
   /// NOTE: node prototypes are identified by human-readable strings instead of UUIDs.
   void registerNodePrototype(NodePrototype name) {
     _nodePrototypes.putIfAbsent(
@@ -150,6 +159,8 @@ class FlNodeEditorController {
     );
   }
 
+  /// This method is used to remove a node prototype by its name.
+  ///
   /// NOTE: node prototypes are identified by human-readable strings instead of UUIDs.
   void unregisterNodePrototype(String name) {
     if (!_nodePrototypes.containsKey(name)) {
@@ -159,6 +170,16 @@ class FlNodeEditorController {
     }
   }
 
+  /// This method is used to add a [NodeInstance] to the node editor by its prototype name.
+  ///
+  /// The method takes the name of the node prototype and creates an instance of the node
+  /// based on the prototype. The method also takes an optional offset parameter to set the
+  /// initial position of the node in the node editor. The node is also inserted into the
+  /// spatial hash grid for efficient querying of nodes based on their positions
+  ///
+  /// See [SpatialHashGrid] and [selectNodesByArea].
+  ///
+  /// Emits an [AddNodeEvent] event.
   NodeInstance addNode(String name, {Offset? offset}) {
     if (!_nodePrototypes.containsKey(name)) {
       throw Exception('Node prototype $name does not exist.');
@@ -183,6 +204,12 @@ class FlNodeEditorController {
     return instance;
   }
 
+  /// This method is used to add a node from an existing node object.
+  ///
+  /// This method is used when loading a project from a file or in copy/paste operations
+  /// and preserves all properties of the node object.
+  ///
+  /// Emits an [AddNodeEvent] event.
   void addNodeFromExisting(
     NodeInstance node, {
     bool isHandled = false,
@@ -210,6 +237,9 @@ class FlNodeEditorController {
     }
   }
 
+  /// This method is used to remove a node by its ID.
+  ///
+  /// Emits a [RemoveNodeEvent] event.
   void removeNode(
     String id, {
     String? eventId,
@@ -239,6 +269,15 @@ class FlNodeEditorController {
     );
   }
 
+  /// This method is used to add a link between two ports.
+  ///
+  /// The method takes the IDs of the two nodes and the two ports and creates a link
+  /// between them. The method also checks if the link is valid based on the port types
+  /// and the number of links allowed on each port. Moreover, the method enforces the
+  /// direction of the link based on the port types, i.e., an output port can only be
+  /// connected to an input port guaranteeing that the graph is directed the right way.
+  ///
+  /// Emits an [AddLinkEvent] event.
   Link? addLink(
     String node1Id,
     String port1Id,
@@ -295,6 +334,12 @@ class FlNodeEditorController {
     return link;
   }
 
+  /// This method is used to add a link from an existing link object.
+  ///
+  /// This method is used when loading a project from a file or in copy/paste operations
+  /// and preserves all properties of the link object.
+  ///
+  /// Emits an [AddLinkEvent] event.
   void addLinkFromExisting(
     Link link, {
     String? eventId,
@@ -333,6 +378,9 @@ class FlNodeEditorController {
     );
   }
 
+  /// This method is used to remove a link by its ID.
+  ///
+  /// Emits a [RemoveLinkEvent] event.
   void removeLinkById(
     String id, {
     String? eventId,
@@ -367,11 +415,19 @@ class FlNodeEditorController {
   List<Link> get renderLinksAsList => _renderLinks.values.toList();
   Tuple2<Offset, Offset>? get renderTempLink => _renderTempLink;
 
+  /// This method is used to draw a temporary link between two points in the node editor.
+  ///
+  /// Usually, this method is called when the user is dragging a link from a port to another port.
+  ///
+  /// Emits a [DrawTempLinkEvent] event.
   void drawTempLink(Offset from, Offset to) {
     _renderTempLink = Tuple2(from, to);
     eventBus.emit(DrawTempLinkEvent(id: const Uuid().v4(), from, to));
   }
 
+  /// This method is used to clear the temporary link from the node editor.
+  ///
+  /// Emits a [DrawTempLinkEvent] event.
   void clearTempLink() {
     _renderTempLink = null;
     eventBus.emit(
@@ -379,20 +435,24 @@ class FlNodeEditorController {
     );
   }
 
+  /// This method is used to break all links associated with a port.
+  ///
+  /// Emits a [RemoveLinkEvent] event for each link that is removed.
   void breakPortLinks(String nodeId, String portId, {bool isHandled = false}) {
     if (!_nodes.containsKey(nodeId)) return;
     if (!_nodes[nodeId]!.ports.containsKey(portId)) return;
 
     final port = _nodes[nodeId]!.ports[portId]!;
-
-    // Collect all link IDs associated with the port
     final linksToRemove = port.links.map((link) => link.id).toList();
 
     for (final linkId in linksToRemove) {
-      removeLinkById(linkId, isHandled: true);
+      removeLinkById(linkId, isHandled: linkId != linksToRemove.last);
     }
   }
 
+  /// This method is used to set the data of a field in a node.
+  ///
+  /// Emits a [NodeFieldEvent] event.
   void setFieldData(
     String nodeId,
     String fieldId, {
@@ -415,27 +475,32 @@ class FlNodeEditorController {
     );
   }
 
-  void setNodeOffset(String id, Offset offset) {
-    final node = _nodes[id];
-    node?.offset = offset;
-  }
-
+  /// This method is used to collapse all selected nodes.
+  ///
+  /// Emits a [NodeRenderModeEvent] event.
   void collapseSelectedNodes() {
     for (final id in _selectedNodeIds) {
       final node = _nodes[id];
       node?.state.isCollapsed = true;
     }
 
-    eventBus.emit(CollapseNodeEvent(id: const Uuid().v4(), _selectedNodeIds));
+    eventBus.emit(
+      NodeRenderModeEvent(id: const Uuid().v4(), true, _selectedNodeIds),
+    );
   }
 
+  /// This method is used to expand the selected nodes.
+  ///
+  /// Emit a [NodeRenderModeEvent] event.
   void expandSelectedNodes() {
     for (final id in _selectedNodeIds) {
       final node = _nodes[id];
       node?.state.isCollapsed = false;
     }
 
-    eventBus.emit(CollapseNodeEvent(id: const Uuid().v4(), _selectedNodeIds));
+    eventBus.emit(
+      NodeRenderModeEvent(id: const Uuid().v4(), false, _selectedNodeIds),
+    );
   }
 
   // Selection
@@ -445,6 +510,9 @@ class FlNodeEditorController {
   Set<String> get selectedNodeIds => _selectedNodeIds;
   Rect get selectionArea => _selectionArea;
 
+  /// This method is used to drag the selected nodes by a given delta affecting their offsets.
+  ///
+  /// Emits a [DragSelectionEvent] event.
   void dragSelection(Offset delta, {String? eventId}) {
     if (_selectedNodeIds.isEmpty) return;
 
@@ -462,11 +530,19 @@ class FlNodeEditorController {
     );
   }
 
+  /// This method is used to set the selection area for selecting nodes.
+  ///
+  /// See [selectNodesByArea] for more information.
+  ///
+  /// Emits a [SelectionAreaEvent] event.
   void setSelectionArea(Rect area) {
     _selectionArea = area;
     eventBus.emit(SelectionAreaEvent(id: const Uuid().v4(), area));
   }
 
+  /// This method is used to select nodes by their IDs.
+  ///
+  /// Emits a [SelectionEvent] event.
   void selectNodesById(
     Set<String> ids, {
     bool holdSelection = false,
@@ -498,12 +574,20 @@ class FlNodeEditorController {
     );
   }
 
+  /// This method is used to select nodes that are contained within the selection area.
+  ///
+  /// This method is used in conjunction with the [setSelectionArea] method to select
+  /// nodes that are contained within the selection area. The method queries the spatial
+  /// hash grid to find nodes that are within the selection area and then selects them.
+  ///
+  /// See [selectNodesById] for more information.
   void selectNodesByArea({bool holdSelection = false}) async {
     final containedNodes = _spatialHashGrid.queryNodeIdsInArea(_selectionArea);
     selectNodesById(containedNodes, holdSelection: holdSelection);
     _selectionArea = Rect.zero;
   }
 
+  /// This method is used to deselect all selected nodes.
   void clearSelection({bool isHandled = false}) {
     for (final id in _selectedNodeIds) {
       final node = _nodes[id];
@@ -521,6 +605,13 @@ class FlNodeEditorController {
     );
   }
 
+  /// This method is used to focus the viweport on a set of nodes by their IDs.
+  ///
+  /// The method calculates the encompassing rectangle of the nodes and then
+  /// centers the viewport on the center of the rectangle. The method also
+  /// calculates the zoom level required to fit all the nodes in the viewport.
+  ///
+  /// See [calculateEncompassingRect], [selectNodesById], [setViewportOffset], and [setViewportZoom] for more information.
   void focusNodesById(Set<String> ids) {
     final encompassingRect = calculateEncompassingRect(
       ids,
@@ -546,6 +637,7 @@ class FlNodeEditorController {
     setViewportZoom(fitZoom, animate: true);
   }
 
+  /// This method is used to find all nodes with the specified name.
   Future<List<String>> searchNodesByName(String name) async {
     final results = <String>[];
 
@@ -565,6 +657,8 @@ class FlNodeEditorController {
   /// This function is used to update the spatial hash grid with the new bounds
   /// of the node after it has been rendered. This is necessary to keep the grid
   /// up to date with the latest positions of the nodes.
+  ///
+  /// See [SpatialHashGrid] and [getNodeBoundsInWorld] for more information.
   void onRenderedCallback(NodeInstance node) {
     _spatialHashGrid.remove(node.id);
     _spatialHashGrid.insert(

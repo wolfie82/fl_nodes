@@ -20,6 +20,9 @@ class FlNodeEditorProject {
   final Future<Map<String, dynamic>?> Function(bool isSaved)? projectLoader;
   final Future<bool> Function(bool isSaved)? projectCreator;
 
+  /// The [projectSaver] callback is used to save the project data, should return a boolean.
+  /// The [projectLoader] callback is used to load the project data, should return a JSON object.
+  /// The [projectCreator] callback is used to create a new project, should return a boolean.
   FlNodeEditorProject(
     this.controller, {
     required this.projectSaver,
@@ -29,12 +32,20 @@ class FlNodeEditorProject {
     controller.eventBus.events.listen(_handleProjectEvents);
   }
 
+  /// Clears the history and sets the project as saved.
   void clear() {
     controller.history.clear();
 
     _isSaved = true;
   }
 
+  /// Handles project related events.
+  ///
+  /// - [SaveProjectEvent]: Sets the project as saved.
+  /// - [LoadProjectEvent]: Sets the project as saved and clears the history.
+  /// - [NewProjectEvent]: Clears the project.
+  ///
+  /// If the event is undoable, the project is set as unsaved.
   void _handleProjectEvents(NodeEditorEvent event) {
     if (event.isUndoable) _isSaved = false;
 
@@ -48,6 +59,10 @@ class FlNodeEditorProject {
     }
   }
 
+  /// Private method to convert the project data to JSON.
+  ///
+  /// Even doe counterintuitive, this method is the one actually responsible for saving the project data other than serializing the project data.
+  /// This choice was made to avoid redundancy and to keep the project data saving logic in one place.
   Map<String, dynamic> _toJson() {
     final nodesJson =
         controller.nodes.values.map((node) => node.toJson()).toList();
@@ -61,8 +76,12 @@ class FlNodeEditorProject {
     };
   }
 
-  void _fromJson(Map<String, dynamic> json) {
-    if (json.isEmpty) return;
+  /// Private method to convert the JSON data to project data.
+  ///
+  /// Even doe counterintuitive, this method is the one actually responsible for loading the project data other than deserializing the JSON data.
+  /// This choice was made to avoid redundancy and to keep the project data loading logic in one place.
+  (Offset, double, Set<NodeInstance>)? _fromJson(Map<String, dynamic> json) {
+    if (json.isEmpty) return null;
 
     final viewportJson = json['viewport'] as Map<String, dynamic>;
 
@@ -78,7 +97,7 @@ class FlNodeEditorProject {
 
     final nodesJson = json['nodes'] as List<dynamic>;
 
-    final node = nodesJson.map((node) {
+    final nodes = nodesJson.map((node) {
       return NodeInstance.fromJson(
         node,
         prototypes: controller.nodePrototypes,
@@ -86,11 +105,18 @@ class FlNodeEditorProject {
       );
     }).toSet();
 
-    for (final node in node) {
+    for (final node in nodes) {
       controller.addNodeFromExisting(node, isHandled: true);
     }
+
+    return (viewportOffset, viewportZoom, nodes);
   }
 
+  /// This method wraps [_toJson] and adds additional
+  ///
+  /// The behavior of this method is determined by the [projectSaver] callback and user defined logic.
+  ///
+  /// e.g. Save to a file, save to a database, etc.
   void saveProject() async {
     final jsonData = _toJson();
     if (jsonData.isEmpty) return;
@@ -108,6 +134,11 @@ class FlNodeEditorProject {
     );
   }
 
+  /// This method wraps [_fromJson] and adds additional
+  ///
+  /// The behavior of this method is determined by the [projectLoader] callback and user defined logic.
+  ///
+  /// e.g. If the project data is invalid, the user will be prompted to save the project.
   void loadProject() async {
     final jsonData = await projectLoader?.call(isSaved);
 
@@ -131,6 +162,11 @@ class FlNodeEditorProject {
     );
   }
 
+  /// Creates a new project by clearing the current one.
+  ///
+  /// The behavior of this method is determined by the [projectCreator] callback and user defined logic.
+  ///
+  /// e.g. If the project is not saved, the user will be prompted to save the project.
   void newProject() async {
     final shouldProceed = await projectCreator?.call(isSaved);
 

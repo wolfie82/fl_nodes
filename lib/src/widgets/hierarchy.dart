@@ -1,8 +1,8 @@
-import 'package:fl_nodes/src/core/models/styles.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'package:fl_nodes/src/core/models/events.dart';
+import 'package:fl_nodes/src/core/models/styles.dart';
 
 import '../core/controllers/node_editor/core.dart';
 
@@ -33,7 +33,7 @@ class _FlHierarchyWidgetState extends State<FlHierarchyWidget> {
       (event) {
         if (event is SelectionEvent ||
             event is DragSelectionEvent ||
-            event is CollapseNodeEvent ||
+            event is NodeRenderModeEvent ||
             event is AddNodeEvent ||
             event is RemoveNodeEvent) {
           setState(() {});

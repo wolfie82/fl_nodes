@@ -15,11 +15,21 @@ class FlNodeEditorHistory {
     controller.eventBus.events.listen(_handleUndoableEvents);
   }
 
+  /// Clears the undo and redo stacks.
   void clear() {
     _undoStack.clear();
     _redoStack.clear();
   }
 
+  /// Handles undoable events.
+  ///
+  /// If the event is not undoable, it is ignored.
+  ///
+  /// If the event is undoable and is not the same as the previous event,
+  /// the redo stack is cleared as the user has made a new change.
+  /// If the event is a [DragSelectionEvent] and the previous event is also a
+  /// [DragSelectionEvent] with the same node IDs, the previous event is popped
+  /// and a new [DragSelectionEvent] is pushed after adding the deltas.
   void _handleUndoableEvents(NodeEditorEvent event) {
     if (!event.isUndoable || _isTraversingHistory) return;
 
@@ -50,6 +60,7 @@ class FlNodeEditorHistory {
     _undoStack.push(event);
   }
 
+  /// Undoes the last event in the undo stack.
   void undo() {
     if (_undoStack.isEmpty) return;
 
@@ -76,6 +87,7 @@ class FlNodeEditorHistory {
     }
   }
 
+  /// Redoes the last event in the redo stack.
   void redo() {
     if (_redoStack.isEmpty) return;
 

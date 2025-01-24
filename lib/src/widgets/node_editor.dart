@@ -201,8 +201,7 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
         event is PasteSelectionEvent ||
         event is LoadProjectEvent ||
         event is NewProjectEvent ||
-        event is CollapseNodeEvent ||
-        event is ExpandNodeEvent ||
+        event is NodeRenderModeEvent ||
         event is NodeFieldEvent &&
             (event.eventType == FieldEventType.submit ||
                 event.eventType == FieldEventType.cancel)) {
