@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:math';
 
 import 'package:flutter/services.dart';
@@ -16,8 +15,10 @@ import 'package:fl_nodes/src/core/utils/stack.dart';
 import '../../models/entities.dart';
 import '../../models/events.dart';
 
+import 'clipboard.dart';
 import 'config.dart';
 import 'event_bus.dart';
+import 'utils.dart';
 
 /// A controller class for the Node Editor.
 ///
@@ -29,8 +30,11 @@ import 'event_bus.dart';
 /// different parts of the application to communicate with each other by
 /// sending and receiving events.
 class FlNodeEditorController {
-  final eventBus = NodeEditorEventBus();
   final NodeEditorConfig behavior;
+  final eventBus = NodeEditorEventBus();
+
+  late final FlNodeEditorClipboard clipboard;
+
   final Future<bool> Function(Map<String, dynamic> jsonData)? projectSaver;
   final Future<Map<String, dynamic>?> Function(bool isSaved)? projectLoader;
   final Future<bool> Function(bool isSaved)? projectCreator;
@@ -41,6 +45,8 @@ class FlNodeEditorController {
     this.projectLoader,
     this.projectCreator,
   }) {
+    clipboard = FlNodeEditorClipboard(this);
+
     eventBus.events.listen((event) {
       // This ensures a reliable order of execution for event handlers.
       _handleUndoableEvents(event);
@@ -182,7 +188,7 @@ class FlNodeEditorController {
       _nodePrototypes[name]!,
       offset: offset,
       // Layout is needed to insert the node into the spatial hash grid.
-      onRendered: _onRenderedCallback,
+      onRendered: onRenderedCallback,
     );
 
     _nodes.putIfAbsent(
@@ -197,7 +203,7 @@ class FlNodeEditorController {
     return instance;
   }
 
-  void _addNodeFromExisting(
+  void addNodeFromExisting(
     NodeInstance node, {
     bool isHandled = false,
     String? eventId,
@@ -219,7 +225,7 @@ class FlNodeEditorController {
 
     for (final port in node.ports.values) {
       for (final link in port.links) {
-        _addLinkFromExisting(link, isHandled: isHandled);
+        addLinkFromExisting(link, isHandled: isHandled);
       }
     }
   }
@@ -309,7 +315,7 @@ class FlNodeEditorController {
     return link;
   }
 
-  void _addLinkFromExisting(
+  void addLinkFromExisting(
     Link link, {
     String? eventId,
     bool isHandled = false,
@@ -536,7 +542,7 @@ class FlNodeEditorController {
   }
 
   void focusNodesById(Set<String> ids) {
-    final encompassingRect = _calculateEncompassingRect(
+    final encompassingRect = calculateEncompassingRect(
       ids,
       _nodes,
       margin: 256,
@@ -572,151 +578,6 @@ class FlNodeEditorController {
     }
 
     return results;
-  }
-
-  // Clipboard
-  Future<String> copySelection() async {
-    if (_selectedNodeIds.isEmpty) return '';
-
-    final encompassingRect =
-        _calculateEncompassingRect(_selectedNodeIds, _nodes);
-
-    final selectedNodes = _selectedNodeIds.map((id) {
-      final nodeCopy = _nodes[id]!.copyWith();
-
-      final relativeOffset = nodeCopy.offset - encompassingRect.topLeft;
-
-      // We make deep copies as we only want to copy the links that are within the selection.
-      final updatedPorts = nodeCopy.ports.map((portId, port) {
-        final deepCopiedLinks = port.links.where((link) {
-          return _selectedNodeIds.contains(link.fromTo.item1) &&
-              _selectedNodeIds.contains(link.fromTo.item3);
-        }).toSet();
-
-        return MapEntry(
-          portId,
-          port.copyWith(links: deepCopiedLinks),
-        );
-      });
-
-      // Update the node with deep copied ports, state, and relative offset
-      return nodeCopy.copyWith(
-        offset: relativeOffset,
-        state: NodeState(),
-        ports: updatedPorts,
-      );
-    }).toList();
-
-    final jsonData = jsonEncode(selectedNodes);
-    final base64Data = base64Encode(utf8.encode(jsonData));
-    await Clipboard.setData(ClipboardData(text: base64Data));
-
-    showNodeEditorSnackbar(
-      'Nodes copied to clipboard.',
-      SnackbarType.success,
-    );
-
-    return base64Data;
-  }
-
-  void pasteSelection({Offset? position}) async {
-    final clipboardData = await Clipboard.getData('text/plain');
-    if (clipboardData == null || clipboardData.text!.isEmpty) return;
-
-    late List<dynamic> nodesJson;
-
-    try {
-      final jsonData = utf8.decode(base64Decode(clipboardData.text!));
-      nodesJson = jsonDecode(jsonData);
-    } catch (e) {
-      showNodeEditorSnackbar(
-        'Failed to paste nodes. Invalid clipboard data.',
-        SnackbarType.error,
-      );
-      return;
-    }
-
-    if (position == null) {
-      final viewportSize = getSizeFromGlobalKey(kNodeEditorWidgetKey)!;
-
-      position = Rect.fromLTWH(
-        -_viewportOffset.dx - viewportSize.width / 2,
-        -_viewportOffset.dy - viewportSize.height / 2,
-        viewportSize.width,
-        viewportSize.height,
-      ).center;
-    }
-
-    // Create instances from the JSON data.
-    final instances = nodesJson.map((node) {
-      return NodeInstance.fromJson(
-        node,
-        prototypes: _nodePrototypes,
-        onRendered: _onRenderedCallback,
-      );
-    }).toList();
-
-    // Called on each paste, see [FlNodeEditorController._mapToNewIds] for more info.
-    final newIds = await _mapToNewIds(instances);
-
-    final deepCopiedNodes = instances.map((instance) {
-      return instance.copyWith(
-        id: newIds[instance.id],
-        offset: instance.offset + position!,
-        fields: instance.fields.map((key, field) {
-          return MapEntry(
-            newIds[field.id]!,
-            field.copyWith(id: newIds[field.id]),
-          );
-        }),
-        ports: instance.ports.map((key, port) {
-          return MapEntry(
-            newIds[port.id]!,
-            port.copyWith(
-              id: newIds[port.id]!,
-              links: port.links.map((link) {
-                return link.copyWith(
-                  id: newIds[link.id],
-                  fromTo: Tuple4(
-                    newIds[link.fromTo.item1]!,
-                    newIds[link.fromTo.item2]!,
-                    newIds[link.fromTo.item3]!,
-                    newIds[link.fromTo.item4]!,
-                  ),
-                );
-              }).toSet(),
-            ),
-          );
-        }),
-      );
-    }).toList();
-
-    for (final node in deepCopiedNodes) {
-      _addNodeFromExisting(node, isHandled: true);
-    }
-
-    eventBus.emit(
-      PasteSelectionEvent(
-        id: const Uuid().v4(),
-        position,
-        clipboardData.text!,
-      ),
-    );
-  }
-
-  void cutSelection() async {
-    final clipboardContent = await copySelection();
-    for (final id in selectedNodeIds) {
-      removeNode(id, isHandled: true);
-    }
-    clearSelection(isHandled: true);
-
-    eventBus.emit(
-      CutSelectionEvent(
-        id: const Uuid().v4(),
-        clipboardContent,
-      ),
-    );
   }
 
   // History
@@ -769,11 +630,11 @@ class FlNodeEditorController {
       } else if (event is AddNodeEvent) {
         removeNode(event.node.id, eventId: event.id);
       } else if (event is RemoveNodeEvent) {
-        _addNodeFromExisting(event.node, eventId: event.id);
+        addNodeFromExisting(event.node, eventId: event.id);
       } else if (event is AddLinkEvent) {
         removeLinkById(event.link.id, eventId: event.id);
       } else if (event is RemoveLinkEvent) {
-        _addLinkFromExisting(event.link, eventId: event.id);
+        addLinkFromExisting(event.link, eventId: event.id);
       }
     } finally {
       _isTraversingHistory = false;
@@ -793,11 +654,11 @@ class FlNodeEditorController {
         dragSelection(event.delta, eventId: event.id);
         clearSelection();
       } else if (event is AddNodeEvent) {
-        _addNodeFromExisting(event.node, eventId: event.id);
+        addNodeFromExisting(event.node, eventId: event.id);
       } else if (event is RemoveNodeEvent) {
         removeNode(event.node.id, eventId: event.id);
       } else if (event is AddLinkEvent) {
-        _addLinkFromExisting(event.link, eventId: event.id);
+        addLinkFromExisting(event.link, eventId: event.id);
       } else if (event is RemoveLinkEvent) {
         removeLinkById(
           event.link.id,
@@ -867,12 +728,12 @@ class FlNodeEditorController {
       return NodeInstance.fromJson(
         node,
         prototypes: _nodePrototypes,
-        onRendered: _onRenderedCallback,
+        onRendered: onRenderedCallback,
       );
     }).toSet();
 
     for (final node in node) {
-      _addNodeFromExisting(node, isHandled: true);
+      addNodeFromExisting(node, isHandled: true);
     }
   }
 
@@ -932,63 +793,15 @@ class FlNodeEditorController {
     );
   }
 
-  // Utils
-
   /// Callback function that is called when a node is rendered.
   ///
   /// This function is used to update the spatial hash grid with the new bounds
   /// of the node after it has been rendered. This is necessary to keep the grid
   /// up to date with the latest positions of the nodes.
-  void _onRenderedCallback(NodeInstance node) {
+  void onRenderedCallback(NodeInstance node) {
     _spatialHashGrid.remove(node.id);
     _spatialHashGrid.insert(
       Tuple2(node.id, getNodeBoundsInWorld(node)!),
     );
-  }
-
-  /// Maps the IDs of the nodes, ports, and links to new UUIDs.
-  ///
-  /// This function is used when pasting nodes to generate new IDs for the
-  /// pasted nodes, ports, and links. This is done to avoid conflicts with
-  /// existing nodes and to allow for multiple pastes of the same selection.
-  Future<Map<String, String>> _mapToNewIds(List<NodeInstance> nodes) async {
-    final Map<String, String> newIds = {};
-
-    for (final node in nodes) {
-      newIds[node.id] = const Uuid().v4();
-      for (final port in node.ports.values) {
-        newIds[port.id] = const Uuid().v4();
-        for (final link in port.links) {
-          newIds[link.id] = const Uuid().v4();
-        }
-      }
-
-      for (var field in node.fields.values) {
-        newIds[field.id] = const Uuid().v4();
-      }
-    }
-
-    return newIds;
-  }
-
-  Rect _calculateEncompassingRect(
-    Set<String> ids,
-    Map<String, NodeInstance> nodes, {
-    double margin = 100.0,
-  }) {
-    Rect encompassingRect = Rect.zero;
-
-    for (final id in ids) {
-      final nodeBounds = getNodeBoundsInWorld(nodes[id]!);
-      if (nodeBounds == null) continue;
-
-      if (encompassingRect.isEmpty) {
-        encompassingRect = nodeBounds;
-      } else {
-        encompassingRect = encompassingRect.expandToInclude(nodeBounds);
-      }
-    }
-
-    return encompassingRect.inflate(margin);
   }
 }

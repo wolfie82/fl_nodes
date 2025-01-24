@@ -628,8 +628,8 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
         MenuItem(
           label: 'Paste',
           icon: Icons.paste,
-          onSelected: () =>
-              widget.controller.pasteSelection(position: worldPosition),
+          onSelected: () => widget.controller.clipboard
+              .pasteSelection(position: worldPosition),
         ),
         const MenuDivider(),
         MenuItem.submenu(
@@ -726,19 +726,19 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
                 KeyAction(
                   LogicalKeyboardKey.keyC,
                   "Copy selected nodes",
-                  () => widget.controller.copySelection(),
+                  () => widget.controller.clipboard.copySelection(),
                   isControlPressed: true,
                 ),
                 KeyAction(
                   LogicalKeyboardKey.keyV,
                   "Paste selected nodes",
-                  () => widget.controller.pasteSelection(),
+                  () => widget.controller.clipboard.pasteSelection(),
                   isControlPressed: true,
                 ),
                 KeyAction(
                   LogicalKeyboardKey.keyX,
                   "Cut selected nodes",
-                  () => widget.controller.cutSelection(),
+                  () => widget.controller.clipboard.cutSelection(),
                   isControlPressed: true,
                 ),
                 KeyAction(

@@ -260,12 +260,12 @@ class _NodeWidgetState extends State<NodeWidget> {
         MenuItem(
           label: 'Cut',
           icon: Icons.content_cut,
-          onSelected: () => widget.controller.cutSelection(),
+          onSelected: () => widget.controller.clipboard.cutSelection(),
         ),
         MenuItem(
           label: 'Copy',
           icon: Icons.copy,
-          onSelected: () => widget.controller.copySelection(),
+          onSelected: () => widget.controller.clipboard.copySelection(),
         ),
       ];
     }
