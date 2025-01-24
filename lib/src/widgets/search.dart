@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../core/controllers/node_editor/node_editor_main.dart';
+import '../core/controllers/node_editor/core.dart';
 import '../core/models/styles.dart';
 
 class FlSearchWidget extends StatefulWidget {
