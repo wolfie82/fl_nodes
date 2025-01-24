@@ -17,7 +17,7 @@ class NodeEditorEventBus {
     _streamController.add(event);
   }
 
-  void dispose() {
+  void close() {
     _streamController.close();
   }
 

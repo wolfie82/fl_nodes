@@ -1,0 +1,107 @@
+import 'package:fl_nodes/fl_nodes.dart';
+
+import '../../models/events.dart';
+import '../../utils/constants.dart';
+import '../../utils/stack.dart';
+
+class FlNodeEditorHistory {
+  final FlNodeEditorController controller;
+
+  bool _isTraversingHistory = false;
+  final _undoStack = Stack<NodeEditorEvent>(kMaxEventUndoHistory);
+  final _redoStack = Stack<NodeEditorEvent>(kMaxEventRedoHistory);
+
+  FlNodeEditorHistory(this.controller) {
+    controller.eventBus.events.listen(_handleUndoableEvents);
+  }
+
+  void clear() {
+    _undoStack.clear();
+    _redoStack.clear();
+  }
+
+  void _handleUndoableEvents(NodeEditorEvent event) {
+    if (!event.isUndoable || _isTraversingHistory) return;
+
+    final previousEvent = _undoStack.peek();
+    final nextEvent = _redoStack.peek();
+
+    if (event.id != previousEvent?.id && event.id != nextEvent?.id) {
+      _redoStack.clear();
+    } else {
+      return;
+    }
+
+    if (event is DragSelectionEvent && previousEvent is DragSelectionEvent) {
+      if (event.nodeIds.length == previousEvent.nodeIds.length &&
+          event.nodeIds.every(previousEvent.nodeIds.contains)) {
+        _undoStack.pop();
+        _undoStack.push(
+          DragSelectionEvent(
+            id: event.id,
+            event.nodeIds,
+            event.delta + previousEvent.delta,
+          ),
+        );
+        return;
+      }
+    }
+
+    _undoStack.push(event);
+  }
+
+  void undo() {
+    if (_undoStack.isEmpty) return;
+
+    _isTraversingHistory = true;
+    final event = _undoStack.pop()!;
+    _redoStack.push(event);
+
+    try {
+      if (event is DragSelectionEvent) {
+        controller.selectNodesById(event.nodeIds, isHandled: true);
+        controller.dragSelection(-event.delta, eventId: event.id);
+        controller.clearSelection();
+      } else if (event is AddNodeEvent) {
+        controller.removeNode(event.node.id, eventId: event.id);
+      } else if (event is RemoveNodeEvent) {
+        controller.addNodeFromExisting(event.node, eventId: event.id);
+      } else if (event is AddLinkEvent) {
+        controller.removeLinkById(event.link.id, eventId: event.id);
+      } else if (event is RemoveLinkEvent) {
+        controller.addLinkFromExisting(event.link, eventId: event.id);
+      }
+    } finally {
+      _isTraversingHistory = false;
+    }
+  }
+
+  void redo() {
+    if (_redoStack.isEmpty) return;
+
+    _isTraversingHistory = true;
+    final event = _redoStack.pop()!;
+    _undoStack.push(event);
+
+    try {
+      if (event is DragSelectionEvent) {
+        controller.selectNodesById(event.nodeIds, isHandled: true);
+        controller.dragSelection(event.delta, eventId: event.id);
+        controller.clearSelection();
+      } else if (event is AddNodeEvent) {
+        controller.addNodeFromExisting(event.node, eventId: event.id);
+      } else if (event is RemoveNodeEvent) {
+        controller.removeNode(event.node.id, eventId: event.id);
+      } else if (event is AddLinkEvent) {
+        controller.addLinkFromExisting(event.link, eventId: event.id);
+      } else if (event is RemoveLinkEvent) {
+        controller.removeLinkById(
+          event.link.id,
+          eventId: event.id,
+        );
+      }
+    } finally {
+      _isTraversingHistory = false;
+    }
+  }
+}

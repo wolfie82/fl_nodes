@@ -6,11 +6,11 @@ import 'package:flutter/services.dart';
 import 'package:tuple/tuple.dart';
 import 'package:uuid/uuid.dart';
 
+import 'package:fl_nodes/src/core/controllers/node_editor/history.dart';
+import 'package:fl_nodes/src/core/controllers/node_editor/project.dart';
 import 'package:fl_nodes/src/core/utils/constants.dart';
 import 'package:fl_nodes/src/core/utils/renderbox.dart';
-import 'package:fl_nodes/src/core/utils/snackbar.dart';
 import 'package:fl_nodes/src/core/utils/spatial_hash_grid.dart';
-import 'package:fl_nodes/src/core/utils/stack.dart';
 
 import '../../models/entities.dart';
 import '../../models/events.dart';
@@ -34,65 +34,46 @@ class FlNodeEditorController {
   final eventBus = NodeEditorEventBus();
 
   late final FlNodeEditorClipboard clipboard;
-
-  final Future<bool> Function(Map<String, dynamic> jsonData)? projectSaver;
-  final Future<Map<String, dynamic>?> Function(bool isSaved)? projectLoader;
-  final Future<bool> Function(bool isSaved)? projectCreator;
+  late final FlNodeEditorHistory history;
+  late final FlNodeEditorProject project;
 
   FlNodeEditorController({
     this.behavior = const NodeEditorConfig(),
-    this.projectSaver,
-    this.projectLoader,
-    this.projectCreator,
+    Future<bool> Function(Map<String, dynamic> jsonData)? projectSaver,
+    Future<Map<String, dynamic>?> Function(bool isSaved)? projectLoader,
+    Future<bool> Function(bool isSaved)? projectCreator,
   }) {
     clipboard = FlNodeEditorClipboard(this);
-
-    eventBus.events.listen((event) {
-      // This ensures a reliable order of execution for event handlers.
-      _handleUndoableEvents(event);
-      _handleProjectEvents(event);
-    });
+    history = FlNodeEditorHistory(this);
+    project = FlNodeEditorProject(
+      this,
+      projectSaver: projectSaver,
+      projectLoader: projectLoader,
+      projectCreator: projectCreator,
+    );
   }
 
   void dispose() {
-    eventBus.dispose();
+    eventBus.close();
+    history.clear();
+    project.clear();
+
     _nodes.clear();
     _spatialHashGrid.clear();
     _selectedNodeIds.clear();
     _renderLinks.clear();
-    _undoStack.clear();
-    _redoStack.clear();
+  }
+
+  void clear() {
+    _nodes.clear();
+    _spatialHashGrid.clear();
+    _selectedNodeIds.clear();
+    _renderLinks.clear();
   }
 
   // Viewport
-  Offset _viewportOffset = Offset.zero;
-  double _viewportZoom = 1.0;
-
-  Offset get viewportOffset => _viewportOffset;
-  double get viewportZoom => _viewportZoom;
-
-  set viewportOffset(Offset offset) {
-    _viewportOffset = offset;
-    eventBus.emit(
-      ViewportOffsetEvent(
-        id: const Uuid().v4(),
-        _viewportOffset,
-        animate: false,
-        isHandled: true,
-      ),
-    );
-  }
-
-  set viewportZoom(double zoom) {
-    _viewportZoom = zoom;
-    eventBus.emit(
-      ViewportZoomEvent(
-        id: const Uuid().v4(),
-        _viewportZoom,
-        isHandled: true,
-      ),
-    );
-  }
+  Offset viewportOffset = Offset.zero;
+  double viewportZoom = 1.0;
 
   void setViewportOffset(
     Offset coords, {
@@ -101,15 +82,15 @@ class FlNodeEditorController {
     bool isHandled = false,
   }) {
     if (absolute) {
-      _viewportOffset = coords;
+      viewportOffset = coords;
     } else {
-      _viewportOffset += coords;
+      viewportOffset += coords;
     }
 
     eventBus.emit(
       ViewportOffsetEvent(
         id: const Uuid().v4(),
-        _viewportOffset,
+        viewportOffset,
         animate: animate,
         isHandled: isHandled,
       ),
@@ -121,12 +102,12 @@ class FlNodeEditorController {
     bool animate = true,
     bool isHandled = false,
   }) {
-    _viewportZoom = amount;
+    viewportZoom = amount;
 
     eventBus.emit(
       ViewportZoomEvent(
         id: const Uuid().v4(),
-        _viewportZoom,
+        viewportZoom,
         isHandled: isHandled,
       ),
     );
@@ -470,14 +451,14 @@ class FlNodeEditorController {
 
     for (final id in _selectedNodeIds) {
       final node = _nodes[id];
-      node?.offset += delta / _viewportZoom;
+      node?.offset += delta / viewportZoom;
     }
 
     eventBus.emit(
       DragSelectionEvent(
         id: eventId ?? const Uuid().v4(),
         _selectedNodeIds.toSet(),
-        delta / _viewportZoom,
+        delta / viewportZoom,
       ),
     );
   }
@@ -578,219 +559,6 @@ class FlNodeEditorController {
     }
 
     return results;
-  }
-
-  // History
-  bool _isTraversingHistory = false;
-  final _undoStack = Stack<NodeEditorEvent>(kMaxEventUndoHistory);
-  final _redoStack = Stack<NodeEditorEvent>(kMaxEventRedoHistory);
-
-  void _handleUndoableEvents(NodeEditorEvent event) {
-    if (!event.isUndoable || _isTraversingHistory) return;
-
-    final previousEvent = _undoStack.peek();
-    final nextEvent = _redoStack.peek();
-
-    if (event.id != previousEvent?.id && event.id != nextEvent?.id) {
-      _redoStack.clear();
-    } else {
-      return;
-    }
-
-    if (event is DragSelectionEvent && previousEvent is DragSelectionEvent) {
-      if (event.nodeIds.length == previousEvent.nodeIds.length &&
-          event.nodeIds.every(previousEvent.nodeIds.contains)) {
-        _undoStack.pop();
-        _undoStack.push(
-          DragSelectionEvent(
-            id: event.id,
-            event.nodeIds,
-            event.delta + previousEvent.delta,
-          ),
-        );
-        return;
-      }
-    }
-
-    _undoStack.push(event);
-  }
-
-  void undo() {
-    if (_undoStack.isEmpty) return;
-
-    _isTraversingHistory = true;
-    final event = _undoStack.pop()!;
-    _redoStack.push(event);
-
-    try {
-      if (event is DragSelectionEvent) {
-        selectNodesById(event.nodeIds, isHandled: true);
-        dragSelection(-event.delta, eventId: event.id);
-        clearSelection();
-      } else if (event is AddNodeEvent) {
-        removeNode(event.node.id, eventId: event.id);
-      } else if (event is RemoveNodeEvent) {
-        addNodeFromExisting(event.node, eventId: event.id);
-      } else if (event is AddLinkEvent) {
-        removeLinkById(event.link.id, eventId: event.id);
-      } else if (event is RemoveLinkEvent) {
-        addLinkFromExisting(event.link, eventId: event.id);
-      }
-    } finally {
-      _isTraversingHistory = false;
-    }
-  }
-
-  void redo() {
-    if (_redoStack.isEmpty) return;
-
-    _isTraversingHistory = true;
-    final event = _redoStack.pop()!;
-    _undoStack.push(event);
-
-    try {
-      if (event is DragSelectionEvent) {
-        selectNodesById(event.nodeIds, isHandled: true);
-        dragSelection(event.delta, eventId: event.id);
-        clearSelection();
-      } else if (event is AddNodeEvent) {
-        addNodeFromExisting(event.node, eventId: event.id);
-      } else if (event is RemoveNodeEvent) {
-        removeNode(event.node.id, eventId: event.id);
-      } else if (event is AddLinkEvent) {
-        addLinkFromExisting(event.link, eventId: event.id);
-      } else if (event is RemoveLinkEvent) {
-        removeLinkById(
-          event.link.id,
-          eventId: event.id,
-        );
-      }
-    } finally {
-      _isTraversingHistory = false;
-    }
-  }
-
-  // Serialization and deserialization
-  bool _isSaved = true;
-  bool get isSaved => _isSaved;
-
-  void _handleProjectEvents(NodeEditorEvent event) {
-    if (event.isUndoable) _isSaved = false;
-
-    if (event is SaveProjectEvent) {
-      _isSaved = true;
-    } else if (event is LoadProjectEvent) {
-      _isSaved = true;
-      _undoStack.clear();
-      _redoStack.clear();
-    } else if (event is NewProjectEvent) {
-      _nodes.clear();
-      _spatialHashGrid.clear();
-      _selectedNodeIds.clear();
-      _renderLinks.clear();
-      _isSaved = true;
-      _undoStack.clear();
-      _redoStack.clear();
-    }
-  }
-
-  Map<String, dynamic> _toJson() {
-    final nodesJson = _nodes.values.map((node) => node.toJson()).toList();
-
-    return {
-      'viewport': {
-        'offset': [_viewportOffset.dx, _viewportOffset.dy],
-        'zoom': _viewportZoom,
-      },
-      'nodes': nodesJson,
-    };
-  }
-
-  void _fromJson(Map<String, dynamic> json) {
-    if (json.isEmpty) return;
-
-    final viewportJson = json['viewport'] as Map<String, dynamic>;
-
-    _viewportOffset = Offset(
-      viewportJson['offset'][0] as double,
-      viewportJson['offset'][1] as double,
-    );
-
-    setViewportOffset(_viewportOffset, absolute: true);
-
-    _viewportZoom = viewportJson['zoom'] as double;
-
-    setViewportZoom(_viewportZoom);
-
-    final nodesJson = json['nodes'] as List<dynamic>;
-
-    final node = nodesJson.map((node) {
-      return NodeInstance.fromJson(
-        node,
-        prototypes: _nodePrototypes,
-        onRendered: onRenderedCallback,
-      );
-    }).toSet();
-
-    for (final node in node) {
-      addNodeFromExisting(node, isHandled: true);
-    }
-  }
-
-  void saveProject() async {
-    final jsonData = _toJson();
-    if (jsonData.isEmpty) return;
-
-    final hasSaved = await projectSaver?.call(jsonData);
-    if (hasSaved == false) return;
-
-    _isSaved = true;
-
-    eventBus.emit(SaveProjectEvent(id: const Uuid().v4()));
-
-    showNodeEditorSnackbar(
-      'Project saved successfully.',
-      SnackbarType.success,
-    );
-  }
-
-  void loadProject() async {
-    final jsonData = await projectLoader?.call(isSaved);
-
-    if (jsonData == null) {
-      showNodeEditorSnackbar(
-        'Failed to load project. Invalid project data.',
-        SnackbarType.error,
-      );
-      return;
-    }
-
-    _nodes.clear();
-    _spatialHashGrid.clear();
-    _selectedNodeIds.clear();
-    _renderLinks.clear();
-
-    _fromJson(jsonData);
-
-    eventBus.emit(LoadProjectEvent(id: const Uuid().v4()));
-
-    showNodeEditorSnackbar(
-      'Project loaded successfully.',
-      SnackbarType.success,
-    );
-  }
-
-  void newProject() async {
-    final shouldProceed = await projectCreator?.call(isSaved);
-
-    if (shouldProceed == false) return;
-
-    eventBus.emit(NewProjectEvent(id: const Uuid().v4()));
-
-    showNodeEditorSnackbar(
-      'New project created successfully.',
-      SnackbarType.success,
-    );
   }
 
   /// Callback function that is called when a node is rendered.
