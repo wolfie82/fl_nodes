@@ -242,7 +242,7 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
   void _onScaleUpdate(ScaleUpdateDetails details) {
     if (widget.controller.behavior.zoomSensitivity > 0 &&
         details.scale != 1.0) {
-      _setZoomFromRawInput(details.scale);
+      _setZoomFromRawInput(details.scale, trackpadInput: true);
     } else if (widget.controller.behavior.panSensitivity > 0 &&
         details.focalPointDelta != const Offset(10, 10)) {
       _onDragUpdate(details.focalPointDelta);
@@ -469,7 +469,7 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
     }
   }
 
-  void _setZoomFromRawInput(double amount) {
+  void _setZoomFromRawInput(double amount, {bool trackpadInput = false}) {
     const double baseSpeed =
         0.05; // Base zoom speed and damping factor (magic number)
     const double scaleFactor =
@@ -483,10 +483,12 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
     final double zoomFactor =
         (amount * dynamicZoomFactor).abs().clamp(0.1, 10.0);
 
-    final double targetZoom =
-        (amount > 1 ? _zoom * (1 + zoomFactor) : _zoom / (1 + zoomFactor));
+    // The sign of the amount determines the direction of the zoom and its opposite on trackpad
+    final double targetZoom = ((trackpadInput ? amount > 1 : amount < 0)
+        ? _zoom * (1 + zoomFactor)
+        : _zoom / (1 + zoomFactor));
 
-    _setZoom(targetZoom);
+    _setZoom(targetZoom, animate: true);
   }
 
   void _setZoom(double targetZoom, {bool animate = false}) {
