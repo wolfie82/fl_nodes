@@ -8,6 +8,7 @@ import 'package:uuid/uuid.dart';
 import '../../models/entities.dart';
 import '../../models/events.dart';
 import '../../utils/constants.dart';
+import '../../utils/json_extensions.dart';
 import '../../utils/renderbox.dart';
 import '../../utils/snackbar.dart';
 
@@ -64,7 +65,14 @@ class FlNodeEditorClipboard {
       );
     }).toList();
 
-    final jsonData = jsonEncode(selectedNodes);
+    final nodesJsonData = jsonEncode(selectedNodes);
+    final encompassingRectJsonData = jsonEncode(encompassingRect.toJson());
+
+    final jsonData = jsonEncode({
+      'nodes': nodesJsonData,
+      'encompassingRect': encompassingRectJsonData,
+    });
+
     final base64Data = base64Encode(utf8.encode(jsonData));
     await Clipboard.setData(ClipboardData(text: base64Data));
 
@@ -89,13 +97,18 @@ class FlNodeEditorClipboard {
     if (clipboardData == null || clipboardData.text!.isEmpty) return;
 
     late List<dynamic> nodesJson;
+    late Rect encompassingRect;
 
     try {
-      final jsonData = utf8.decode(base64Decode(clipboardData.text!));
-      nodesJson = jsonDecode(jsonData);
+      final base64Data = utf8.decode(base64Decode(clipboardData.text!));
+      final jsonData = jsonDecode(base64Data) as Map<String, dynamic>;
+      nodesJson = jsonDecode(jsonData['nodes']) as List<dynamic>;
+      encompassingRect = JSONRect.fromJson(
+        jsonDecode(jsonData['encompassingRect']),
+      );
     } catch (e) {
       showNodeEditorSnackbar(
-        'Failed to paste nodes. Invalid clipboard data.',
+        'Failed to paste nodes. Invalid clipboard data. ($e)',
         SnackbarType.error,
       );
       return;
@@ -105,8 +118,12 @@ class FlNodeEditorClipboard {
       final viewportSize = getSizeFromGlobalKey(kNodeEditorWidgetKey)!;
 
       position = Rect.fromLTWH(
-        -viewportOffset.dx - viewportSize.width / 2,
-        -viewportOffset.dy - viewportSize.height / 2,
+        -viewportOffset.dx -
+            (viewportSize.width / 2) -
+            (encompassingRect.width / 2),
+        -viewportOffset.dy -
+            (viewportSize.height / 2) -
+            (encompassingRect.height / 2),
         viewportSize.width,
         viewportSize.height,
       ).center;
