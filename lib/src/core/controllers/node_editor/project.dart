@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 
 import 'package:uuid/uuid.dart';
 
-import 'package:fl_nodes/fl_nodes.dart';
-
+import '../../models/entities.dart';
 import '../../models/events.dart';
 import '../../utils/snackbar.dart';
+
+import 'core.dart';
 
 class FlNodeEditorProject {
   final FlNodeEditorController controller;

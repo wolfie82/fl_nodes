@@ -5,14 +5,14 @@ import 'package:flutter/services.dart';
 import 'package:tuple/tuple.dart';
 import 'package:uuid/uuid.dart';
 
-import 'package:fl_nodes/fl_nodes.dart';
-import 'package:fl_nodes/src/core/controllers/node_editor/event_bus.dart';
-
+import '../../models/entities.dart';
 import '../../models/events.dart';
 import '../../utils/constants.dart';
 import '../../utils/renderbox.dart';
 import '../../utils/snackbar.dart';
 
+import 'core.dart';
+import 'event_bus.dart';
 import 'utils.dart';
 
 class FlNodeEditorClipboard {

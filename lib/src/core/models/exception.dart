@@ -1,4 +1,4 @@
-import '../../../fl_nodes.dart';
+import 'entities.dart';
 
 class RunnerException implements Exception {
   final String message;

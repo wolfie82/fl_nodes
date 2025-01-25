@@ -1,15 +1,18 @@
 import 'dart:ui' as ui;
 
-import 'package:fl_nodes/src/core/controllers/node_editor/config.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
 import 'package:tuple/tuple.dart';
 
-import 'package:fl_nodes/fl_nodes.dart';
+import 'package:fl_nodes/src/core/controllers/node_editor/config.dart';
 import 'package:fl_nodes/src/utils/grid_drawing.dart';
 import 'package:fl_nodes/src/widgets/node.dart';
+
+import '../core/controllers/node_editor/core.dart';
+import '../core/models/entities.dart';
+import '../core/models/styles.dart';
 
 class NodeParentData extends ContainerBoxParentData<RenderBox> {
   Offset nodeOffset = Offset.zero;
