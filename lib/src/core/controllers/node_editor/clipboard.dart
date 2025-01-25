@@ -105,8 +105,8 @@ class FlNodeEditorClipboard {
       final viewportSize = getSizeFromGlobalKey(kNodeEditorWidgetKey)!;
 
       position = Rect.fromLTWH(
-        viewportOffset.dx - viewportSize.width / 2,
-        viewportOffset.dy - viewportSize.height / 2,
+        -viewportOffset.dx - viewportSize.width / 2,
+        -viewportOffset.dy - viewportSize.height / 2,
         viewportSize.width,
         viewportSize.height,
       ).center;
