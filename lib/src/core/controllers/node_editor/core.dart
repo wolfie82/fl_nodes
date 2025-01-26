@@ -17,6 +17,7 @@ import '../../models/entities.dart';
 import 'clipboard.dart';
 import 'config.dart';
 import 'event_bus.dart';
+import 'runner.dart';
 import 'utils.dart';
 
 /// A controller class for the Node Editor.
@@ -33,6 +34,7 @@ class FlNodeEditorController {
   final eventBus = NodeEditorEventBus();
 
   late final FlNodeEditorClipboard clipboard;
+  late final FlNodeEditorRunner runner;
   late final FlNodeEditorHistory history;
   late final FlNodeEditorProject project;
 
@@ -43,6 +45,7 @@ class FlNodeEditorController {
     Future<bool> Function(bool isSaved)? projectCreator,
   }) {
     clipboard = FlNodeEditorClipboard(this);
+    runner = FlNodeEditorRunner(this);
     history = FlNodeEditorHistory(this);
     project = FlNodeEditorProject(
       this,

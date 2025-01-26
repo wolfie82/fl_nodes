@@ -422,15 +422,14 @@ final class NodeInstance {
 
   factory NodeInstance.fromJson(
     Map<String, dynamic> json, {
-    required FlNodeEditorController controller,
+    required Map<String, NodePrototype> nodePrototypes,
+    required Function(NodeInstance node) onRenderedCallback,
   }) {
-    if (!controller.nodePrototypes
-        .containsKey(json['prototypeName'].toString())) {
+    if (!nodePrototypes.containsKey(json['prototypeName'].toString())) {
       throw Exception('Node prototype not found');
     }
 
-    final prototype =
-        controller.nodePrototypes[json['prototypeName'].toString()]!;
+    final prototype = nodePrototypes[json['prototypeName'].toString()]!;
 
     // Ensure `json['ports']` is properly typed
     final ports = (json['ports'] as Map<String, dynamic>).map(
@@ -462,7 +461,7 @@ final class NodeInstance {
       ports: ports,
       fields: fields,
       onExecute: prototype.onExecute,
-      onRendered: controller.onRenderedCallback,
+      onRendered: onRenderedCallback,
       offset: Offset(json['offset'][0], json['offset'][1]),
     );
 

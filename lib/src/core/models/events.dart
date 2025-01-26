@@ -118,7 +118,8 @@ final class AddNodeEvent extends NodeEditorEvent {
     return AddNodeEvent(
       NodeInstance.fromJson(
         json['node'] as Map<String, dynamic>,
-        controller: controller,
+        nodePrototypes: controller.nodePrototypes,
+        onRenderedCallback: controller.onRenderedCallback,
       ),
       id: json['id'] as String,
       isHandled: json['isHandled'] as bool,
@@ -145,7 +146,8 @@ final class RemoveNodeEvent extends NodeEditorEvent {
     return RemoveNodeEvent(
       NodeInstance.fromJson(
         json['node'] as Map<String, dynamic>,
-        controller: controller,
+        nodePrototypes: controller.nodePrototypes,
+        onRenderedCallback: controller.onRenderedCallback,
       ),
       id: json['id'] as String,
       isHandled: json['isHandled'] as bool,
