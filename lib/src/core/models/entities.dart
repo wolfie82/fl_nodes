@@ -308,9 +308,8 @@ final class NodePrototype {
   final List<PortPrototype> ports;
   final List<FieldPrototype> fields;
   final Function(
-    Map<String, dynamic> inputs,
+    Map<String, dynamic> ports,
     Map<String, dynamic> fields,
-    Map<String, dynamic> outputs,
   ) onExecute;
 
   NodePrototype({
@@ -369,9 +368,8 @@ final class NodeInstance {
   final Map<String, FieldInstance> fields;
   final NodeState state = NodeState();
   final Function(
-    Map<String, dynamic> inputs,
+    Map<String, dynamic> ports,
     Map<String, dynamic> fields,
-    Map<String, dynamic> outputs,
   ) onExecute;
   final Function(NodeInstance node) onRendered;
   Offset offset; // User or system defined offset
@@ -394,9 +392,8 @@ final class NodeInstance {
     Map<String, FieldInstance>? fields,
     NodeState? state,
     final Function(
-      Map<String, dynamic> inputs,
+      Map<String, dynamic> ports,
       Map<String, dynamic> fields,
-      Map<String, dynamic> outputs,
     )? onExecute,
     Function(NodeInstance node)? onRendered,
     Offset? offset,
