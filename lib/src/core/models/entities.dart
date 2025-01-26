@@ -46,7 +46,7 @@ final class Group {
     return {
       'name': name,
       'description': description,
-      'color': colorToRGBAString(color),
+      'color': color.toJson(color),
       'area': [area.left, area.top, area.width, area.height],
     };
   }
@@ -55,7 +55,7 @@ final class Group {
     return Group(
       name: json['name'],
       description: json['description'],
-      color: colorFromRGBAString(json['color']),
+      color: JSONColor.fromJson(json['color']),
       area: Rect.fromLTWH(
         json['area'][0],
         json['area'][1],
