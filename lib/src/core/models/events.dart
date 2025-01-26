@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../controllers/node_editor/core.dart';
+
 import 'entities.dart';
 
 /// Events are used to communicate between the [FlNodeEditorController] and the Widgets composing the Node Editor.
@@ -111,14 +113,12 @@ final class AddNodeEvent extends NodeEditorEvent {
 
   factory AddNodeEvent.fromJson(
     Map<String, dynamic> json, {
-    required Map<String, NodePrototype> prototypes,
-    required Function(NodeInstance node) onRendered,
+    required FlNodeEditorController controller,
   }) {
     return AddNodeEvent(
       NodeInstance.fromJson(
         json['node'] as Map<String, dynamic>,
-        prototypes: prototypes,
-        onRendered: onRendered,
+        controller: controller,
       ),
       id: json['id'] as String,
       isHandled: json['isHandled'] as bool,
@@ -140,14 +140,12 @@ final class RemoveNodeEvent extends NodeEditorEvent {
 
   factory RemoveNodeEvent.fromJson(
     Map<String, dynamic> json, {
-    required Map<String, NodePrototype> prototypes,
-    required Function(NodeInstance node) onRendered,
+    required FlNodeEditorController controller,
   }) {
     return RemoveNodeEvent(
       NodeInstance.fromJson(
         json['node'] as Map<String, dynamic>,
-        prototypes: prototypes,
-        onRendered: onRendered,
+        controller: controller,
       ),
       id: json['id'] as String,
       isHandled: json['isHandled'] as bool,

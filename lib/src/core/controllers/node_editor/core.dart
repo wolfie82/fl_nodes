@@ -187,9 +187,8 @@ class FlNodeEditorController {
 
     final instance = createNode(
       _nodePrototypes[name]!,
+      controller: this,
       offset: offset,
-      // Layout is needed to insert the node into the spatial hash grid.
-      onRendered: onRenderedCallback,
     );
 
     _nodes.putIfAbsent(
@@ -290,9 +289,9 @@ class FlNodeEditorController {
     final port1 = _nodes[node1Id]!.ports[port1Id]!;
     final port2 = _nodes[node2Id]!.ports[port2Id]!;
 
-    if (port1.portType == port2.portType) return null;
-    if (port1.links.length > 1 && !port1.allowMultipleLinks ||
-        port2.links.length > 1 && !port2.allowMultipleLinks) {
+    if (port1.prototype.portType == port2.prototype.portType) return null;
+    if (port1.links.length > 1 && !port1.prototype.allowMultipleLinks ||
+        port2.links.length > 1 && !port2.prototype.allowMultipleLinks) {
       return null;
     }
 
@@ -300,7 +299,7 @@ class FlNodeEditorController {
     late PortInstance toPort;
 
     // Determine the direction of the link based on the port types as we're building a directed graph.
-    if (port1.portType == PortType.output) {
+    if (port1.prototype.portType == PortType.output) {
       fromPort = port1;
       toPort = port2;
     } else {
@@ -644,7 +643,7 @@ class FlNodeEditorController {
     final regex = RegExp(name, caseSensitive: false);
 
     for (final node in _nodes.values) {
-      if (regex.hasMatch(node.name)) {
+      if (regex.hasMatch(node.prototype.name)) {
         results.add(node.id);
       }
     }

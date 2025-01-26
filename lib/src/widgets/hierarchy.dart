@@ -70,7 +70,7 @@ class _FlHierarchyWidgetState extends State<FlHierarchyWidget> {
                       : widget.style.nodeDecoration,
                   child: ListTile(
                     title: Text(
-                      '${node.offset} - ${node.name}',
+                      '${node.offset} - ${node.prototype.name}',
                       overflow: TextOverflow.ellipsis,
                     ),
                     onTap: () {

@@ -4,7 +4,9 @@ import 'package:tuple/tuple.dart';
 import 'package:uuid/uuid.dart';
 
 import 'package:fl_nodes/src/core/models/events.dart';
-import 'package:fl_nodes/src/core/utils/serialization.dart';
+import 'package:fl_nodes/src/core/utils/json_extensions.dart';
+
+import '../controllers/node_editor/core.dart';
 
 /// Entities are split in two categories: Prototypes and Instances.
 ///
@@ -162,31 +164,24 @@ class OutputPortPrototype extends PortPrototype {
 /// In addition to the prototype, it holds the data, links, and offset.
 final class PortInstance {
   final String id;
-  final String name;
+  final PortPrototype prototype;
   dynamic data;
-  final Type dataType;
-  final PortType portType;
-  final bool allowMultipleLinks;
   Set<Link> links = {};
   Offset offset; // Determined by Flutter
   final GlobalKey key = GlobalKey(); // Determined by Flutter
 
   PortInstance({
     required this.id,
-    required this.name,
+    required this.prototype,
     required this.data,
-    required this.dataType,
-    required this.portType,
-    required this.allowMultipleLinks,
     this.offset = Offset.zero,
   });
 
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'name': name,
+      'prototypeName': prototype.name,
       'data': data,
-      'allowMultipleLinks': allowMultipleLinks,
       'links': links.map((link) => link.toJson()).toList(),
     };
   }
@@ -197,11 +192,8 @@ final class PortInstance {
   ) {
     final instance = PortInstance(
       id: json['id'],
-      name: json['name'],
+      prototype: prototype,
       data: json['data'],
-      dataType: prototype.dataType,
-      portType: prototype.portType,
-      allowMultipleLinks: json['allowMultipleLinks'],
     );
 
     instance.links = (json['links'] as List<dynamic>)
@@ -213,21 +205,14 @@ final class PortInstance {
 
   PortInstance copyWith({
     String? id,
-    String? name,
     dynamic data,
-    Type? dataType,
-    PortType? portType,
-    bool? allowMultipleLinks,
     Set<Link>? links,
     Offset? offset,
   }) {
     final instance = PortInstance(
       id: id ?? this.id,
-      name: name ?? this.name,
+      prototype: prototype,
       data: data ?? this.data,
-      dataType: dataType ?? this.dataType,
-      portType: portType ?? this.portType,
-      allowMultipleLinks: allowMultipleLinks ?? this.allowMultipleLinks,
       offset: offset ?? this.offset,
     );
 
@@ -271,37 +256,21 @@ class FieldPrototype {
 /// In addition to the prototype, it holds the data.
 class FieldInstance {
   final String id;
-  final String name;
-  final bool isEditable;
-  final Widget Function(dynamic data) visualizerBuilder;
-  final Function(FieldInstance field)? onVisualizerTap;
-  final Widget Function(
-    BuildContext context,
-    Function() removeOverlay,
-    dynamic data,
-    Function(dynamic data, {required FieldEventType eventType}) setData,
-  )? editorBuilder;
+  final FieldPrototype prototype;
   final editorOverlayController = OverlayPortalController();
   dynamic data;
-  final Type dataType;
   final GlobalKey key = GlobalKey(); // Determined by Flutter
 
   FieldInstance({
     required this.id,
-    required this.name,
-    required this.isEditable,
-    required this.visualizerBuilder,
-    required this.onVisualizerTap,
-    required this.editorBuilder,
+    required this.prototype,
     required this.data,
-    required this.dataType,
   });
 
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'name': name,
-      'isEditable': isEditable,
+      'prototypeName': prototype.name,
       'data': data,
     };
   }
@@ -312,40 +281,19 @@ class FieldInstance {
   ) {
     return FieldInstance(
       id: json['id'],
-      name: json['name'],
-      isEditable: json['isEditable'],
-      visualizerBuilder: prototype.visualizerBuilder,
-      onVisualizerTap: prototype.onVisualizerTap,
-      editorBuilder: prototype.editorBuilder,
+      prototype: prototype,
       data: json['data'],
-      dataType: prototype.dataType,
     );
   }
 
   FieldInstance copyWith({
     String? id,
-    String? name,
-    bool? isEditable,
-    Widget Function(dynamic data)? visualizerBuilder,
-    Function(FieldInstance field)? onVisualizerTap,
-    Widget Function(
-      BuildContext context,
-      Function() removeOverlay,
-      dynamic data,
-      Function(dynamic data, {required FieldEventType eventType}) setData,
-    )? editorBuilder,
     dynamic data,
-    Type? dataType,
   }) {
     return FieldInstance(
       id: id ?? this.id,
-      name: name ?? this.name,
-      isEditable: isEditable ?? this.isEditable,
-      visualizerBuilder: visualizerBuilder ?? this.visualizerBuilder,
-      onVisualizerTap: onVisualizerTap ?? this.onVisualizerTap,
-      editorBuilder: editorBuilder ?? this.editorBuilder,
+      prototype: prototype,
       data: data ?? this.data,
-      dataType: dataType ?? this.dataType,
     );
   }
 }
@@ -360,9 +308,9 @@ final class NodePrototype {
   final List<PortPrototype> ports;
   final List<FieldPrototype> fields;
   final Function(
-    Map<String, PortInstance> inputs,
-    Map<String, FieldInstance> fields,
-    Map<String, PortInstance> outputs,
+    Map<String, dynamic> inputs,
+    Map<String, dynamic> fields,
+    Map<String, dynamic> outputs,
   ) onExecute;
 
   NodePrototype({
@@ -416,16 +364,14 @@ final class NodeState {
 /// It holds the instances of the ports and fields, the offset, the data and the state.
 final class NodeInstance {
   final String id;
-  final String name;
-  final String description;
-  final Color color;
+  final NodePrototype prototype;
   final Map<String, PortInstance> ports;
   final Map<String, FieldInstance> fields;
   final NodeState state = NodeState();
   final Function(
-    Map<String, PortInstance> inputs,
-    Map<String, FieldInstance> fields,
-    Map<String, PortInstance> outputs,
+    Map<String, dynamic> inputs,
+    Map<String, dynamic> fields,
+    Map<String, dynamic> outputs,
   ) onExecute;
   final Function(NodeInstance node) onRendered;
   Offset offset; // User or system defined offset
@@ -433,9 +379,7 @@ final class NodeInstance {
 
   NodeInstance({
     required this.id,
-    required this.name,
-    required this.description,
-    required this.color,
+    required this.prototype,
     required this.ports,
     required this.fields,
     required this.onExecute,
@@ -445,26 +389,21 @@ final class NodeInstance {
 
   NodeInstance copyWith({
     String? id,
-    String? name,
-    String? description,
-    String? prototypeName,
     Color? color,
     Map<String, PortInstance>? ports,
     Map<String, FieldInstance>? fields,
     NodeState? state,
-    Function(
-      Map<String, PortInstance> inputs,
-      Map<String, FieldInstance> fields,
-      Map<String, PortInstance> outputs,
+    final Function(
+      Map<String, dynamic> inputs,
+      Map<String, dynamic> fields,
+      Map<String, dynamic> outputs,
     )? onExecute,
     Function(NodeInstance node)? onRendered,
     Offset? offset,
   }) {
     return NodeInstance(
       id: id ?? this.id,
-      name: name ?? this.name,
-      description: description ?? this.description,
-      color: color ?? this.color,
+      prototype: prototype,
       ports: ports ?? this.ports,
       fields: fields ?? this.fields,
       onExecute: onExecute ?? this.onExecute,
@@ -476,9 +415,7 @@ final class NodeInstance {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'name': name,
-      'description': description,
-      'color': colorToRGBAString(color),
+      'prototypeName': prototype.name,
       'ports': ports.map((_, port) => MapEntry(port.id, port.toJson())),
       'fields': fields.map((_, field) => MapEntry(field.id, field.toJson())),
       'state': state.toJson(),
@@ -488,14 +425,15 @@ final class NodeInstance {
 
   factory NodeInstance.fromJson(
     Map<String, dynamic> json, {
-    required Map<String, NodePrototype> prototypes,
-    required Function(NodeInstance node) onRendered,
+    required FlNodeEditorController controller,
   }) {
-    if (!prototypes.containsKey(json['name'].toString())) {
+    if (!controller.nodePrototypes
+        .containsKey(json['prototypeName'].toString())) {
       throw Exception('Node prototype not found');
     }
 
-    final prototype = prototypes[json['name'].toString()]!;
+    final prototype =
+        controller.nodePrototypes[json['prototypeName'].toString()]!;
 
     // Ensure `json['ports']` is properly typed
     final ports = (json['ports'] as Map<String, dynamic>).map(
@@ -523,13 +461,11 @@ final class NodeInstance {
 
     final instance = NodeInstance(
       id: json['id'],
-      name: json['name'],
-      description: json['description'],
-      color: prototype.color,
+      prototype: prototype,
       ports: ports,
       fields: fields,
       onExecute: prototype.onExecute,
-      onRendered: onRendered,
+      onRendered: controller.onRenderedCallback,
       offset: Offset(json['offset'][0], json['offset'][1]),
     );
 
@@ -543,37 +479,27 @@ final class NodeInstance {
 PortInstance createPort(PortPrototype prototype) {
   return PortInstance(
     id: const Uuid().v4(),
-    name: prototype.name,
+    prototype: prototype,
     data: null,
-    dataType: prototype.dataType,
-    portType: prototype.portType,
-    allowMultipleLinks: prototype.allowMultipleLinks,
   );
 }
 
 FieldInstance createField(FieldPrototype prototype) {
   return FieldInstance(
     id: const Uuid().v4(),
-    name: prototype.name,
-    isEditable: prototype.isEditable,
-    visualizerBuilder: prototype.visualizerBuilder,
-    onVisualizerTap: prototype.onVisualizerTap,
-    editorBuilder: prototype.editorBuilder,
+    prototype: prototype,
     data: prototype.defaultData,
-    dataType: prototype.dataType,
   );
 }
 
 NodeInstance createNode(
   NodePrototype prototype, {
+  required FlNodeEditorController controller,
   Offset? offset,
-  required Function(NodeInstance node) onRendered,
 }) {
   return NodeInstance(
     id: const Uuid().v4(),
-    name: prototype.name,
-    description: prototype.description,
-    color: prototype.color,
+    prototype: prototype,
     ports: prototype.ports.asMap().map((_, portPrototype) {
       final port = createPort(portPrototype);
       return MapEntry(port.id, port);
@@ -583,7 +509,7 @@ NodeInstance createNode(
       return MapEntry(field.id, field);
     }),
     onExecute: prototype.onExecute,
-    onRendered: onRendered,
+    onRendered: controller.onRenderedCallback,
     offset: offset ?? Offset.zero,
   );
 }

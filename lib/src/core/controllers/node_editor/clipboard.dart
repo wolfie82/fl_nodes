@@ -133,8 +133,7 @@ class FlNodeEditorClipboard {
     final instances = nodesJson.map((node) {
       return NodeInstance.fromJson(
         node,
-        prototypes: nodePrototypes,
-        onRendered: controller.onRenderedCallback,
+        controller: controller,
       );
     }).toList();
 

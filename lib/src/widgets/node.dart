@@ -42,6 +42,8 @@ class _NodeWidgetState extends State<NodeWidget> {
 
   double get viewportZoom => widget.controller.viewportZoom;
   Offset get viewportOffset => widget.controller.viewportOffset;
+  String get nodeName => widget.node.prototype.name;
+  Color get nodeColor => widget.node.prototype.color;
 
   @override
   void initState() {
@@ -213,8 +215,8 @@ class _NodeWidgetState extends State<NodeWidget> {
               context: context,
               builder: (context) {
                 return AlertDialog(
-                  title: Text(widget.node.name),
-                  content: Text(widget.node.description),
+                  title: Text(widget.node.prototype.name),
+                  content: Text(widget.node.prototype.description),
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.of(context).pop(),
@@ -301,7 +303,7 @@ class _NodeWidgetState extends State<NodeWidget> {
         widget.controller.nodePrototypes.forEach(
           (key, value) {
             if (value.ports
-                .any((port) => port.portType != startPort.portType)) {
+                .any((port) => port.portType != startPort.prototype.portType)) {
               compatiblePrototypes.add(MapEntry(key, value));
             }
           },
@@ -339,7 +341,9 @@ class _NodeWidgetState extends State<NodeWidget> {
                 addedNode.id,
                 addedNode.ports.entries
                     .firstWhere(
-                      (element) => element.value.portType != startPort.portType,
+                      (element) =>
+                          element.value.prototype.portType !=
+                          startPort.prototype.portType,
                     )
                     .value
                     .id,
@@ -438,23 +442,23 @@ class _NodeWidgetState extends State<NodeWidget> {
     if (widget.node.state.isCollapsed) {
       headerColor = Colors.transparent;
       if (widget.node.state.isSelected) {
-        bodyColor = widget.node.color;
+        bodyColor = nodeColor;
       } else {
-        bodyColor = widget.node.color.withValues(
-          red: widget.node.color.r / 1.35,
-          green: widget.node.color.g / 1.35,
-          blue: widget.node.color.b / 1.35,
+        bodyColor = nodeColor.withValues(
+          red: nodeColor.r / 1.35,
+          green: nodeColor.g / 1.35,
+          blue: nodeColor.b / 1.35,
         );
       }
     } else {
       bodyColor = const Color(0xFF212121);
       if (widget.node.state.isSelected) {
-        headerColor = widget.node.color;
+        headerColor = nodeColor;
       } else {
-        headerColor = widget.node.color.withValues(
-          red: widget.node.color.r / 1.35,
-          green: widget.node.color.g / 1.35,
-          blue: widget.node.color.b / 1.35,
+        headerColor = nodeColor.withValues(
+          red: nodeColor.r / 1.35,
+          green: nodeColor.g / 1.35,
+          blue: nodeColor.b / 1.35,
         );
       }
     }
@@ -471,7 +475,7 @@ class _NodeWidgetState extends State<NodeWidget> {
                   color: bodyColor,
                   border: Border.all(
                     color: widget.node.state.isSelected
-                        ? widget.node.color
+                        ? nodeColor
                         : Colors.transparent,
                   ),
                   borderRadius: BorderRadius.circular(8.0),
@@ -524,7 +528,7 @@ class _NodeWidgetState extends State<NodeWidget> {
                           ),
                         ),
                         Text(
-                          widget.node.name,
+                          nodeName,
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 14,
@@ -583,7 +587,7 @@ class _NodeWidgetState extends State<NodeWidget> {
               top: details.globalPosition.dy,
               child: Material(
                 color: Colors.transparent,
-                child: field.editorBuilder!(
+                child: field.prototype.editorBuilder!(
                   context,
                   () => overlayEntry?.remove(),
                   field.data,
@@ -622,7 +626,7 @@ class _NodeWidgetState extends State<NodeWidget> {
       children: [
         GestureDetector(
           onTapDown: (details) =>
-              field.onVisualizerTap ??
+              field.prototype.onVisualizerTap ??
               _showFieldEditorOverlay(
                 widget.node.id,
                 field,
@@ -634,18 +638,18 @@ class _NodeWidgetState extends State<NodeWidget> {
               color: const Color(0xFF333333),
               borderRadius: BorderRadius.circular(4.0),
             ),
-            child: field.visualizerBuilder(field.data),
+            child: field.prototype.visualizerBuilder(field.data),
           ),
         ),
         Text(
-          field.name,
+          field.prototype.name,
           style: const TextStyle(
             color: Colors.white70,
             fontSize: 13,
           ),
         ),
         Text(
-          field.dataType.toString(),
+          field.prototype.dataType.toString(),
           style: const TextStyle(
             color: Colors.white54,
             fontSize: 12,
@@ -666,7 +670,7 @@ class _NodeWidgetState extends State<NodeWidget> {
     }
 
     return Row(
-      mainAxisAlignment: port.portType == PortType.input
+      mainAxisAlignment: port.prototype.portType == PortType.input
           ? MainAxisAlignment.start
           : MainAxisAlignment.end,
       mainAxisSize: MainAxisSize.min,
@@ -674,14 +678,14 @@ class _NodeWidgetState extends State<NodeWidget> {
       spacing: 4,
       children: [
         Text(
-          port.name,
+          port.prototype.name,
           style: const TextStyle(
             color: Colors.white70,
             fontSize: 13,
           ),
         ),
         Text(
-          port.dataType.toString(),
+          port.prototype.dataType.toString(),
           style: const TextStyle(
             color: Colors.white54,
             fontSize: 12,
@@ -717,7 +721,7 @@ class _NodeWidgetState extends State<NodeWidget> {
             );
           }
 
-          final isInput = port.portType == PortType.input;
+          final isInput = port.prototype.portType == PortType.input;
 
           port.offset = Offset(
             isInput ? 0 : constraints.maxWidth,

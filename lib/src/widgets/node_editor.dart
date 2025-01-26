@@ -545,7 +545,7 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
         widget.controller.nodePrototypes.forEach(
           (key, value) {
             if (value.ports
-                .any((port) => port.portType != startPort.portType)) {
+                .any((port) => port.portType != startPort.prototype.portType)) {
               compatiblePrototypes.add(MapEntry(key, value));
             }
           },
@@ -584,7 +584,9 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
                 addedNode.id,
                 addedNode.ports.entries
                     .firstWhere(
-                      (element) => element.value.portType != startPort.portType,
+                      (element) =>
+                          element.value.prototype.portType !=
+                          startPort.prototype.portType,
                     )
                     .value
                     .id,

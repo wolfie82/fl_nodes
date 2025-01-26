@@ -101,8 +101,7 @@ class FlNodeEditorProject {
     final nodes = nodesJson.map((node) {
       return NodeInstance.fromJson(
         node,
-        prototypes: controller.nodePrototypes,
-        onRendered: controller.onRenderedCallback,
+        controller: controller,
       );
     }).toSet();
 
