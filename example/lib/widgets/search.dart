@@ -1,23 +1,20 @@
 import 'package:flutter/material.dart';
 
-import '../core/controllers/node_editor/core.dart';
-import '../core/models/styles.dart';
+import 'package:fl_nodes/fl_nodes.dart';
 
-class FlSearchWidget extends StatefulWidget {
+class SearchWidget extends StatefulWidget {
   final FlNodeEditorController controller;
-  final FlSearchStyle style;
 
-  const FlSearchWidget({
+  const SearchWidget({
     required this.controller,
-    required this.style,
     super.key,
   });
 
   @override
-  State<FlSearchWidget> createState() => _FlSearchWidgetState();
+  State<SearchWidget> createState() => _SearchWidgetState();
 }
 
-class _FlSearchWidgetState extends State<FlSearchWidget> {
+class _SearchWidgetState extends State<SearchWidget> {
   final TextEditingController _searchController = TextEditingController();
   final List<String> _searchResults = [];
   String? _currentFocus;
@@ -59,7 +56,10 @@ class _FlSearchWidgetState extends State<FlSearchWidget> {
     return AnimatedContainer(
       height: 50,
       duration: const Duration(milliseconds: 900),
-      decoration: widget.style.decoration,
+      decoration: BoxDecoration(
+        color: Colors.blue,
+        borderRadius: BorderRadius.circular(8),
+      ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -145,12 +145,18 @@ class _FlSearchWidgetState extends State<FlSearchWidget> {
                         const SizedBox(width: 8),
                         if (_currentFocus != null)
                           IconButton(
-                            icon: widget.style.nextResultIcon,
+                            icon: const Icon(
+                              Icons.navigate_before,
+                              color: Colors.white,
+                            ),
                             onPressed: _toPreviousResult,
                           ),
                         if (_currentFocus != null)
                           IconButton(
-                            icon: widget.style.previousResultIcon,
+                            icon: const Icon(
+                              Icons.navigate_next,
+                              color: Colors.white,
+                            ),
                             onPressed: _toNextResult,
                           ),
                         const SizedBox(width: 8),

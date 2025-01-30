@@ -480,6 +480,14 @@ class _NodeWidgetState extends State<NodeWidget> {
                         : Colors.transparent,
                   ),
                   borderRadius: BorderRadius.circular(8.0),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color.fromARGB(64, 0, 0, 0),
+                      blurRadius: 4.0,
+                      spreadRadius: 2.0,
+                      offset: Offset(0.0, 4.0),
+                    ),
+                  ],
                 ),
               ),
               ...widget.node.ports.entries.map(

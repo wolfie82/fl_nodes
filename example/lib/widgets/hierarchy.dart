@@ -1,26 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'package:fl_nodes/src/core/models/events.dart';
-import 'package:fl_nodes/src/core/models/styles.dart';
+import 'package:fl_nodes/fl_nodes.dart';
 
-import '../core/controllers/node_editor/core.dart';
-
-class FlHierarchyWidget extends StatefulWidget {
+class HierarchyWidget extends StatefulWidget {
   final FlNodeEditorController controller;
-  final FlHierarchyStyle style;
 
-  const FlHierarchyWidget({
+  const HierarchyWidget({
     required this.controller,
-    required this.style,
     super.key,
   });
 
   @override
-  State<FlHierarchyWidget> createState() => _FlHierarchyWidgetState();
+  State<HierarchyWidget> createState() => _HierarchyWidgetState();
 }
 
-class _FlHierarchyWidgetState extends State<FlHierarchyWidget> {
+class _HierarchyWidgetState extends State<HierarchyWidget> {
   @override
   void initState() {
     super.initState();
@@ -46,8 +41,8 @@ class _FlHierarchyWidgetState extends State<FlHierarchyWidget> {
   Widget build(BuildContext context) {
     return Container(
       constraints: const BoxConstraints(maxWidth: 300),
-      decoration: widget.style.decoration,
-      padding: widget.style.padding,
+      color: const Color(0xFF212121),
+      padding: const EdgeInsets.all(8),
       child: Column(
         spacing: 8,
         children: [
@@ -66,8 +61,11 @@ class _FlHierarchyWidgetState extends State<FlHierarchyWidget> {
                 final node = widget.controller.nodesAsList[index];
                 return Container(
                   decoration: node.state.isSelected
-                      ? widget.style.selectedNodeDecoration
-                      : widget.style.nodeDecoration,
+                      ? BoxDecoration(
+                          color: Colors.blue.withValues(alpha: 0.5),
+                          borderRadius: BorderRadius.circular(4),
+                        )
+                      : null,
                   child: ListTile(
                     title: Text(
                       '${node.offset} - ${node.prototype.name}',

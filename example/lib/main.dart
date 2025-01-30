@@ -10,6 +10,9 @@ import 'package:file_picker/file_picker.dart';
 
 import 'package:fl_nodes/fl_nodes.dart';
 
+import './widgets/hierarchy.dart';
+import './widgets/search.dart';
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -376,10 +379,7 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.start,
           children: [
-            FlHierarchyWidget(
-              controller: _nodeEditorController,
-              style: const FlHierarchyStyle(),
-            ),
+            HierarchyWidget(controller: _nodeEditorController),
             Expanded(
               child: FlNodeEditorWidget(
                 controller: _nodeEditorController,
@@ -395,10 +395,7 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
                     FlOverlayData(
                       child: Padding(
                         padding: const EdgeInsets.all(8),
-                        child: FlSearchWidget(
-                          controller: _nodeEditorController,
-                          style: const FlSearchStyle(),
-                        ),
+                        child: SearchWidget(controller: _nodeEditorController),
                       ),
                     ),
                     FlOverlayData(

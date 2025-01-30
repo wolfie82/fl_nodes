@@ -1,8 +1,8 @@
-import 'package:fl_nodes/fl_nodes.dart';
-
 import '../../models/events.dart';
 import '../../utils/constants.dart';
 import '../../utils/stack.dart';
+
+import 'core.dart';
 
 class FlNodeEditorHistory {
   final FlNodeEditorController controller;
