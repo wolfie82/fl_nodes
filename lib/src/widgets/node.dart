@@ -235,13 +235,20 @@ class _NodeWidgetState extends State<NodeWidget> {
           icon: widget.node.state.isCollapsed
               ? Icons.arrow_drop_down
               : Icons.arrow_right,
-          onSelected: () {
-            if (widget.node.state.isCollapsed) {
-              widget.controller.expandSelectedNodes();
-            } else {
-              widget.controller.collapseSelectedNodes();
-            }
-          },
+          onSelected: () => widget.controller.toggleCollapseSelectedNodes(
+            !widget.node.state.isCollapsed,
+          ),
+        ),
+        MenuItem(
+          label: widget.node.state.isPortAligmentFlipped
+              ? 'Align Ports Left'
+              : 'Align Ports Right',
+          icon: widget.node.state.isPortAligmentFlipped
+              ? Icons.align_horizontal_left
+              : Icons.align_horizontal_right,
+          onSelected: () => widget.controller
+              .toggleFlipPortsAlignmentSelectedNodes(
+                  !widget.node.state.isPortAligmentFlipped),
         ),
         const MenuDivider(),
         MenuItem(
@@ -517,23 +524,22 @@ class _NodeWidgetState extends State<NodeWidget> {
                     ),
                     child: Row(
                       spacing: 8,
-                      mainAxisSize: MainAxisSize.min,
+                      mainAxisSize: MainAxisSize.max,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         InkWell(
                           splashColor: Colors.transparent,
                           highlightColor: Colors.transparent,
-                          onTap: () {
-                            if (widget.node.state.isCollapsed) {
-                              widget.controller.expandSelectedNodes();
-                            } else {
-                              widget.controller.collapseSelectedNodes();
-                            }
-                          },
+                          onTap: () =>
+                              widget.controller.toggleCollapseSelectedNodes(
+                            !widget.node.state.isCollapsed,
+                          ),
                           child: Icon(
                             widget.node.state.isCollapsed
                                 ? Icons.expand_more
                                 : Icons.expand_less,
                             color: Colors.white,
+                            size: 20,
                           ),
                         ),
                         Text(
@@ -543,6 +549,21 @@ class _NodeWidgetState extends State<NodeWidget> {
                             fontSize: 14,
                           ),
                           textAlign: TextAlign.center,
+                        ),
+                        InkWell(
+                          splashColor: Colors.transparent,
+                          highlightColor: Colors.transparent,
+                          onTap: () => widget.controller
+                              .toggleFlipPortsAlignmentSelectedNodes(
+                            !widget.node.state.isPortAligmentFlipped,
+                          ),
+                          child: Icon(
+                            widget.node.state.isPortAligmentFlipped
+                                ? Icons.align_horizontal_right
+                                : Icons.align_horizontal_left,
+                            color: Colors.white,
+                            size: 14,
+                          ),
                         ),
                       ],
                     ),
@@ -693,8 +714,12 @@ class _NodeWidgetState extends State<NodeWidget> {
 
     return Row(
       mainAxisAlignment: port.prototype.portType == PortType.input
-          ? MainAxisAlignment.start
-          : MainAxisAlignment.end,
+          ? (widget.node.state.isPortAligmentFlipped
+              ? MainAxisAlignment.end
+              : MainAxisAlignment.start)
+          : (widget.node.state.isPortAligmentFlipped
+              ? MainAxisAlignment.start
+              : MainAxisAlignment.end),
       mainAxisSize: MainAxisSize.min,
       key: port.key,
       spacing: 4,
@@ -743,20 +768,21 @@ class _NodeWidgetState extends State<NodeWidget> {
             );
           }
 
-          final isInput = port.prototype.portType == PortType.input;
+          final alignRight = (port.prototype.portType == PortType.input) !=
+              widget.node.state.isPortAligmentFlipped;
 
           port.offset = Offset(
-            isInput ? 0 : constraints.maxWidth,
+            alignRight ? 0 : constraints.maxWidth,
             relativeOffset.dy + portBox.size.height / 2,
           );
 
           return CustomPaint(
             painter: _PortDotPainter(
               position: Offset(
-                isInput ? 0 : constraints.maxWidth,
+                alignRight ? 0 : constraints.maxWidth,
                 relativeOffset.dy + portBox.size.height / 2,
               ),
-              color: isInput ? Colors.purple[200]! : Colors.green[300]!,
+              color: alignRight ? Colors.purple[200]! : Colors.green[300]!,
             ),
           );
         },

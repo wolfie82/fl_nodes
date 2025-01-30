@@ -324,16 +324,19 @@ final class NodePrototype {
 final class NodeState {
   bool isSelected;
   bool isCollapsed;
+  bool isPortAligmentFlipped;
 
   NodeState({
     this.isSelected = false,
     this.isCollapsed = false,
+    this.isPortAligmentFlipped = false,
   });
 
   factory NodeState.fromJson(Map<String, dynamic> json) {
     return NodeState(
       isSelected: json['isSelected'],
       isCollapsed: json['isCollapsed'],
+      isPortAligmentFlipped: json['isPortAligmentFlipped'],
     );
   }
 
@@ -341,6 +344,7 @@ final class NodeState {
     return {
       'isSelected': isSelected,
       'isCollapsed': isCollapsed,
+      'isPortAligmentFlipped': isPortAligmentFlipped,
     };
   }
 
@@ -467,8 +471,11 @@ final class NodeInstance {
       offset: Offset(json['offset'][0], json['offset'][1]),
     );
 
-    instance.state.isSelected = NodeState.fromJson(json['state']).isSelected;
-    instance.state.isCollapsed = NodeState.fromJson(json['state']).isCollapsed;
+    final state = NodeState.fromJson(json['state']);
+
+    instance.state.isSelected = state.isSelected;
+    instance.state.isCollapsed = state.isCollapsed;
+    instance.state.isPortAligmentFlipped = state.isPortAligmentFlipped;
 
     return instance;
   }

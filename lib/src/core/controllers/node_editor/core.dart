@@ -513,31 +513,28 @@ class FlNodeEditorController {
     );
   }
 
-  /// This method is used to collapse all selected nodes.
+  /// This method is used to toggle the collapse state of all selected nodes.
   ///
-  /// Emits a [NodeRenderModeEvent] event.
-  void collapseSelectedNodes() {
+  /// Emit a [NodeRenderModeEvent] event.
+  void toggleCollapseSelectedNodes(bool collapse) {
     for (final id in _selectedNodeIds) {
       final node = _nodes[id];
-      node?.state.isCollapsed = true;
+      node?.state.isCollapsed = collapse;
     }
 
     eventBus.emit(
-      NodeRenderModeEvent(id: const Uuid().v4(), true, _selectedNodeIds),
+      NodeRenderModeEvent(id: const Uuid().v4(), collapse, _selectedNodeIds),
     );
   }
 
-  /// This method is used to expand the selected nodes.
-  ///
-  /// Emit a [NodeRenderModeEvent] event.
-  void expandSelectedNodes() {
+  void toggleFlipPortsAlignmentSelectedNodes(bool flip) {
     for (final id in _selectedNodeIds) {
       final node = _nodes[id];
-      node?.state.isCollapsed = false;
+      node?.state.isPortAligmentFlipped = flip;
     }
 
     eventBus.emit(
-      NodeRenderModeEvent(id: const Uuid().v4(), false, _selectedNodeIds),
+      NodeRenderModeEvent(id: const Uuid().v4(), flip, _selectedNodeIds),
     );
   }
 
