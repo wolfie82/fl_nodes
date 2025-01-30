@@ -1,10 +1,12 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
+import 'package:file_picker/file_picker.dart';
 
 import 'package:fl_nodes/fl_nodes.dart';
 
@@ -138,25 +140,109 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
       NodePrototype(
         name: 'Add',
         description: 'Adds two numbers together.',
-        color: Colors.amber,
         ports: [
           InputPortPrototype(name: 'A', dataType: double),
           InputPortPrototype(name: 'B', dataType: double),
           OutputPortPrototype(name: 'Result', dataType: double),
         ],
-        onExecute: (inputs, fields, outputs) {},
+        onExecute: (ports, fields) async {
+          final double a = ports['A']!.data as double;
+          final double b = ports['B']!.data as double;
+
+          ports['Result']!.data = a + b;
+        },
       ),
     );
 
     _nodeEditorController.registerNodePrototype(
       NodePrototype(
-        name: 'Input',
-        description: 'Inputs a value.',
-        color: Colors.red,
+        name: 'Random',
+        description: 'Outputs a random number between 0 and 1.',
         ports: [
           OutputPortPrototype(name: 'Value', dataType: double),
         ],
-        onExecute: (inputs, fields, outputs) {},
+        onExecute: (ports, fields) async {
+          ports['Value']!.data = Random().nextDouble();
+        },
+      ),
+    );
+
+    _nodeEditorController.registerNodePrototype(
+      NodePrototype(
+        name: 'Value',
+        description: 'Holds a constant double value.',
+        ports: [
+          OutputPortPrototype(name: 'Value', dataType: double),
+        ],
+        fields: [
+          FieldPrototype(
+            name: 'Value',
+            dataType: double,
+            defaultData: 0.0,
+            visualizerBuilder: (data) => Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFF333333),
+                borderRadius: BorderRadius.circular(4.0),
+              ),
+              child: Row(
+                children: [
+                  Text(
+                    data.toString(),
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 13,
+                    ),
+                  ),
+                  const Icon(
+                    Icons.edit,
+                    size: 16,
+                    color: Colors.white70,
+                  ),
+                ],
+              ),
+            ),
+            editorBuilder: (context, removeOverlay, data, setData) => Container(
+              constraints: const BoxConstraints(
+                minHeight: 20,
+                minWidth: 50,
+                maxWidth: 200,
+              ),
+              decoration: BoxDecoration(
+                color: Colors.grey[900],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey[800]!),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withAlpha(128),
+                    blurRadius: 2,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: TextFormField(
+                initialValue: data.toString(),
+                onChanged: (value) => setData(
+                  double.tryParse(value) ?? 0.0,
+                  eventType: FieldEventType.change,
+                ),
+                onFieldSubmitted: (value) {
+                  setData(
+                    double.tryParse(value) ?? 0.0,
+                    eventType: FieldEventType.submit,
+                  );
+                  removeOverlay.call();
+                },
+                decoration: const InputDecoration(
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.all(4),
+                ),
+              ),
+            ),
+          ),
+        ],
+        onExecute: (ports, fields) async {
+          ports['Value']!.data = fields['Value']!.data as double;
+        },
       ),
     );
 
@@ -164,14 +250,29 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
       NodePrototype(
         name: 'Output',
         description: 'Outputs a value.',
-        color: Colors.green,
         ports: [
           InputPortPrototype(
             name: 'Value',
             dataType: double,
           ),
         ],
-        onExecute: (inputs, fields, outputs) {},
+        onExecute: (ports, fields) async {
+          await showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                title: const Text('Output'),
+                content: Text('Output: ${ports['Value']!.data}'),
+                actions: <Widget>[
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('OK'),
+                  ),
+                ],
+              );
+            },
+          );
+        },
       ),
     );
 
@@ -179,7 +280,6 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
       NodePrototype(
         name: 'Round',
         description: 'Rounds a number to a specified number of decimals.',
-        color: Colors.blue,
         ports: [
           InputPortPrototype(name: 'Value', dataType: double),
           OutputPortPrototype(name: 'Rounded', dataType: int),
@@ -251,7 +351,13 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
             ),
           ),
         ],
-        onExecute: (input, fields, outputs) {},
+        onExecute: (ports, fields) async {
+          final double value = ports['Value']!.data as double;
+          final int decimals = fields['Decimals']!.data as int;
+
+          ports['Rounded']!.data =
+              double.parse(value.toStringAsFixed(decimals));
+        },
       ),
     );
   }
@@ -306,7 +412,8 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: IconButton(
-                            onPressed: () {},
+                            onPressed: () =>
+                                _nodeEditorController.runner.executeGraph(),
                             icon: const Icon(
                               Icons.play_arrow,
                               size: 32,

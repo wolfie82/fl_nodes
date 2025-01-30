@@ -10,6 +10,7 @@ import 'package:fl_nodes/src/core/controllers/node_editor/project.dart';
 import 'package:fl_nodes/src/core/models/events.dart';
 import 'package:fl_nodes/src/core/utils/constants.dart';
 import 'package:fl_nodes/src/core/utils/renderbox.dart';
+import 'package:fl_nodes/src/core/utils/snackbar.dart';
 import 'package:fl_nodes/src/core/utils/spatial_hash_grid.dart';
 
 import '../../models/entities.dart';
@@ -287,42 +288,77 @@ class FlNodeEditorController {
     String port2Id, {
     String? eventId,
   }) {
-    if (port1Id == port2Id) return null;
-
-    final port1 = _nodes[node1Id]!.ports[port1Id]!;
-    final port2 = _nodes[node2Id]!.ports[port2Id]!;
-
-    if (port1.prototype.portType == port2.prototype.portType) return null;
-    if (port1.links.length > 1 && !port1.prototype.allowMultipleLinks ||
-        port2.links.length > 1 && !port2.prototype.allowMultipleLinks) {
+    // Check for self-links
+    if (node1Id == node2Id || port1Id == port2Id) {
+      showNodeEditorSnackbar(
+        'Cannot create a link to the same port',
+        SnackbarType.error,
+      );
       return null;
     }
 
-    late PortInstance fromPort;
-    late PortInstance toPort;
+    final node1 = _nodes[node1Id]!;
+    final port1 = node1.ports[port1Id]!;
+    final node2 = _nodes[node2Id]!;
+    final port2 = node2.ports[port2Id]!;
+
+    // Check if the link already exists.
+    if (port1.links.any(
+          (link) =>
+              link.fromTo.item1 == node2Id && link.fromTo.item2 == port2Id,
+        ) ||
+        port2.links.any(
+          (link) =>
+              link.fromTo.item1 == node1Id && link.fromTo.item2 == port1Id,
+        )) {
+      return null;
+    }
+
+    late Tuple4<String, String, String, String> fromTo;
 
     // Determine the direction of the link based on the port types as we're building a directed graph.
     if (port1.prototype.portType == PortType.output) {
-      fromPort = port1;
-      toPort = port2;
+      fromTo = Tuple4(node1Id, port1Id, node2Id, port2Id);
     } else {
-      fromPort = port2;
-      toPort = port1;
+      fromTo = Tuple4(node2Id, port2Id, node1Id, port1Id);
     }
 
-    for (final link in toPort.links) {
-      if (link.fromTo.item1 == node1Id && link.fromTo.item2 == port1Id) {
-        return null;
+    bool canConnect(Tuple4<String, String, String, String> fromTo) {
+      final fromNode = _nodes[fromTo.item1]!;
+      final fromPort = fromNode.ports[fromTo.item2]!;
+      final toNode = _nodes[fromTo.item3]!;
+      final toPort = toNode.ports[fromTo.item4]!;
+
+      // Check if the ports are compatible
+      if (fromPort.prototype.portType == toPort.prototype.portType) {
+        showNodeEditorSnackbar(
+          'Cannot connect two ports of the same type: ${fromPort.prototype.name} and ${toPort.prototype.name}',
+          SnackbarType.error,
+        );
+        return false;
       }
+
+      // Check if the input port already has a link
+      if (toPort.links.isNotEmpty) {
+        showNodeEditorSnackbar(
+          'Cannot connect multiple links to an input port: ${toPort.prototype.name} in node ${toNode.prototype.name}',
+          SnackbarType.error,
+        );
+        return false;
+      }
+
+      return true;
     }
+
+    if (!canConnect(fromTo)) return null;
 
     final link = Link(
       id: const Uuid().v4(),
-      fromTo: Tuple4(node1Id, port1Id, node2Id, port2Id),
+      fromTo: fromTo,
     );
 
-    fromPort.links.add(link);
-    toPort.links.add(link);
+    port1.links.add(link);
+    port2.links.add(link);
 
     _renderLinks.putIfAbsent(
       link.id,

@@ -133,13 +133,11 @@ abstract class PortPrototype {
   final String name;
   final Type dataType;
   final PortType portType;
-  final bool allowMultipleLinks;
 
   PortPrototype({
     required this.name,
     this.dataType = dynamic,
     required this.portType,
-    this.allowMultipleLinks = true,
   });
 }
 
@@ -147,7 +145,6 @@ class InputPortPrototype extends PortPrototype {
   InputPortPrototype({
     required super.name,
     super.dataType,
-    super.allowMultipleLinks,
   }) : super(portType: PortType.input);
 }
 
@@ -155,7 +152,6 @@ class OutputPortPrototype extends PortPrototype {
   OutputPortPrototype({
     required super.name,
     super.dataType,
-    super.allowMultipleLinks,
   }) : super(portType: PortType.output);
 }
 
@@ -232,7 +228,9 @@ class FieldPrototype {
   final bool isEditable;
   final dynamic defaultData;
   final Widget Function(dynamic data) visualizerBuilder;
-  final Function(FieldInstance field)? onVisualizerTap;
+  final Function(
+    Function(dynamic data) setData,
+  )? onVisualizerTap;
   final Widget Function(
     BuildContext context,
     Function() removeOverlay,
@@ -307,9 +305,9 @@ final class NodePrototype {
   final Color color;
   final List<PortPrototype> ports;
   final List<FieldPrototype> fields;
-  final Function(
-    Map<String, dynamic> ports,
-    Map<String, dynamic> fields,
+  final Future<void> Function(
+    Map<String, PortInstance> ports,
+    Map<String, FieldInstance> fields,
   ) onExecute;
 
   NodePrototype({
@@ -367,12 +365,14 @@ final class NodeInstance {
   final Map<String, PortInstance> ports;
   final Map<String, FieldInstance> fields;
   final NodeState state = NodeState();
-  final Function(
-    Map<String, dynamic> ports,
-    Map<String, dynamic> fields,
+  final Future<void> Function(
+    Map<String, PortInstance> ports,
+    Map<String, FieldInstance> fields,
   ) onExecute;
   final Function(NodeInstance node) onRendered;
   Offset offset; // User or system defined offset
+  // This is used for algorithm visualization purposes during development
+  Color debugColor = Colors.grey;
   final GlobalKey key = GlobalKey(); // Determined by Flutter
 
   NodeInstance({
@@ -391,7 +391,7 @@ final class NodeInstance {
     Map<String, PortInstance>? ports,
     Map<String, FieldInstance>? fields,
     NodeState? state,
-    final Function(
+    final Future<void> Function(
       Map<String, dynamic> ports,
       Map<String, dynamic> fields,
     )? onExecute,
@@ -434,8 +434,9 @@ final class NodeInstance {
     // Ensure `json['ports']` is properly typed
     final ports = (json['ports'] as Map<String, dynamic>).map(
       (id, portJson) {
-        final portPrototype =
-            prototype.ports[json['ports'].keys.toList().indexOf(id)];
+        final prototypePortName = json['ports'].keys.toList().indexOf(id);
+        final portPrototype = prototype.ports[prototypePortName];
+
         return MapEntry(
           id,
           PortInstance.fromJson(portJson, portPrototype),
@@ -446,8 +447,9 @@ final class NodeInstance {
     // Ensure `json['fields']` is properly typed
     final fields = (json['fields'] as Map<String, dynamic>).map(
       (id, fieldJson) {
-        final prototypeField =
-            prototype.fields[json['fields'].keys.toList().indexOf(id)];
+        final prototypeFieldName = json['fields'].keys.toList().indexOf(id);
+        final prototypeField = prototype.fields[prototypeFieldName];
+
         return MapEntry(
           id,
           FieldInstance.fromJson(fieldJson, prototypeField),

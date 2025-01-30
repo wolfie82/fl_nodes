@@ -43,7 +43,8 @@ class _NodeWidgetState extends State<NodeWidget> {
   double get viewportZoom => widget.controller.viewportZoom;
   Offset get viewportOffset => widget.controller.viewportOffset;
   String get nodeName => widget.node.prototype.name;
-  Color get nodeColor => widget.node.prototype.color;
+  Color get nodeColor =>
+      kDebugMode ? widget.node.debugColor : widget.node.prototype.color;
 
   @override
   void initState() {
@@ -625,13 +626,26 @@ class _NodeWidgetState extends State<NodeWidget> {
       spacing: 4,
       children: [
         GestureDetector(
-          onTapDown: (details) =>
-              field.prototype.onVisualizerTap ??
+          onTapDown: (details) {
+            if (field.prototype.onVisualizerTap != null) {
+              field.prototype.onVisualizerTap?.call(
+                (dynamic data) {
+                  widget.controller.setFieldData(
+                    widget.node.id,
+                    field.id,
+                    data: data,
+                    eventType: FieldEventType.submit,
+                  );
+                },
+              );
+            } else {
               _showFieldEditorOverlay(
                 widget.node.id,
                 field,
                 details,
-              ),
+              );
+            }
+          },
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             decoration: BoxDecoration(
