@@ -14,14 +14,19 @@ import '../../utils/snackbar.dart';
 
 import 'core.dart';
 
+/// A subgraph is a collection of linearly dependent nodes.
+///
+/// It is used to execute nodes in the correct order in the runner component of the controller.
+///
+/// NOTE: Subgraphs and nodes are stored both in a [List] and a [Set] to allow for conservative ordering and fast ID based lookups.
 class Subgraph {
   final String id;
   final Set<String> nodeIds = {};
   final List<NodeInstance> nodes = [];
   final Set<String> childrenIds = {};
   final List<Subgraph> children = [];
-  final Set<String> parentIds = {};
-  final List<Subgraph> parents = [];
+  final Set<String> parentIds = {}; // Currently not used
+  final List<Subgraph> parents = []; // Currently not used
 
   Subgraph() : id = const Uuid().v4();
 
@@ -140,27 +145,8 @@ class FlNodeEditorRunner {
     Subgraph currentSubgraph,
     Set<String> visitedNodes,
   ) {
-    void showCircularDependencyError(Set<String> nodes) {
-      controller.focusNodesById(nodes);
-      showNodeEditorSnackbar(
-        'Circular dependency detected',
-        SnackbarType.error,
-      );
-    }
-
     // Check if the node has already been visited
-    if (visitedNodes.contains(currentNode.id)) {
-      // If it has, and it's in the current subgraph, it's a circular dependency
-      if (currentSubgraph.nodeIds.contains(currentNode.id)) {
-        showCircularDependencyError({
-          currentNode.id,
-          currentSubgraph.nodes.last.id,
-        });
-      }
-
-      // Otherwise, it's a merge point, so we don't need to do anything
-      return;
-    }
+    if (visitedNodes.contains(currentNode.id)) return;
 
     visitedNodes.add(currentNode.id);
 
@@ -174,17 +160,6 @@ class FlNodeEditorRunner {
       currentNode,
       PortType.output,
     );
-
-    // Check for direct circular dependencies between subgraphsà
-    for (final inputNodeId in currentInputNodeIds) {
-      if (currentOutputNodeIds.contains(inputNodeId)) {
-        showCircularDependencyError({
-          currentNode.id,
-          inputNodeId,
-        });
-        return;
-      }
-    }
 
     if (lastNode == null) {
       currentSubgraph.addNode(currentNode);
