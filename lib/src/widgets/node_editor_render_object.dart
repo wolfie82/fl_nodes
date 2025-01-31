@@ -348,14 +348,16 @@ class NodeEditorRenderBox extends RenderBox
   }
 
   Rect _calculateViewport(Canvas canvas, Size size) {
-    final viewport = Rect.fromLTWH(
+    return Rect.fromLTWH(
       -size.width / 2 / zoom - _offset.dx,
       -size.height / 2 / zoom - _offset.dy,
       size.width / zoom,
       size.height / zoom,
     );
+  }
 
-    return viewport;
+  double _calculateStart(double viewportEdge, double gridSpacing) {
+    return (viewportEdge / gridSpacing).floor() * gridSpacing;
   }
 
   @visibleForTesting
@@ -376,10 +378,6 @@ class NodeEditorRenderBox extends RenderBox
 
     // Draw the offset point
     canvas.drawCircle(Offset.zero, 5, debugPaint);
-  }
-
-  double _calculateStart(double viewportEdge, double gridSpacing) {
-    return (viewportEdge / gridSpacing).floor() * gridSpacing;
   }
 
   void _paintLinks(Canvas canvas) {

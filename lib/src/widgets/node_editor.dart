@@ -136,9 +136,11 @@ class _NodeEditorDataLayer extends StatefulWidget {
 
 class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
     with TickerProviderStateMixin {
-  // Core state
-  Offset _offset = Offset.zero;
-  double _zoom = 1.0;
+  // Wrapper state
+  Offset get offset => widget.controller.viewportOffset;
+  double get zoom => widget.controller.viewportZoom;
+  set offset(Offset value) => widget.controller.viewportOffset = value;
+  set zoom(double value) => widget.controller.viewportZoom = value;
 
   // Interaction state
   bool _isDragging = false;
@@ -244,7 +246,11 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
   void _onScaleUpdate(ScaleUpdateDetails details) {
     if (widget.controller.behavior.zoomSensitivity > 0 &&
         details.scale != 1.0) {
-      _setZoomFromRawInput(details.scale, trackpadInput: true);
+      _setZoomFromRawInput(
+        details.scale,
+        details.focalPoint,
+        trackpadInput: true,
+      );
     } else if (widget.controller.behavior.panSensitivity > 0 &&
         details.focalPointDelta != const Offset(10, 10)) {
       _onDragUpdate(details.focalPointDelta);
@@ -256,8 +262,8 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
       _isSelecting = true;
       _selectionStart = screenToWorld(
         position,
-        _offset,
-        _zoom,
+        offset,
+        zoom,
       )!;
     });
   }
@@ -269,8 +275,8 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
           _selectionStart,
           screenToWorld(
             position,
-            _offset,
-            _zoom,
+            offset,
+            zoom,
           )!,
         ),
       );
@@ -303,8 +309,8 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
   Tuple2<String, String>? _isNearPort(Offset position) {
     final worldPosition = screenToWorld(
       position,
-      _offset,
-      _zoom,
+      offset,
+      zoom,
     );
 
     final near = Rect.fromCenter(
@@ -339,8 +345,8 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
   void _onLinkUpdate(Offset position) {
     final worldPosition = screenToWorld(
       position,
-      _offset,
-      _zoom,
+      offset,
+      zoom,
     );
 
     final nodeOffset = widget.controller.nodes[_tempLink!.item1]!.offset;
@@ -395,9 +401,9 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
         return;
       }
 
-      final Offset adjustedKineticEnergy = _kineticEnergy / _zoom;
+      final Offset adjustedKineticEnergy = _kineticEnergy / zoom;
 
-      _setOffset(_offset + adjustedKineticEnergy);
+      _setOffset(offset + adjustedKineticEnergy);
 
       _kineticEnergy *= decayFactor;
 
@@ -415,17 +421,17 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
 
   void _setOffsetFromRawInput(Offset delta) {
     final Offset offsetFactor =
-        delta * widget.controller.behavior.panSensitivity / _zoom;
+        delta * widget.controller.behavior.panSensitivity / zoom;
 
-    final Offset targetOffset = _offset + offsetFactor;
+    final Offset targetOffset = offset + offsetFactor;
 
     _setOffset(targetOffset);
   }
 
   void _setOffset(Offset targetOffset, {bool animate = false}) {
-    if (_offset == targetOffset) return;
+    if (offset == targetOffset) return;
 
-    final beginOffset = _offset;
+    final beginOffset = offset;
 
     final Offset endOffset = Offset(
       targetOffset.dx.clamp(
@@ -441,7 +447,7 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
     if (animate) {
       _offsetAnimationController.reset();
 
-      final distance = (_offset - endOffset).distance;
+      final distance = (offset - endOffset).distance;
       final durationFactor = (distance / 1000).clamp(0.5, 3.0);
       _offsetAnimationController.duration = Duration(
         milliseconds: (1000 * durationFactor).toInt(),
@@ -457,29 +463,32 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
         ),
       )..addListener(() {
           setState(() {
-            _offset = _offsetAnimation.value;
-            widget.controller.viewportOffset = _offset;
+            offset = _offsetAnimation.value;
           });
         });
 
       _offsetAnimationController.forward();
     } else {
       setState(() {
-        _offset = endOffset;
-        widget.controller.viewportOffset = _offset;
+        offset = endOffset;
       });
     }
   }
 
-  void _setZoomFromRawInput(double amount, {bool trackpadInput = false}) {
+  void _setZoomFromRawInput(
+    double amount,
+    Offset focalPoint, {
+    bool trackpadInput = false,
+  }) {
     const double zoomSpeed = 0.1; // Adjust this to fine-tune zoom sensitivity
 
     final double sensitivity = widget.controller.behavior.zoomSensitivity;
-    final double logZoom = log(_zoom); // Convert to logarithmic scale
+    final double logZoom = log(zoom); // Convert to logarithmic scale
 
     // Calculate new zoom level in log space
 
-    double delta;
+    late double delta;
+
     if (trackpadInput) {
       // Trackpad: amount is in range (0, 1] for zoom out, (1, ∞) for zoom in
       // Due to the logarithmic scale, we need to multiply by 10 to get a reasonable delta
@@ -499,9 +508,9 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
   }
 
   void _setZoom(double targetZoom, {bool animate = false}) {
-    if (_zoom == targetZoom) return;
+    if (zoom == targetZoom) return;
 
-    final beginZoom = _zoom;
+    final beginZoom = zoom;
 
     final endZoom = targetZoom.clamp(
       widget.controller.behavior.minZoom,
@@ -523,16 +532,14 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
         ),
       )..addListener(() {
           setState(() {
-            _zoom = _zoomAnimation.value;
-            widget.controller.viewportZoom = _zoom;
+            zoom = _zoomAnimation.value;
           });
         });
 
       _zoomAnimationController.forward();
     } else {
       setState(() {
-        _zoom = endZoom;
-        widget.controller.viewportZoom = _zoom;
+        zoom = endZoom;
       });
     }
   }
@@ -564,8 +571,8 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
 
       final worldPosition = screenToWorld(
         position,
-        _offset,
-        _zoom,
+        offset,
+        zoom,
       );
 
       return compatiblePrototypes.map((entry) {
@@ -611,8 +618,8 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
     List<ContextMenuEntry> editorContextMenuEntries(Offset position) {
       final worldPosition = screenToWorld(
         position,
-        _offset,
-        _zoom,
+        offset,
+        zoom,
       )!;
 
       return [
@@ -862,7 +869,10 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
                   onPointerSignalReceived: (event) {
                     if (widget.controller.behavior.zoomSensitivity > 0 &&
                         event is PointerScrollEvent) {
-                      _setZoomFromRawInput(event.scrollDelta.dy);
+                      _setZoomFromRawInput(
+                        event.scrollDelta.dy,
+                        event.position,
+                      );
                     }
                   },
                   onPointerPanZoomStart:

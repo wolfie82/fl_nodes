@@ -246,9 +246,10 @@ class _NodeWidgetState extends State<NodeWidget> {
           icon: widget.node.state.isPortAligmentFlipped
               ? Icons.align_horizontal_left
               : Icons.align_horizontal_right,
-          onSelected: () => widget.controller
-              .toggleFlipPortsAlignmentSelectedNodes(
-                  !widget.node.state.isPortAligmentFlipped),
+          onSelected: () =>
+              widget.controller.toggleFlipPortsAlignmentSelectedNodes(
+            !widget.node.state.isPortAligmentFlipped,
+          ),
         ),
         const MenuDivider(),
         MenuItem(

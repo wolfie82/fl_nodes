@@ -98,6 +98,7 @@ class FlNodeEditorController {
       ViewportZoomEvent(
         id: const Uuid().v4(),
         _viewportZoom,
+        animate: false,
         isHandled: true,
       ),
     );
@@ -114,16 +115,10 @@ class FlNodeEditorController {
     bool absolute = false,
     bool isHandled = false,
   }) {
-    if (absolute) {
-      _viewportOffset = coords;
-    } else {
-      _viewportOffset += coords;
-    }
-
     eventBus.emit(
       ViewportOffsetEvent(
         id: const Uuid().v4(),
-        _viewportOffset,
+        absolute ? coords : _viewportOffset + coords,
         animate: animate,
         isHandled: isHandled,
       ),
@@ -133,17 +128,18 @@ class FlNodeEditorController {
   /// This method is used to set the zoom level of the viewport.
   ///
   /// The 'animate' parameter is used to animate the zoom transition.
+  ///
+  /// NOTE: The focal point deafults to the current viewport offset if not provided and uses cursor position from mouse events.
   void setViewportZoom(
     double amount, {
     bool animate = true,
     bool isHandled = false,
   }) {
-    _viewportZoom = amount;
-
     eventBus.emit(
       ViewportZoomEvent(
         id: const Uuid().v4(),
-        _viewportZoom,
+        amount,
+        animate: animate,
         isHandled: isHandled,
       ),
     );
