@@ -302,6 +302,7 @@ class FieldInstance {
 final class NodePrototype {
   final String name;
   final String description;
+  final bool allowRecursion;
   final Color color;
   final List<PortPrototype> ports;
   final List<FieldPrototype> fields;
@@ -313,6 +314,7 @@ final class NodePrototype {
   NodePrototype({
     required this.name,
     this.description = '',
+    required this.allowRecursion,
     this.color = Colors.grey,
     this.ports = const [],
     this.fields = const [],
