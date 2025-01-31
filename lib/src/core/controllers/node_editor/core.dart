@@ -74,8 +74,34 @@ class FlNodeEditorController {
   }
 
   // Viewport
-  Offset viewportOffset = Offset.zero;
-  double viewportZoom = 1.0;
+  Offset _viewportOffset = Offset.zero;
+  double _viewportZoom = 1.0;
+
+  Offset get viewportOffset => _viewportOffset;
+  double get viewportZoom => _viewportZoom;
+
+  set viewportOffset(Offset offset) {
+    _viewportOffset = offset;
+    eventBus.emit(
+      ViewportOffsetEvent(
+        id: const Uuid().v4(),
+        _viewportOffset,
+        animate: false,
+        isHandled: true,
+      ),
+    );
+  }
+
+  set viewportZoom(double zoom) {
+    _viewportZoom = zoom;
+    eventBus.emit(
+      ViewportZoomEvent(
+        id: const Uuid().v4(),
+        _viewportZoom,
+        isHandled: true,
+      ),
+    );
+  }
 
   /// This method is used to set the offset of the viewport.
   ///
@@ -89,15 +115,15 @@ class FlNodeEditorController {
     bool isHandled = false,
   }) {
     if (absolute) {
-      viewportOffset = coords;
+      _viewportOffset = coords;
     } else {
-      viewportOffset += coords;
+      _viewportOffset += coords;
     }
 
     eventBus.emit(
       ViewportOffsetEvent(
         id: const Uuid().v4(),
-        viewportOffset,
+        _viewportOffset,
         animate: animate,
         isHandled: isHandled,
       ),
@@ -112,12 +138,12 @@ class FlNodeEditorController {
     bool animate = true,
     bool isHandled = false,
   }) {
-    viewportZoom = amount;
+    _viewportZoom = amount;
 
     eventBus.emit(
       ViewportZoomEvent(
         id: const Uuid().v4(),
-        viewportZoom,
+        _viewportZoom,
         isHandled: isHandled,
       ),
     );
@@ -553,14 +579,14 @@ class FlNodeEditorController {
 
     for (final id in _selectedNodeIds) {
       final node = _nodes[id];
-      node?.offset += delta / viewportZoom;
+      node?.offset += delta / _viewportZoom;
     }
 
     eventBus.emit(
       DragSelectionEvent(
         id: eventId ?? const Uuid().v4(),
         _selectedNodeIds.toSet(),
-        delta / viewportZoom,
+        delta / _viewportZoom,
       ),
     );
   }
