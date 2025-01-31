@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
@@ -471,23 +472,28 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
   }
 
   void _setZoomFromRawInput(double amount, {bool trackpadInput = false}) {
-    const double baseSpeed =
-        0.05; // Base zoom speed and damping factor (magic number)
-    const double scaleFactor =
-        1.5; // Controls how zoom speed scales with zoom level (magic number)
+    const double zoomSpeed = 0.1; // Adjust this to fine-tune zoom sensitivity
 
     final double sensitivity = widget.controller.behavior.zoomSensitivity;
+    final double logZoom = log(_zoom); // Convert to logarithmic scale
 
-    final double dynamicZoomFactor =
-        baseSpeed * (1 + scaleFactor * _zoom) * sensitivity;
+    // Calculate new zoom level in log space
 
-    final double zoomFactor =
-        (amount * dynamicZoomFactor).abs().clamp(0.1, 10.0);
+    double delta;
+    if (trackpadInput) {
+      // Trackpad: amount is in range (0, 1] for zoom out, (1, ∞) for zoom in
+      // Due to the logarithmic scale, we need to multiply by 10 to get a reasonable delta
+      delta = log(amount) * sensitivity * 10;
+    } else {
+      // Mouse wheel or other input: positive zooms in, negative zooms out
+      delta = amount * zoomSpeed * sensitivity;
+    }
 
-    // The sign of the amount determines the direction of the zoom and its opposite on trackpad
-    final double targetZoom = ((trackpadInput ? amount > 1 : amount < 0)
-        ? _zoom * (1 + zoomFactor)
-        : _zoom / (1 + zoomFactor));
+    final double targetLogZoom =
+        trackpadInput ? logZoom + delta : logZoom - delta;
+
+    final double targetZoom =
+        exp(targetLogZoom); // Convert back to linear space
 
     _setZoom(targetZoom, animate: true);
   }
