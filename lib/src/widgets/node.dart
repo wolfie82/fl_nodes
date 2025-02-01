@@ -617,7 +617,6 @@ class _NodeWidgetState extends State<NodeWidget> {
               left: details.globalPosition.dx,
               top: details.globalPosition.dy,
               child: Material(
-                color: Colors.transparent,
                 child: field.prototype.editorBuilder!(
                   context,
                   () => overlayEntry?.remove(),
@@ -676,14 +675,7 @@ class _NodeWidgetState extends State<NodeWidget> {
               );
             }
           },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            decoration: BoxDecoration(
-              color: const Color(0xFF333333),
-              borderRadius: BorderRadius.circular(4.0),
-            ),
-            child: field.prototype.visualizerBuilder(field.data),
-          ),
+          child: field.prototype.visualizerBuilder(field.data),
         ),
         Text(
           field.prototype.name,
