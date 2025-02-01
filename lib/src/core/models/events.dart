@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:fl_nodes/src/core/controllers/node_editor/project.dart';
+
 import '../controllers/node_editor/core.dart';
 
 import 'entities.dart';
@@ -25,7 +27,7 @@ abstract class NodeEditorEvent {
     this.isUndoable = false,
   });
 
-  Map<String, dynamic> toJson() => {
+  Map<String, dynamic> toJson(Map<String, DataHandler> dataHandlers) => {
         'id': id,
         'isHandled': isHandled,
         'isUndoable': isUndoable,
@@ -74,8 +76,8 @@ final class DragSelectionEvent extends NodeEditorEvent {
   }) : super(isUndoable: true);
 
   @override
-  Map<String, dynamic> toJson() => {
-        ...super.toJson(),
+  Map<String, dynamic> toJson(dataHandlers) => {
+        ...super.toJson(dataHandlers),
         'nodeIds': nodeIds.toList(),
         'delta': [delta.dx, delta.dy],
       };
@@ -106,9 +108,9 @@ final class AddNodeEvent extends NodeEditorEvent {
   }) : super(isUndoable: true);
 
   @override
-  Map<String, dynamic> toJson() => {
-        ...super.toJson(),
-        'node': node.toJson(),
+  Map<String, dynamic> toJson(dataHandlers) => {
+        ...super.toJson(dataHandlers),
+        'node': node.toJson(dataHandlers),
       };
 
   factory AddNodeEvent.fromJson(
@@ -120,6 +122,7 @@ final class AddNodeEvent extends NodeEditorEvent {
         json['node'] as Map<String, dynamic>,
         nodePrototypes: controller.nodePrototypes,
         onRenderedCallback: controller.onRenderedCallback,
+        dataHandlers: controller.project.dataHandlers,
       ),
       id: json['id'] as String,
       isHandled: json['isHandled'] as bool,
@@ -134,9 +137,9 @@ final class RemoveNodeEvent extends NodeEditorEvent {
       : super(isUndoable: true);
 
   @override
-  Map<String, dynamic> toJson() => {
-        ...super.toJson(),
-        'node': node.toJson(),
+  Map<String, dynamic> toJson(dataHandlers) => {
+        ...super.toJson(dataHandlers),
+        'node': node.toJson(dataHandlers),
       };
 
   factory RemoveNodeEvent.fromJson(
@@ -148,6 +151,7 @@ final class RemoveNodeEvent extends NodeEditorEvent {
         json['node'] as Map<String, dynamic>,
         nodePrototypes: controller.nodePrototypes,
         onRenderedCallback: controller.onRenderedCallback,
+        dataHandlers: controller.project.dataHandlers,
       ),
       id: json['id'] as String,
       isHandled: json['isHandled'] as bool,
@@ -165,8 +169,8 @@ final class AddLinkEvent extends NodeEditorEvent {
   }) : super(isUndoable: true);
 
   @override
-  Map<String, dynamic> toJson() => {
-        ...super.toJson(),
+  Map<String, dynamic> toJson(dataHandlers) => {
+        ...super.toJson(dataHandlers),
         'link': link.toJson(),
       };
 
@@ -186,8 +190,8 @@ final class RemoveLinkEvent extends NodeEditorEvent {
       : super(isUndoable: true);
 
   @override
-  Map<String, dynamic> toJson() => {
-        ...super.toJson(),
+  Map<String, dynamic> toJson(dataHandlers) => {
+        ...super.toJson(dataHandlers),
         'link': link.toJson(),
       };
 

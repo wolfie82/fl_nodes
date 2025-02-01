@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'package:example/data_handlers.dart';
 import 'package:example/nodes.dart';
 import 'package:file_picker/file_picker.dart';
 
@@ -138,6 +139,8 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
         return proceed == true;
       },
     );
+
+    registerDataHandlers(_nodeEditorController);
 
     registerNodes(context, _nodeEditorController);
   }

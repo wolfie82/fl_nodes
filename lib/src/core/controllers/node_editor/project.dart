@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 
 import 'package:uuid/uuid.dart';
@@ -7,6 +9,13 @@ import '../../models/events.dart';
 import '../../utils/snackbar.dart';
 
 import 'core.dart';
+
+class DataHandler {
+  final String Function(dynamic data) toJson;
+  final dynamic Function(String json) fromJson;
+
+  DataHandler(this.toJson, this.fromJson);
+}
 
 class FlNodeEditorProject {
   final FlNodeEditorController controller;
@@ -21,6 +30,36 @@ class FlNodeEditorProject {
   final Future<Map<String, dynamic>?> Function(bool isSaved)? projectLoader;
   final Future<bool> Function(bool isSaved)? projectCreator;
 
+  // Unlike with nodes, there is no reason not to share them between node editor instances.
+  static final Map<String, DataHandler> _dataHandlers = {
+    'bool': DataHandler(
+      (data) => data.toString(),
+      (json) => json.toLowerCase() == 'true',
+    ),
+    'int': DataHandler(
+      (data) => data.toString(),
+      (json) => int.parse(json),
+    ),
+    'double': DataHandler(
+      (data) => data.toString(),
+      (json) => double.parse(json),
+    ),
+    'String': DataHandler(
+      (data) => data,
+      (json) => json,
+    ),
+    'List': DataHandler(
+      (data) => jsonEncode(data),
+      (json) => jsonDecode(json) as List<dynamic>,
+    ),
+    'Map': DataHandler(
+      (data) => jsonEncode(data),
+      (json) => jsonDecode(json) as Map<String, dynamic>,
+    ),
+  };
+
+  Map<String, DataHandler> get dataHandlers => _dataHandlers;
+
   /// The [projectSaver] callback is used to save the project data, should return a boolean.
   /// The [projectLoader] callback is used to load the project data, should return a JSON object.
   /// The [projectCreator] callback is used to create a new project, should return a boolean.
@@ -31,6 +70,33 @@ class FlNodeEditorProject {
     required this.projectCreator,
   }) {
     controller.eventBus.events.listen(_handleProjectEvents);
+  }
+
+  /// Registers a custom data handler for a specific type.
+  void registerDataHandler<T>({
+    required String Function(dynamic data) toJson,
+    required T Function(String json) fromJson,
+  }) {
+    _registerDataHandler<T>(toJson: toJson, fromJson: fromJson);
+  }
+
+  static void _registerDataHandler<T>({
+    required String Function(dynamic data) toJson,
+    required T Function(String json) fromJson,
+  }) {
+    _dataHandlers[T.toString()] = DataHandler(
+      (data) => toJson(data),
+      (json) => fromJson(json),
+    );
+  }
+
+  /// Unregisters a custom data handler for a specific type.
+  void unregisterDataHandler<T>() {
+    _unregisterDataHandler<T>();
+  }
+
+  static void _unregisterDataHandler<T>() {
+    _dataHandlers.remove(T.toString());
   }
 
   /// Clears the history and sets the project as saved.
@@ -65,8 +131,9 @@ class FlNodeEditorProject {
   /// Even doe counterintuitive, this method is the one actually responsible for saving the project data other than serializing the project data.
   /// This choice was made to avoid redundancy and to keep the project data saving logic in one place.
   Map<String, dynamic> _toJson() {
-    final nodesJson =
-        controller.nodes.values.map((node) => node.toJson()).toList();
+    final nodesJson = controller.nodes.values
+        .map((node) => node.toJson(dataHandlers))
+        .toList();
 
     return {
       'viewport': {
@@ -103,6 +170,7 @@ class FlNodeEditorProject {
         node,
         nodePrototypes: controller.nodePrototypes,
         onRenderedCallback: controller.onRenderedCallback,
+        dataHandlers: dataHandlers,
       );
     }).toSet();
 

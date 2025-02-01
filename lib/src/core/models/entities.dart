@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:tuple/tuple.dart';
 import 'package:uuid/uuid.dart';
 
+import 'package:fl_nodes/src/core/controllers/node_editor/project.dart';
 import 'package:fl_nodes/src/core/models/events.dart';
 import 'package:fl_nodes/src/core/utils/json_extensions.dart';
 
@@ -161,7 +162,7 @@ class OutputPortPrototype extends PortPrototype {
 final class PortInstance {
   final String id;
   final PortPrototype prototype;
-  dynamic data;
+  dynamic data; // Not saved as it is only used during in graph execution
   Set<Link> links = {};
   Offset offset; // Determined by Flutter
   final GlobalKey key = GlobalKey(); // Determined by Flutter
@@ -169,7 +170,6 @@ final class PortInstance {
   PortInstance({
     required this.id,
     required this.prototype,
-    required this.data,
     this.offset = Offset.zero,
   });
 
@@ -177,7 +177,6 @@ final class PortInstance {
     return {
       'id': id,
       'prototypeName': prototype.name,
-      'data': data,
       'links': links.map((link) => link.toJson()).toList(),
     };
   }
@@ -189,7 +188,6 @@ final class PortInstance {
     final instance = PortInstance(
       id: json['id'],
       prototype: prototype,
-      data: json['data'],
     );
 
     instance.links = (json['links'] as List<dynamic>)
@@ -208,7 +206,6 @@ final class PortInstance {
     final instance = PortInstance(
       id: id ?? this.id,
       prototype: prototype,
-      data: data ?? this.data,
       offset: offset ?? this.offset,
     );
 
@@ -265,22 +262,25 @@ class FieldInstance {
     required this.data,
   });
 
-  Map<String, dynamic> toJson() {
+  Map<String, dynamic> toJson(Map<String, DataHandler> dataHandlers) {
     return {
       'id': id,
       'prototypeName': prototype.name,
-      'data': data,
+      'data': dataHandlers[prototype.dataType.toString()]?.toJson(data),
     };
   }
 
   factory FieldInstance.fromJson(
     Map<String, dynamic> json,
     FieldPrototype prototype,
+    Map<String, DataHandler> dataHandlers,
   ) {
     return FieldInstance(
       id: json['id'],
       prototype: prototype,
-      data: json['data'],
+      data: json['data'] != 'null'
+          ? dataHandlers[prototype.dataType.toString()]?.fromJson(json['data'])
+          : null,
     );
   }
 
@@ -415,12 +415,22 @@ final class NodeInstance {
     );
   }
 
-  Map<String, dynamic> toJson() {
+  Map<String, dynamic> toJson(Map<String, DataHandler> dataHandlers) {
     return {
       'id': id,
       'prototypeName': prototype.name,
-      'ports': ports.map((_, port) => MapEntry(port.id, port.toJson())),
-      'fields': fields.map((_, field) => MapEntry(field.id, field.toJson())),
+      'ports': ports.map(
+        (_, port) => MapEntry(
+          port.id,
+          port.toJson(),
+        ),
+      ),
+      'fields': fields.map(
+        (_, field) => MapEntry(
+          field.id,
+          field.toJson(dataHandlers),
+        ),
+      ),
       'state': state.toJson(),
       'offset': [offset.dx, offset.dy],
     };
@@ -430,6 +440,7 @@ final class NodeInstance {
     Map<String, dynamic> json, {
     required Map<String, NodePrototype> nodePrototypes,
     required Function(NodeInstance node) onRenderedCallback,
+    required Map<String, DataHandler> dataHandlers,
   }) {
     if (!nodePrototypes.containsKey(json['prototypeName'].toString())) {
       throw Exception('Node prototype not found');
@@ -458,7 +469,7 @@ final class NodeInstance {
 
         return MapEntry(
           id,
-          FieldInstance.fromJson(fieldJson, prototypeField),
+          FieldInstance.fromJson(fieldJson, prototypeField, dataHandlers),
         );
       },
     );
@@ -487,7 +498,6 @@ PortInstance createPort(PortPrototype prototype) {
   return PortInstance(
     id: const Uuid().v4(),
     prototype: prototype,
-    data: null,
   );
 }
 

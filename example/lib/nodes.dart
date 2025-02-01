@@ -101,7 +101,6 @@ void registerNodes(BuildContext context, FlNodeEditorController controller) {
         FieldPrototype(
           name: 'Value',
           dataType: double,
-          defaultData: 0.0,
           visualizerBuilder: (data) => Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             decoration: BoxDecoration(
