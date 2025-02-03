@@ -65,7 +65,11 @@ class FlNodeEditorClipboard {
       );
     }).toList();
 
-    final nodesJsonData = jsonEncode(selectedNodes);
+    final selectedNodesJson = selectedNodes
+        .map((node) => node.toJson(controller.project.dataHandlers))
+        .toList();
+
+    final nodesJsonData = jsonEncode(selectedNodesJson);
     final encompassingRectJsonData = jsonEncode(encompassingRect.toJson());
 
     final jsonData = jsonEncode({
