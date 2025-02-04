@@ -42,9 +42,8 @@ class _NodeWidgetState extends State<NodeWidget> {
 
   double get viewportZoom => widget.controller.viewportZoom;
   Offset get viewportOffset => widget.controller.viewportOffset;
-  String get nodeName => widget.node.prototype.name;
-  Color get nodeColor =>
-      kDebugMode ? widget.node.debugColor : widget.node.prototype.color;
+  String get nodeName => widget.node.prototype.displayName;
+  Color get nodeColor => widget.node.prototype.color;
 
   @override
   void initState() {
@@ -148,7 +147,7 @@ class _NodeWidgetState extends State<NodeWidget> {
         final absolutePortPosition = node.offset + port.offset;
 
         if ((worldPosition - absolutePortPosition).distance < 12) {
-          return Tuple2(node.id, port.id);
+          return Tuple2(node.id, port.prototype.idName);
         }
       }
     }
@@ -216,7 +215,7 @@ class _NodeWidgetState extends State<NodeWidget> {
               context: context,
               builder: (context) {
                 return AlertDialog(
-                  title: Text(widget.node.prototype.name),
+                  title: Text(widget.node.prototype.displayName),
                   content: Text(widget.node.prototype.description),
                   actions: [
                     TextButton(
@@ -331,7 +330,7 @@ class _NodeWidgetState extends State<NodeWidget> {
 
       return compatiblePrototypes.map((entry) {
         return MenuItem(
-          label: entry.value.name,
+          label: entry.value.displayName,
           icon: Icons.widgets,
           onSelected: () {
             widget.controller.addNode(
@@ -355,7 +354,8 @@ class _NodeWidgetState extends State<NodeWidget> {
                           startPort.prototype.portType,
                     )
                     .value
-                    .id,
+                    .prototype
+                    .idName,
               );
 
               _isLinking = false;
@@ -578,12 +578,8 @@ class _NodeWidgetState extends State<NodeWidget> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         spacing: widget.node.state.isCollapsed ? 0 : 2,
                         children: [
-                          ...widget.node.fields.entries.map(
-                            (entry) => _buildField(entry.value),
-                          ),
-                          ...widget.node.ports.entries.map(
-                            (entry) => _buildPortRow(entry.value),
-                          ),
+                          ...widget.node.fields.values.map(_buildField),
+                          ...widget.node.ports.values.map(_buildPortRow),
                         ],
                       ),
                     ),
@@ -597,6 +593,7 @@ class _NodeWidgetState extends State<NodeWidget> {
     );
   }
 
+  // See https://github.com/WilliamKarolDiCioccio/fl_nodes/issues/8
   void _showFieldEditorOverlay(
     String nodeId,
     FieldInstance field,
@@ -624,7 +621,7 @@ class _NodeWidgetState extends State<NodeWidget> {
                   (dynamic data, {required FieldEventType eventType}) {
                     widget.controller.setFieldData(
                       nodeId,
-                      field.id,
+                      field.prototype.idName,
                       data: data,
                       eventType: eventType,
                     );
@@ -661,7 +658,7 @@ class _NodeWidgetState extends State<NodeWidget> {
                 (dynamic data) {
                   widget.controller.setFieldData(
                     widget.node.id,
-                    field.id,
+                    field.prototype.idName,
                     data: data,
                     eventType: FieldEventType.submit,
                   );
@@ -678,7 +675,7 @@ class _NodeWidgetState extends State<NodeWidget> {
           child: field.prototype.visualizerBuilder(field.data),
         ),
         Text(
-          field.prototype.name,
+          field.prototype.displayName,
           style: const TextStyle(
             color: Colors.white70,
             fontSize: 13,
@@ -718,7 +715,7 @@ class _NodeWidgetState extends State<NodeWidget> {
       spacing: 4,
       children: [
         Text(
-          port.prototype.name,
+          port.prototype.displayName,
           style: const TextStyle(
             color: Colors.white70,
             fontSize: 13,

@@ -42,15 +42,11 @@ Future<Map<String, String>> mapToNewIds(List<NodeInstance> nodes) async {
 
   for (final node in nodes) {
     newIds[node.id] = const Uuid().v4();
+
     for (final port in node.ports.values) {
-      newIds[port.id] = const Uuid().v4();
       for (final link in port.links) {
         newIds[link.id] = const Uuid().v4();
       }
-    }
-
-    for (var field in node.fields.values) {
-      newIds[field.id] = const Uuid().v4();
     }
   }
 

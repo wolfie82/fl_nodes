@@ -1,53 +1,16 @@
 import 'dart:async';
-import 'dart:math';
-
-import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
-
-import 'package:uuid/uuid.dart';
 
 import 'package:fl_nodes/src/core/models/events.dart';
+import 'package:fl_nodes/src/core/utils/snackbar.dart';
 
 import '../../models/entities.dart';
-import '../../models/exception.dart';
-import '../../utils/snackbar.dart';
 
 import 'core.dart';
-
-/// A subgraph is a collection of linearly dependent nodes.
-///
-/// It is used to execute nodes in the correct order in the runner component of the controller.
-///
-/// NOTE: Subgraphs and nodes are stored both in a [List] and a [Set] to allow for conservative ordering and fast ID based lookups.
-class Subgraph {
-  final String id;
-  final Set<String> nodeIds = {};
-  final List<NodeInstance> nodes = [];
-  final Set<String> childrenIds = {};
-  final List<Subgraph> children = [];
-  final Set<String> parentIds = {}; // Currently not used
-  final List<Subgraph> parents = []; // Currently not used
-
-  Subgraph() : id = const Uuid().v4();
-
-  void addNode(NodeInstance node) {
-    nodeIds.add(node.id);
-    nodes.add(node);
-  }
-
-  void addSubgraph(Subgraph newSubgraph) {
-    newSubgraph.parentIds.add(newSubgraph.id);
-    newSubgraph.parents.add(newSubgraph);
-    childrenIds.add(newSubgraph.id);
-    children.add(newSubgraph);
-  }
-}
 
 class FlNodeEditorRunner {
   final FlNodeEditorController controller;
   Map<String, NodeInstance> _nodes = {};
-  List<Subgraph> _topSubgraphs = [];
-  Set<String> _executedSubgraphs = {};
+  Map<String, Set<String>> _dataDeps = {};
 
   FlNodeEditorRunner(this.controller) {
     controller.eventBus.events.listen(_handleRunnerEvents);
@@ -60,14 +23,12 @@ class FlNodeEditorRunner {
         event is AddLinkEvent ||
         event is RemoveLinkEvent ||
         (event is NodeFieldEvent && event.eventType == FieldEventType.submit)) {
-      _identifySubgraphs();
+      _buildDepsMap();
     }
   }
 
   /// Identifies independent subgraphs in the graph.
-  void _identifySubgraphs() {
-    _topSubgraphs = [];
-
+  void _copyNodes() {
     // This isolates and avoids async access issues
     _nodes = controller.nodes.map((id, node) {
       final deepCopiedPorts = node.ports.map((portId, port) {
@@ -96,31 +57,28 @@ class FlNodeEditorRunner {
         ),
       );
     });
+  }
 
-    // Detect top-level subgraphs
+  /// Builds the data dependency map.
+  void _buildDepsMap() {
+    _dataDeps = {};
+
+    _copyNodes();
+
+    final Set<String> visited = {};
+
     for (final node in _nodes.values) {
-      final hasOnlyInputPorts = node.ports.values.every(
-        (port) => port.prototype.portType == PortType.input,
-      );
-
-      if (hasOnlyInputPorts) {
-        final Set<String> visitedNodes = {};
-        final Subgraph subgraph = Subgraph();
-        _topSubgraphs.add(subgraph);
-
-        _collectSubgraphFromLinks(
-          node,
-          subgraph,
-          visitedNodes,
-        );
+      if (!node.ports.values
+          .every((port) => port.prototype.portType == PortType.output)) {
+        continue;
       }
-    }
 
-    if (kDebugMode) _debugColorNodes();
+      _findDeps(node.id, visited);
+    }
   }
 
   /// Returns the unique IDs of nodes connected to a given node's input or output ports.
-  Set<String> connectedNodeIds(NodeInstance node, PortType portType) {
+  Set<String> _getConnectedNodeIds(NodeInstance node, PortType portType) {
     final connectedNodeIds = <String>{};
 
     final ports = node.ports.values.where(
@@ -139,167 +97,85 @@ class FlNodeEditorRunner {
     return connectedNodeIds;
   }
 
-  /// Recursively collects nodes in a subgraph from input links.
-  void _collectSubgraphFromLinks(
-    NodeInstance currentNode,
-    Subgraph currentSubgraph,
-    Set<String> visitedNodes,
-  ) {
-    // Check if the node has already been visited
-    if (visitedNodes.contains(currentNode.id)) return;
+  void _findDeps(String nodeId, Set<String> visited) {
+    if (visited.contains(nodeId)) return;
 
-    visitedNodes.add(currentNode.id);
+    visited.add(nodeId);
 
-    final lastNode = currentSubgraph.nodes.lastOrNull;
-
-    final currentInputNodeIds = connectedNodeIds(
-      currentNode,
+    _dataDeps[nodeId] = _getConnectedNodeIds(
+      _nodes[nodeId]!,
       PortType.input,
     );
-    final currentOutputNodeIds = connectedNodeIds(
-      currentNode,
+
+    final connectedNodeIds = _getConnectedNodeIds(
+      _nodes[nodeId]!,
       PortType.output,
     );
 
-    if (lastNode == null) {
-      currentSubgraph.addNode(currentNode);
-
-      for (final inputNodeId in currentInputNodeIds) {
-        _collectSubgraphFromLinks(
-          _nodes[inputNodeId]!,
-          currentSubgraph,
-          visitedNodes,
-        );
-      }
-    } else {
-      final lastInputNodeIds = connectedNodeIds(
-        lastNode,
-        PortType.input,
-      );
-
-      if (lastInputNodeIds.length > 1 || currentOutputNodeIds.length > 1) {
-        final newSubgraph = Subgraph();
-        newSubgraph.addNode(currentNode);
-        currentSubgraph.addSubgraph(newSubgraph);
-
-        for (final inputNodeId in currentInputNodeIds) {
-          _collectSubgraphFromLinks(
-            _nodes[inputNodeId]!,
-            newSubgraph,
-            visitedNodes,
-          );
-        }
-      } else {
-        currentSubgraph.addNode(currentNode);
-
-        for (final inputNodeId in currentInputNodeIds) {
-          _collectSubgraphFromLinks(
-            _nodes[inputNodeId]!,
-            currentSubgraph,
-            visitedNodes,
-          );
-        }
-      }
+    for (final connectedNodeId in connectedNodeIds) {
+      _findDeps(connectedNodeId, visited);
     }
   }
 
   /// Executes the entire graph asynchronously
   Future<void> executeGraph() async {
-    if (_nodes.isEmpty) return;
+    final Set<String> executed = {};
 
-    final futures = <Future<void>>[];
+    for (final node in _nodes.values) {
+      if (!node.ports.values
+          .every((port) => port.prototype.portType == PortType.output)) {
+        continue;
+      }
 
-    for (final subgraph in _topSubgraphs) {
-      futures.add(_executeSubgraph(subgraph));
+      await _executeNode(node, executed);
     }
-
-    // Await all subgraph executions to complete
-    await Future.wait(futures);
   }
 
-  /// Executes a single subgraph asynchronously
-  Future<void> _executeSubgraph(Subgraph subgraph) async {
-    if (_executedSubgraphs.contains(subgraph.id)) return;
+  /// Executes a node asynchronously
+  Future<void> _executeNode(NodeInstance node, Set<String> executed) async {
+    if (executed.contains(node.id)) return;
 
-    _executedSubgraphs.add(subgraph.id);
+    executed.add(node.id);
 
-    for (final child in subgraph.children) {
-      await _executeSubgraph(child);
+    for (final dep in _dataDeps[node.id]!) {
+      await _executeNode(_nodes[dep]!, executed);
     }
 
-    for (final node in subgraph.nodes.reversed) {
-      await _executeNode(node);
-    }
+    late final Map<String, dynamic> forwardedData;
 
-    _executedSubgraphs = {};
-  }
-
-  /// Executes a single node
-  Future<void> _executeNode(NodeInstance node) async {
     try {
-      await Future.microtask(() async {
-        await node.onExecute(
-          node.ports.map(
-            (key, value) => MapEntry(value.prototype.name, value),
-          ),
-          node.fields.map(
-            (key, value) => MapEntry(value.prototype.name, value),
-          ),
-        );
-
-        for (final port in node.ports.values) {
-          if (port.prototype.portType == PortType.output) {
-            for (final link in port.links) {
-              _nodes[link.fromTo.item3]!.ports[link.fromTo.item4]!.data =
-                  port.data;
-            }
-          }
-        }
-      });
-    } on RunnerException catch (e) {
-      controller.focusNodesById({node.id});
-      showNodeEditorSnackbar(
-        'Error executing node ${node.id}: $e',
-        SnackbarType.error,
+      forwardedData = await node.prototype.onExecute(
+        node.ports.map((portId, port) => MapEntry(portId, port.data)),
+        node.fields.map((fieldId, field) => MapEntry(fieldId, field.data)),
       );
     } catch (e) {
-      if (kDebugMode) {
-        controller.focusNodesById({node.id});
-        showNodeEditorSnackbar(
-          'Error executing node ${node.id}: $e',
-          SnackbarType.error,
-        );
-        debugPrint('Error executing node ${node.id}: $e');
-      }
-      rethrow;
-    }
-  }
-
-  void _debugColorNodes() {
-    Color generateRandomColor() {
-      return Color.fromARGB(
-        255,
-        Random().nextInt(256),
-        Random().nextInt(256),
-        Random().nextInt(256),
+      controller.focusNodesById({node.id});
+      showNodeEditorSnackbar(
+        'Error executing node: ${node.prototype.displayName}: $e',
+        SnackbarType.error,
       );
+      return;
     }
 
-    // Assign a unique color to each subgraph recursively
-    void assignColorsToSubgraphs(Subgraph subgraph) {
-      final randomColor = generateRandomColor();
+    for (final entry in forwardedData.entries) {
+      final port = node.ports[entry.key]!;
 
-      for (final node in subgraph.nodes) {
-        controller.nodes[node.id]?.debugColor = randomColor;
+      port.data = entry.value;
+
+      final Set<NodeInstance> connectedNodes = {};
+
+      for (final link in port.links) {
+        final connectedNode = _nodes[link.fromTo.item3]!;
+        final connectedPort = connectedNode.ports[link.fromTo.item4]!;
+
+        connectedPort.data = entry.value;
+
+        connectedNodes.add(connectedNode);
       }
 
-      for (final child in subgraph.children) {
-        assignColorsToSubgraphs(child);
+      for (final node in connectedNodes) {
+        await _executeNode(node, executed);
       }
-    }
-
-    for (final subgraph in _topSubgraphs) {
-      assignColorsToSubgraphs(subgraph);
     }
   }
 }

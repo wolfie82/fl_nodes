@@ -5,69 +5,8 @@ import 'package:uuid/uuid.dart';
 
 import 'package:fl_nodes/src/core/controllers/node_editor/project.dart';
 import 'package:fl_nodes/src/core/models/events.dart';
-import 'package:fl_nodes/src/core/utils/json_extensions.dart';
 
 import '../controllers/node_editor/core.dart';
-
-/// Entities are split in two categories: Prototypes and Instances.
-///
-/// Prototypes are the blueprint for the instances. They define the structure
-/// of the instances, like the name, description, color, ports, etc.
-/// Instances are the actual objects that are created based on the prototypes
-/// and hold the data and state of the application.
-
-/// A group is a collection of nodes that are visually grouped together.
-final class Group {
-  final String name;
-  final String description;
-  final Color color;
-  final Rect area;
-  bool isHovered = false;
-
-  Group({
-    required this.name,
-    this.description = '',
-    this.color = Colors.grey,
-    required this.area,
-  });
-
-  Group copyWith({
-    String? name,
-    String? description,
-    Color? color,
-    Rect? area,
-  }) {
-    return Group(
-      name: name ?? this.name,
-      description: description ?? this.description,
-      color: color ?? this.color,
-      area: area ?? this.area,
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'name': name,
-      'description': description,
-      'color': color.toJson(color),
-      'area': [area.left, area.top, area.width, area.height],
-    };
-  }
-
-  factory Group.fromJson(Map<String, dynamic> json) {
-    return Group(
-      name: json['name'],
-      description: json['description'],
-      color: JSONColor.fromJson(json['color']),
-      area: Rect.fromLTWH(
-        json['area'][0],
-        json['area'][1],
-        json['area'][2],
-        json['area'][3],
-      ),
-    );
-  }
-}
 
 /// A link is a connection between two ports.
 final class Link {
@@ -131,12 +70,14 @@ enum PortType { input, output }
 ///
 /// It defines the name, data type, direction, and if it allows multiple links.
 abstract class PortPrototype {
-  final String name;
+  final String idName;
+  final String displayName;
   final Type dataType;
   final PortType portType;
 
   PortPrototype({
-    required this.name,
+    required this.idName,
+    required this.displayName,
     this.dataType = dynamic,
     required this.portType,
   });
@@ -144,14 +85,16 @@ abstract class PortPrototype {
 
 class InputPortPrototype extends PortPrototype {
   InputPortPrototype({
-    required super.name,
+    required super.idName,
+    required super.displayName,
     super.dataType,
   }) : super(portType: PortType.input);
 }
 
 class OutputPortPrototype extends PortPrototype {
   OutputPortPrototype({
-    required super.name,
+    required super.idName,
+    required super.displayName,
     super.dataType,
   }) : super(portType: PortType.output);
 }
@@ -160,7 +103,6 @@ class OutputPortPrototype extends PortPrototype {
 ///
 /// In addition to the prototype, it holds the data, links, and offset.
 final class PortInstance {
-  final String id;
   final PortPrototype prototype;
   dynamic data; // Not saved as it is only used during in graph execution
   Set<Link> links = {};
@@ -168,27 +110,29 @@ final class PortInstance {
   final GlobalKey key = GlobalKey(); // Determined by Flutter
 
   PortInstance({
-    required this.id,
     required this.prototype,
     this.offset = Offset.zero,
   });
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
-      'prototypeName': prototype.name,
+      'idName': prototype.idName,
+      'displayName': prototype.displayName,
       'links': links.map((link) => link.toJson()).toList(),
     };
   }
 
   factory PortInstance.fromJson(
     Map<String, dynamic> json,
-    PortPrototype prototype,
+    Map<String, PortPrototype> portPrototypes,
   ) {
-    final instance = PortInstance(
-      id: json['id'],
-      prototype: prototype,
-    );
+    if (!portPrototypes.containsKey(json['idName'].toString())) {
+      throw Exception('Port prototype not found');
+    }
+
+    final prototype = portPrototypes[json['idName'].toString()]!;
+
+    final instance = PortInstance(prototype: prototype);
 
     instance.links = (json['links'] as List<dynamic>)
         .map((linkJson) => Link.fromJson(linkJson))
@@ -198,13 +142,11 @@ final class PortInstance {
   }
 
   PortInstance copyWith({
-    String? id,
     dynamic data,
     Set<Link>? links,
     Offset? offset,
   }) {
     final instance = PortInstance(
-      id: id ?? this.id,
       prototype: prototype,
       offset: offset ?? this.offset,
     );
@@ -220,7 +162,8 @@ final class PortInstance {
 /// It is used to store variables for use in the onExecute function of a node.
 /// If explicitly allowed, the user can change the value of the field.
 class FieldPrototype {
-  final String name;
+  final String idName;
+  final String displayName;
   final Type dataType;
   final bool isEditable;
   final dynamic defaultData;
@@ -236,8 +179,9 @@ class FieldPrototype {
   )? editorBuilder;
 
   FieldPrototype({
-    required this.name,
-    required this.dataType,
+    required this.idName,
+    required this.displayName,
+    this.dataType = dynamic,
     this.isEditable = false,
     this.defaultData,
     required this.visualizerBuilder,
@@ -250,33 +194,36 @@ class FieldPrototype {
 ///
 /// In addition to the prototype, it holds the data.
 class FieldInstance {
-  final String id;
   final FieldPrototype prototype;
   final editorOverlayController = OverlayPortalController();
   dynamic data;
   final GlobalKey key = GlobalKey(); // Determined by Flutter
 
   FieldInstance({
-    required this.id,
     required this.prototype,
     required this.data,
   });
 
   Map<String, dynamic> toJson(Map<String, DataHandler> dataHandlers) {
     return {
-      'id': id,
-      'prototypeName': prototype.name,
+      'idName': prototype.idName,
+      'displayName': prototype.displayName,
       'data': dataHandlers[prototype.dataType.toString()]?.toJson(data),
     };
   }
 
   factory FieldInstance.fromJson(
     Map<String, dynamic> json,
-    FieldPrototype prototype,
+    Map<String, FieldPrototype> fieldPrototypes,
     Map<String, DataHandler> dataHandlers,
   ) {
+    if (!fieldPrototypes.containsKey(json['idName'].toString())) {
+      throw Exception('Field prototype not found');
+    }
+
+    final prototype = fieldPrototypes[json['idName'].toString()]!;
+
     return FieldInstance(
-      id: json['id'],
       prototype: prototype,
       data: json['data'] != 'null'
           ? dataHandlers[prototype.dataType.toString()]?.fromJson(json['data'])
@@ -284,15 +231,8 @@ class FieldInstance {
     );
   }
 
-  FieldInstance copyWith({
-    String? id,
-    dynamic data,
-  }) {
-    return FieldInstance(
-      id: id ?? this.id,
-      prototype: prototype,
-      data: data ?? this.data,
-    );
+  FieldInstance copyWith({dynamic data}) {
+    return FieldInstance(prototype: prototype, data: data ?? this.data);
   }
 }
 
@@ -300,19 +240,21 @@ class FieldInstance {
 ///
 /// It defines the name, description, color, ports, fields, and onExecute function.
 final class NodePrototype {
-  final String name;
+  final String idName;
+  final String displayName;
   final String description;
   final bool allowRecursion;
   final Color color;
   final List<PortPrototype> ports;
   final List<FieldPrototype> fields;
-  final Future<void> Function(
-    Map<String, PortInstance> ports,
-    Map<String, FieldInstance> fields,
+  final Future<Map<String, dynamic>> Function(
+    Map<String, dynamic> inputPorts,
+    Map<String, dynamic> fields,
   ) onExecute;
 
   NodePrototype({
-    required this.name,
+    required this.idName,
+    required this.displayName,
     this.description = '',
     required this.allowRecursion,
     this.color = Colors.grey,
@@ -366,19 +308,14 @@ final class NodeState {
 ///
 /// It holds the instances of the ports and fields, the offset, the data and the state.
 final class NodeInstance {
-  final String id;
+  final String id; // Stored to acceleate lookups
+
   final NodePrototype prototype;
   final Map<String, PortInstance> ports;
   final Map<String, FieldInstance> fields;
   final NodeState state = NodeState();
-  final Future<void> Function(
-    Map<String, PortInstance> ports,
-    Map<String, FieldInstance> fields,
-  ) onExecute;
   final Function(NodeInstance node) onRendered;
   Offset offset; // User or system defined offset
-  // This is used for algorithm visualization purposes during development
-  Color debugColor = Colors.grey;
   final GlobalKey key = GlobalKey(); // Determined by Flutter
 
   NodeInstance({
@@ -386,7 +323,6 @@ final class NodeInstance {
     required this.prototype,
     required this.ports,
     required this.fields,
-    required this.onExecute,
     required this.onRendered,
     this.offset = Offset.zero,
   });
@@ -397,7 +333,7 @@ final class NodeInstance {
     Map<String, PortInstance>? ports,
     Map<String, FieldInstance>? fields,
     NodeState? state,
-    final Future<void> Function(
+    final Future<Map<String, dynamic>> Function(
       Map<String, dynamic> ports,
       Map<String, dynamic> fields,
     )? onExecute,
@@ -409,7 +345,6 @@ final class NodeInstance {
       prototype: prototype,
       ports: ports ?? this.ports,
       fields: fields ?? this.fields,
-      onExecute: onExecute ?? this.onExecute,
       onRendered: onRendered ?? this.onRendered,
       offset: offset ?? this.offset,
     );
@@ -418,19 +353,10 @@ final class NodeInstance {
   Map<String, dynamic> toJson(Map<String, DataHandler> dataHandlers) {
     return {
       'id': id,
-      'prototypeName': prototype.name,
-      'ports': ports.map(
-        (_, port) => MapEntry(
-          port.id,
-          port.toJson(),
-        ),
-      ),
-      'fields': fields.map(
-        (_, field) => MapEntry(
-          field.id,
-          field.toJson(dataHandlers),
-        ),
-      ),
+      'idName': prototype.idName,
+      'displayName': prototype.displayName,
+      'ports': ports.map((k, v) => MapEntry(k, v.toJson())),
+      'fields': fields.map((k, v) => MapEntry(k, v.toJson(dataHandlers))),
       'state': state.toJson(),
       'offset': [offset.dx, offset.dy],
     };
@@ -442,34 +368,38 @@ final class NodeInstance {
     required Function(NodeInstance node) onRenderedCallback,
     required Map<String, DataHandler> dataHandlers,
   }) {
-    if (!nodePrototypes.containsKey(json['prototypeName'].toString())) {
+    if (!nodePrototypes.containsKey(json['idName'].toString())) {
       throw Exception('Node prototype not found');
     }
 
-    final prototype = nodePrototypes[json['prototypeName'].toString()]!;
+    final prototype = nodePrototypes[json['idName'].toString()]!;
 
-    // Ensure `json['ports']` is properly typed
+    final portPrototypes = Map.fromEntries(
+      prototype.ports.map(
+        (prototype) => MapEntry(prototype.idName, prototype),
+      ),
+    );
+
     final ports = (json['ports'] as Map<String, dynamic>).map(
       (id, portJson) {
-        final prototypePortName = json['ports'].keys.toList().indexOf(id);
-        final portPrototype = prototype.ports[prototypePortName];
-
         return MapEntry(
           id,
-          PortInstance.fromJson(portJson, portPrototype),
+          PortInstance.fromJson(portJson, portPrototypes),
         );
       },
     );
 
-    // Ensure `json['fields']` is properly typed
+    final fieldPrototypes = Map.fromEntries(
+      prototype.fields.map(
+        (prototype) => MapEntry(prototype.idName, prototype),
+      ),
+    );
+
     final fields = (json['fields'] as Map<String, dynamic>).map(
       (id, fieldJson) {
-        final prototypeFieldName = json['fields'].keys.toList().indexOf(id);
-        final prototypeField = prototype.fields[prototypeFieldName];
-
         return MapEntry(
           id,
-          FieldInstance.fromJson(fieldJson, prototypeField, dataHandlers),
+          FieldInstance.fromJson(fieldJson, fieldPrototypes, dataHandlers),
         );
       },
     );
@@ -479,7 +409,6 @@ final class NodeInstance {
       prototype: prototype,
       ports: ports,
       fields: fields,
-      onExecute: prototype.onExecute,
       onRendered: onRenderedCallback,
       offset: Offset(json['offset'][0], json['offset'][1]),
     );
@@ -494,19 +423,12 @@ final class NodeInstance {
   }
 }
 
-PortInstance createPort(PortPrototype prototype) {
-  return PortInstance(
-    id: const Uuid().v4(),
-    prototype: prototype,
-  );
+PortInstance createPort(String idName, PortPrototype prototype) {
+  return PortInstance(prototype: prototype);
 }
 
-FieldInstance createField(FieldPrototype prototype) {
-  return FieldInstance(
-    id: const Uuid().v4(),
-    prototype: prototype,
-    data: prototype.defaultData,
-  );
+FieldInstance createField(String idName, FieldPrototype prototype) {
+  return FieldInstance(prototype: prototype, data: prototype.defaultData);
 }
 
 NodeInstance createNode(
@@ -517,15 +439,18 @@ NodeInstance createNode(
   return NodeInstance(
     id: const Uuid().v4(),
     prototype: prototype,
-    ports: prototype.ports.asMap().map((_, portPrototype) {
-      final port = createPort(portPrototype);
-      return MapEntry(port.id, port);
-    }),
-    fields: prototype.fields.asMap().map((_, fieldPrototype) {
-      final field = createField(fieldPrototype);
-      return MapEntry(field.id, field);
-    }),
-    onExecute: prototype.onExecute,
+    ports: Map.fromEntries(
+      prototype.ports.map((prototype) {
+        final instance = createPort(prototype.idName, prototype);
+        return MapEntry(prototype.idName, instance);
+      }),
+    ),
+    fields: Map.fromEntries(
+      prototype.fields.map((prototype) {
+        final instance = createField(prototype.idName, prototype);
+        return MapEntry(prototype.idName, instance);
+      }),
+    ),
     onRendered: controller.onRenderedCallback,
     offset: offset ?? Offset.zero,
   );

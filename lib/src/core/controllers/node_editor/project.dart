@@ -122,6 +122,7 @@ class FlNodeEditorProject {
       _isSaved = true;
       controller.history.clear();
     } else if (event is NewProjectEvent) {
+      _isSaved = true;
       controller.clear();
     }
   }

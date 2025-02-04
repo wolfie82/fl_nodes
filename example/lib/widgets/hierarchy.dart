@@ -68,7 +68,7 @@ class _HierarchyWidgetState extends State<HierarchyWidget> {
                       : null,
                   child: ListTile(
                     title: Text(
-                      '${node.offset} - ${node.prototype.name}',
+                      '${node.offset} - ${node.prototype.displayName}',
                       overflow: TextOverflow.ellipsis,
                     ),
                     onTap: () {

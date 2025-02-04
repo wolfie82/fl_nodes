@@ -150,25 +150,19 @@ class FlNodeEditorClipboard {
       return instance.copyWith(
         id: newIds[instance.id],
         offset: instance.offset + position!,
-        fields: instance.fields.map((key, field) {
-          return MapEntry(
-            newIds[field.id]!,
-            field.copyWith(id: newIds[field.id]),
-          );
-        }),
+        fields: instance.fields,
         ports: instance.ports.map((key, port) {
           return MapEntry(
-            newIds[port.id]!,
+            port.prototype.idName,
             port.copyWith(
-              id: newIds[port.id]!,
               links: port.links.map((link) {
                 return link.copyWith(
                   id: newIds[link.id],
                   fromTo: Tuple4(
                     newIds[link.fromTo.item1]!,
-                    newIds[link.fromTo.item2]!,
+                    link.fromTo.item2,
                     newIds[link.fromTo.item3]!,
-                    newIds[link.fromTo.item4]!,
+                    link.fromTo.item4,
                   ),
                 );
               }).toSet(),

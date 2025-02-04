@@ -329,7 +329,7 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
         final absolutePortPosition = node.offset + port.offset;
 
         if ((worldPosition - absolutePortPosition).distance < 12) {
-          return Tuple2(node.id, port.id);
+          return Tuple2(node.id, port.prototype.idName);
         }
       }
     }
@@ -577,8 +577,8 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
 
       return compatiblePrototypes.map((entry) {
         return MenuItem(
-          label: entry.value.name,
-          value: entry.value.name,
+          label: entry.value.displayName,
+          value: entry.value.displayName,
           icon: Icons.widgets,
           onSelected: () {
             widget.controller.addNode(
@@ -602,7 +602,8 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
                           startPort.prototype.portType,
                     )
                     .value
-                    .id,
+                    .prototype
+                    .idName,
               );
 
               _isLinking = false;

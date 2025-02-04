@@ -178,10 +178,10 @@ class FlNodeEditorController {
   /// This method is used to register a node prototype with the node editor.
   ///
   /// NOTE: node prototypes are identified by human-readable strings instead of UUIDs.
-  void registerNodePrototype(NodePrototype name) {
+  void registerNodePrototype(NodePrototype prototype) {
     _nodePrototypes.putIfAbsent(
-      name.name,
-      () => name,
+      prototype.idName,
+      () => prototype,
     );
   }
 
@@ -305,33 +305,48 @@ class FlNodeEditorController {
   /// Emits an [AddLinkEvent] event.
   Link? addLink(
     String node1Id,
-    String port1Id,
+    String port1IdName,
     String node2Id,
-    String port2Id, {
+    String port2IdName, {
     String? eventId,
   }) {
     // Check for self-links
-    if (node1Id == node2Id || port1Id == port2Id) {
+    if (node1Id == node2Id) return null;
+
+    final node1 = _nodes[node1Id]!;
+    final port1 = node1.ports[port1IdName]!;
+    final node2 = _nodes[node2Id]!;
+    final port2 = node2.ports[port2IdName]!;
+
+    if (port1.prototype.dataType != port2.prototype.dataType) {
+      if (!(port1.prototype.dataType is num &&
+              port2.prototype.dataType is num) ||
+          // ignore: unnecessary_type_check
+          port2.prototype.dataType is dynamic) {
+        showNodeEditorSnackbar(
+          'Cannot connect ports of different data types: ${port1.prototype.dataType} and ${port2.prototype.dataType}',
+          SnackbarType.error,
+        );
+        return null;
+      }
+    }
+
+    if (port1.prototype.portType == port2.prototype.portType) {
       showNodeEditorSnackbar(
-        'Cannot create a link to the same port',
+        'Cannot connect two ports of the same type: ${port1.prototype.displayName} and ${port2.prototype.displayName}',
         SnackbarType.error,
       );
       return null;
     }
 
-    final node1 = _nodes[node1Id]!;
-    final port1 = node1.ports[port1Id]!;
-    final node2 = _nodes[node2Id]!;
-    final port2 = node2.ports[port2Id]!;
-
     // Check if the link already exists.
     if (port1.links.any(
           (link) =>
-              link.fromTo.item1 == node2Id && link.fromTo.item2 == port2Id,
+              link.fromTo.item1 == node2Id && link.fromTo.item2 == port2IdName,
         ) ||
         port2.links.any(
           (link) =>
-              link.fromTo.item1 == node1Id && link.fromTo.item2 == port1Id,
+              link.fromTo.item1 == node1Id && link.fromTo.item2 == port1IdName,
         )) {
       return null;
     }
@@ -340,9 +355,9 @@ class FlNodeEditorController {
 
     // Determine the direction of the link based on the port types as we're building a directed graph.
     if (port1.prototype.portType == PortType.output) {
-      fromTo = Tuple4(node1Id, port1Id, node2Id, port2Id);
+      fromTo = Tuple4(node1Id, port1IdName, node2Id, port2IdName);
     } else {
-      fromTo = Tuple4(node2Id, port2Id, node1Id, port1Id);
+      fromTo = Tuple4(node2Id, port2IdName, node1Id, port1IdName);
     }
 
     bool canConnect(Tuple4<String, String, String, String> fromTo) {
@@ -354,7 +369,7 @@ class FlNodeEditorController {
       // Check if the ports are compatible
       if (fromPort.prototype.portType == toPort.prototype.portType) {
         showNodeEditorSnackbar(
-          'Cannot connect two ports of the same type: ${fromPort.prototype.name} and ${toPort.prototype.name}',
+          'Cannot connect two ports of the same type: ${fromPort.prototype.displayName} and ${toPort.prototype.displayName}',
           SnackbarType.error,
         );
         return false;
@@ -363,7 +378,7 @@ class FlNodeEditorController {
       // Check if the input port already has a link
       if (toPort.links.isNotEmpty) {
         showNodeEditorSnackbar(
-          'Cannot connect multiple links to an input port: ${toPort.prototype.name} in node ${toNode.prototype.name}',
+          'Cannot connect multiple links to an input port: ${toPort.prototype.displayName} in node ${toNode.prototype.displayName}',
           SnackbarType.error,
         );
         return false;
@@ -374,10 +389,7 @@ class FlNodeEditorController {
 
     if (!canConnect(fromTo)) return null;
 
-    final link = Link(
-      id: const Uuid().v4(),
-      fromTo: fromTo,
-    );
+    final link = Link(id: const Uuid().v4(), fromTo: fromTo);
 
     port1.links.add(link);
     port2.links.add(link);
@@ -694,14 +706,14 @@ class FlNodeEditorController {
     setViewportZoom(fitZoom, animate: true);
   }
 
-  /// This method is used to find all nodes with the specified name.
+  /// This method is used to find all nodes with the specified display name.
   Future<List<String>> searchNodesByName(String name) async {
     final results = <String>[];
 
     final regex = RegExp(name, caseSensitive: false);
 
     for (final node in _nodes.values) {
-      if (regex.hasMatch(node.prototype.name)) {
+      if (regex.hasMatch(node.prototype.displayName)) {
         results.add(node.id);
       }
     }

@@ -6,21 +6,37 @@ import 'package:fl_nodes/fl_nodes.dart';
 
 enum Operator { add, subtract, multiply, divide }
 
+enum Comparator { equal, notEqual, greater, greaterEqual, less, lessEqual }
+
 void registerNodes(BuildContext context, FlNodeEditorController controller) {
   controller.registerNodePrototype(
     NodePrototype(
-      name: 'Operator',
+      idName: 'operator',
+      displayName: 'Operator',
       description: 'Applies a chosen operation to two numbers.',
       color: Colors.yellow,
       allowRecursion: false,
       ports: [
-        InputPortPrototype(name: 'A', dataType: double),
-        InputPortPrototype(name: 'B', dataType: double),
-        OutputPortPrototype(name: 'Result', dataType: double),
+        InputPortPrototype(
+          idName: 'a',
+          displayName: 'A',
+          dataType: double,
+        ),
+        InputPortPrototype(
+          idName: 'b',
+          displayName: 'B',
+          dataType: double,
+        ),
+        OutputPortPrototype(
+          idName: 'result',
+          displayName: 'Result',
+          dataType: double,
+        ),
       ],
       fields: [
         FieldPrototype(
-          name: 'Operation',
+          idName: 'operation',
+          displayName: 'Operation',
           dataType: Operator,
           defaultData: Operator.add,
           visualizerBuilder: (data) => Container(
@@ -52,22 +68,19 @@ void registerNodes(BuildContext context, FlNodeEditorController controller) {
         ),
       ],
       onExecute: (ports, fields) async {
-        final a = ports['A']?.data as double;
-        final b = ports['B']?.data as double;
-        final op = fields['Operation']?.data as Operator;
+        final a = ports['a']! as double;
+        final b = ports['b']! as double;
+        final op = fields['operation']! as Operator;
+
         switch (op) {
           case Operator.add:
-            ports['Result']!.data = a + b;
-            break;
+            return {'result': a + b};
           case Operator.subtract:
-            ports['Result']!.data = a - b;
-            break;
+            return {'result': a - b};
           case Operator.multiply:
-            ports['Result']!.data = a * b;
-            break;
+            return {'result': a * b};
           case Operator.divide:
-            ports['Result']!.data = b == 0 ? 0 : a / b;
-            break;
+            return {'result': b == 0 ? 0 : a / b};
         }
       },
     ),
@@ -75,32 +88,158 @@ void registerNodes(BuildContext context, FlNodeEditorController controller) {
 
   controller.registerNodePrototype(
     NodePrototype(
-      name: 'Random',
+      idName: 'random',
+      displayName: 'Random',
       description: 'Outputs a random number between 0 and 1.',
       color: Colors.purple,
       allowRecursion: false,
       ports: [
-        OutputPortPrototype(name: 'Value', dataType: double),
+        OutputPortPrototype(
+          idName: 'value',
+          displayName: 'Value',
+          dataType: double,
+        ),
       ],
       onExecute: (ports, fields) async {
-        ports['Value']!.data = Random().nextDouble();
+        return {'value': Random().nextDouble()};
       },
     ),
   );
 
   controller.registerNodePrototype(
     NodePrototype(
-      name: 'Value',
+      idName: 'if',
+      displayName: 'If',
+      description: 'Executes a branch based on a condition.',
+      color: Colors.green,
+      allowRecursion: false,
+      ports: [
+        InputPortPrototype(
+          idName: 'condition',
+          displayName: 'Condition',
+          dataType: bool,
+        ),
+        OutputPortPrototype(
+          idName: 'trueBranch',
+          displayName: 'True',
+          dataType: dynamic,
+        ),
+        OutputPortPrototype(
+          idName: 'falseBranch',
+          displayName: 'False',
+          dataType: dynamic,
+        ),
+      ],
+      onExecute: (ports, fields) async {
+        final condition = ports['condition']! as bool;
+        return condition ? {'trueBranch': null} : {'falseBranch': null};
+      },
+    ),
+  );
+
+  controller.registerNodePrototype(
+    NodePrototype(
+      idName: 'comparator',
+      displayName: 'Comparator',
+      description: 'Compares two numbers based on a chosen comparator.',
+      color: Colors.cyan,
+      allowRecursion: false,
+      ports: [
+        InputPortPrototype(
+          idName: 'a',
+          displayName: 'A',
+          dataType: double,
+        ),
+        InputPortPrototype(
+          idName: 'b',
+          displayName: 'B',
+          dataType: double,
+        ),
+        OutputPortPrototype(
+          idName: 'result',
+          displayName: 'Result',
+          dataType: bool,
+        ),
+      ],
+      fields: [
+        FieldPrototype(
+          idName: 'comparator',
+          displayName: 'Comparator',
+          dataType: Comparator,
+          defaultData: Comparator.equal,
+          visualizerBuilder: (data) => Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: const Color(0xFF333333),
+              borderRadius: BorderRadius.circular(4.0),
+            ),
+            child: Text(
+              data.toString().split('.').last,
+              style: const TextStyle(color: Colors.white),
+            ),
+          ),
+          editorBuilder: (context, removeOverlay, data, setData) =>
+              SegmentedButton<Comparator>(
+            segments: const [
+              ButtonSegment(value: Comparator.equal, label: Text('==')),
+              ButtonSegment(value: Comparator.notEqual, label: Text('!=')),
+              ButtonSegment(value: Comparator.greater, label: Text('>')),
+              ButtonSegment(value: Comparator.greaterEqual, label: Text('>=')),
+              ButtonSegment(value: Comparator.less, label: Text('<')),
+              ButtonSegment(value: Comparator.lessEqual, label: Text('<=')),
+            ],
+            selected: {data as Comparator},
+            onSelectionChanged: (newSelection) {
+              setData(newSelection.first, eventType: FieldEventType.submit);
+              removeOverlay();
+            },
+            direction: Axis.horizontal,
+          ),
+        ),
+      ],
+      onExecute: (ports, fields) async {
+        final a = ports['a']! as double;
+        final b = ports['b']! as double;
+        final comp = fields['comparator']! as Comparator;
+
+        switch (comp) {
+          case Comparator.equal:
+            return {'result': a == b};
+          case Comparator.notEqual:
+            return {'result': a != b};
+          case Comparator.greater:
+            return {'result': a > b};
+          case Comparator.greaterEqual:
+            return {'result': a >= b};
+          case Comparator.less:
+            return {'result': a < b};
+          case Comparator.lessEqual:
+            return {'result': a <= b};
+        }
+      },
+    ),
+  );
+
+  controller.registerNodePrototype(
+    NodePrototype(
+      idName: 'value',
+      displayName: 'Value',
       description: 'Holds a constant double value.',
       color: Colors.orange,
       allowRecursion: false,
       ports: [
-        OutputPortPrototype(name: 'Value', dataType: double),
+        OutputPortPrototype(
+          idName: 'value',
+          displayName: 'Value',
+          dataType: double,
+        ),
       ],
       fields: [
         FieldPrototype(
-          name: 'Value',
+          idName: 'value',
+          displayName: 'Value',
           dataType: double,
+          defaultData: 0.0,
           visualizerBuilder: (data) => Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             decoration: BoxDecoration(
@@ -136,21 +275,23 @@ void registerNodes(BuildContext context, FlNodeEditorController controller) {
         ),
       ],
       onExecute: (ports, fields) async {
-        ports['Value']!.data = fields['Value']!.data as double;
+        return {'value': fields['value']!};
       },
     ),
   );
 
   controller.registerNodePrototype(
     NodePrototype(
-      name: 'Output',
+      idName: 'output',
+      displayName: 'Output',
       description: 'Outputs a value.',
       color: Colors.red,
       allowRecursion: false,
       ports: [
         InputPortPrototype(
-          name: 'Value',
-          dataType: double,
+          idName: 'value',
+          displayName: 'Value',
+          dataType: dynamic,
         ),
       ],
       onExecute: (ports, fields) async {
@@ -159,7 +300,7 @@ void registerNodes(BuildContext context, FlNodeEditorController controller) {
           builder: (BuildContext context) {
             return AlertDialog(
               title: const Text('Output'),
-              content: Text('Output: ${ports['Value']!.data}'),
+              content: Text('Output: ${ports['value']}'),
               actions: <Widget>[
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(),
@@ -169,23 +310,34 @@ void registerNodes(BuildContext context, FlNodeEditorController controller) {
             );
           },
         );
+        return {};
       },
     ),
   );
 
   controller.registerNodePrototype(
     NodePrototype(
-      name: 'Round',
+      idName: 'round',
+      displayName: 'Round',
       description: 'Rounds a number to a specified number of decimals.',
       color: Colors.blue,
       allowRecursion: false,
       ports: [
-        InputPortPrototype(name: 'Value', dataType: double),
-        OutputPortPrototype(name: 'Rounded', dataType: int),
+        InputPortPrototype(
+          idName: 'value',
+          displayName: 'Value',
+          dataType: double,
+        ),
+        OutputPortPrototype(
+          idName: 'rounded',
+          displayName: 'Rounded',
+          dataType: int,
+        ),
       ],
       fields: [
         FieldPrototype(
-          name: 'Decimals',
+          idName: 'decimals',
+          displayName: 'Decimals',
           dataType: int,
           defaultData: 2,
           visualizerBuilder: (data) => Container(
@@ -223,10 +375,10 @@ void registerNodes(BuildContext context, FlNodeEditorController controller) {
         ),
       ],
       onExecute: (ports, fields) async {
-        final double value = ports['Value']!.data as double;
-        final int decimals = fields['Decimals']!.data as int;
+        final double value = ports['value']! as double;
+        final int decimals = fields['decimals']! as int;
 
-        ports['Rounded']!.data = double.parse(value.toStringAsFixed(decimals));
+        return {'rounded': double.parse(value.toStringAsFixed(decimals))};
       },
     ),
   );
