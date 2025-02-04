@@ -105,13 +105,22 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
 
         if (result == null) return null;
 
-        final File file = File(result.files.single.path!);
-        final String fileContent = await file.readAsString();
+        late final String fileContent;
+
+        if (kIsWeb) {
+          final byteData = result.files.single.bytes!;
+          fileContent = utf8.decode(byteData.buffer.asUint8List());
+        } else {
+          final File file = File(result.files.single.path!);
+          fileContent = await file.readAsString();
+        }
 
         final Map<String, dynamic> jsonData = jsonDecode(fileContent);
         return jsonData;
       },
       projectCreator: (isSaved) async {
+        if (kIsWeb) return false;
+
         if (isSaved) return true;
 
         final bool? proceed = await showDialog<bool>(
