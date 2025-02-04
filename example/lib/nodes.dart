@@ -15,7 +15,6 @@ void registerNodes(BuildContext context, FlNodeEditorController controller) {
       displayName: 'Operator',
       description: 'Applies a chosen operation to two numbers.',
       color: Colors.yellow,
-      allowRecursion: false,
       ports: [
         InputPortPrototype(
           idName: 'a',
@@ -67,20 +66,20 @@ void registerNodes(BuildContext context, FlNodeEditorController controller) {
           ),
         ),
       ],
-      onExecute: (ports, fields) async {
+      onExecute: (ports, fields, execState) async {
         final a = ports['a']! as double;
         final b = ports['b']! as double;
         final op = fields['operation']! as Operator;
 
         switch (op) {
           case Operator.add:
-            return {'result': a + b};
+            return ({'result': a + b}, true);
           case Operator.subtract:
-            return {'result': a - b};
+            return ({'result': a - b}, true);
           case Operator.multiply:
-            return {'result': a * b};
+            return ({'result': a * b}, true);
           case Operator.divide:
-            return {'result': b == 0 ? 0 : a / b};
+            return ({'result': b == 0 ? 0 : a / b}, true);
         }
       },
     ),
@@ -92,7 +91,6 @@ void registerNodes(BuildContext context, FlNodeEditorController controller) {
       displayName: 'Random',
       description: 'Outputs a random number between 0 and 1.',
       color: Colors.purple,
-      allowRecursion: false,
       ports: [
         OutputPortPrototype(
           idName: 'value',
@@ -100,8 +98,8 @@ void registerNodes(BuildContext context, FlNodeEditorController controller) {
           dataType: double,
         ),
       ],
-      onExecute: (ports, fields) async {
-        return {'value': Random().nextDouble()};
+      onExecute: (ports, fields, execState) async {
+        return ({'value': Random().nextDouble()}, true);
       },
     ),
   );
@@ -112,7 +110,6 @@ void registerNodes(BuildContext context, FlNodeEditorController controller) {
       displayName: 'If',
       description: 'Executes a branch based on a condition.',
       color: Colors.green,
-      allowRecursion: false,
       ports: [
         InputPortPrototype(
           idName: 'condition',
@@ -130,9 +127,11 @@ void registerNodes(BuildContext context, FlNodeEditorController controller) {
           dataType: dynamic,
         ),
       ],
-      onExecute: (ports, fields) async {
+      onExecute: (ports, fields, execState) async {
         final condition = ports['condition']! as bool;
-        return condition ? {'trueBranch': null} : {'falseBranch': null};
+        return condition
+            ? ({'trueBranch': null}, true)
+            : ({'falseBranch': null}, true);
       },
     ),
   );
@@ -143,7 +142,6 @@ void registerNodes(BuildContext context, FlNodeEditorController controller) {
       displayName: 'Comparator',
       description: 'Compares two numbers based on a chosen comparator.',
       color: Colors.cyan,
-      allowRecursion: false,
       ports: [
         InputPortPrototype(
           idName: 'a',
@@ -197,24 +195,24 @@ void registerNodes(BuildContext context, FlNodeEditorController controller) {
           ),
         ),
       ],
-      onExecute: (ports, fields) async {
+      onExecute: (ports, fields, execState) async {
         final a = ports['a']! as double;
         final b = ports['b']! as double;
         final comp = fields['comparator']! as Comparator;
 
         switch (comp) {
           case Comparator.equal:
-            return {'result': a == b};
+            return ({'result': a == b}, true);
           case Comparator.notEqual:
-            return {'result': a != b};
+            return ({'result': a != b}, true);
           case Comparator.greater:
-            return {'result': a > b};
+            return ({'result': a > b}, true);
           case Comparator.greaterEqual:
-            return {'result': a >= b};
+            return ({'result': a >= b}, true);
           case Comparator.less:
-            return {'result': a < b};
+            return ({'result': a < b}, true);
           case Comparator.lessEqual:
-            return {'result': a <= b};
+            return ({'result': a <= b}, true);
         }
       },
     ),
@@ -226,7 +224,6 @@ void registerNodes(BuildContext context, FlNodeEditorController controller) {
       displayName: 'Value',
       description: 'Holds a constant double value.',
       color: Colors.orange,
-      allowRecursion: false,
       ports: [
         OutputPortPrototype(
           idName: 'value',
@@ -274,8 +271,8 @@ void registerNodes(BuildContext context, FlNodeEditorController controller) {
           ),
         ),
       ],
-      onExecute: (ports, fields) async {
-        return {'value': fields['value']!};
+      onExecute: (ports, fields, execState) async {
+        return ({'value': fields['value']!}, true);
       },
     ),
   );
@@ -286,7 +283,6 @@ void registerNodes(BuildContext context, FlNodeEditorController controller) {
       displayName: 'Output',
       description: 'Outputs a value.',
       color: Colors.red,
-      allowRecursion: false,
       ports: [
         InputPortPrototype(
           idName: 'value',
@@ -294,7 +290,7 @@ void registerNodes(BuildContext context, FlNodeEditorController controller) {
           dataType: dynamic,
         ),
       ],
-      onExecute: (ports, fields) async {
+      onExecute: (ports, fields, execState) async {
         await showDialog(
           context: context,
           builder: (BuildContext context) {
@@ -310,7 +306,7 @@ void registerNodes(BuildContext context, FlNodeEditorController controller) {
             );
           },
         );
-        return {};
+        return (<String, dynamic>{}, true);
       },
     ),
   );
@@ -321,7 +317,6 @@ void registerNodes(BuildContext context, FlNodeEditorController controller) {
       displayName: 'Round',
       description: 'Rounds a number to a specified number of decimals.',
       color: Colors.blue,
-      allowRecursion: false,
       ports: [
         InputPortPrototype(
           idName: 'value',
@@ -374,11 +369,75 @@ void registerNodes(BuildContext context, FlNodeEditorController controller) {
           ),
         ),
       ],
-      onExecute: (ports, fields) async {
+      onExecute: (ports, fields, execState) async {
         final double value = ports['value']! as double;
         final int decimals = fields['decimals']! as int;
 
-        return {'rounded': double.parse(value.toStringAsFixed(decimals))};
+        return (
+          {'rounded': double.parse(value.toStringAsFixed(decimals))},
+          true
+        );
+      },
+    ),
+  );
+
+  controller.registerNodePrototype(
+    NodePrototype(
+      idName: 'forLoop',
+      displayName: 'For Loop',
+      description: 'Executes a loop for a specified number of iterations.',
+      color: Colors.teal,
+      ports: [
+        InputPortPrototype(
+          idName: 'iterations',
+          displayName: 'Iterations',
+          dataType: int,
+        ),
+        InputPortPrototype(
+          idName: 'array',
+          displayName: 'Array',
+          dataType: dynamic,
+        ),
+        OutputPortPrototype(
+          idName: 'arrayElem',
+          displayName: 'Array Element',
+          dataType: dynamic,
+        ),
+        OutputPortPrototype(
+          idName: 'arrayIdx',
+          displayName: 'Array Index',
+          dataType: int,
+        ),
+        OutputPortPrototype(
+          idName: 'loopBody',
+          displayName: 'Loop Body',
+          dataType: dynamic,
+        ),
+        OutputPortPrototype(
+          idName: 'completed',
+          displayName: 'Completed',
+          dataType: dynamic,
+        ),
+      ],
+      execState: {'iteration': 0},
+      onExecute: (ports, fields, execState) async {
+        final int iterations = ports['iterations']! as int;
+        final List<dynamic> array = ports['array']! as List<dynamic>;
+        final int iteration = execState['iteration'] as int;
+
+        if (iteration < iterations) {
+          return (
+            {
+              'arrayElem': array[iteration],
+              'arrayIdx': iteration,
+              'loopBody': null,
+              'completed': null,
+            },
+            false,
+          );
+        }
+
+        return ({'completed': null}, true);
       },
     ),
   );

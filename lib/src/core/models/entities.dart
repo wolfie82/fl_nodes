@@ -165,7 +165,6 @@ class FieldPrototype {
   final String idName;
   final String displayName;
   final Type dataType;
-  final bool isEditable;
   final dynamic defaultData;
   final Widget Function(dynamic data) visualizerBuilder;
   final Function(
@@ -180,9 +179,8 @@ class FieldPrototype {
 
   FieldPrototype({
     required this.idName,
-    required this.displayName,
+    this.displayName = '',
     this.dataType = dynamic,
-    this.isEditable = false,
     this.defaultData,
     required this.visualizerBuilder,
     this.onVisualizerTap,
@@ -243,23 +241,24 @@ final class NodePrototype {
   final String idName;
   final String displayName;
   final String description;
-  final bool allowRecursion;
   final Color color;
   final List<PortPrototype> ports;
   final List<FieldPrototype> fields;
-  final Future<Map<String, dynamic>> Function(
+  final Map<String, dynamic> execState;
+  final Future<(Map<String, dynamic>, bool)> Function(
     Map<String, dynamic> inputPorts,
     Map<String, dynamic> fields,
+    Map<String, dynamic> execState,
   ) onExecute;
 
   NodePrototype({
     required this.idName,
     required this.displayName,
     this.description = '',
-    required this.allowRecursion,
     this.color = Colors.grey,
     this.ports = const [],
     this.fields = const [],
+    this.execState = const {},
     required this.onExecute,
   });
 }
@@ -333,9 +332,10 @@ final class NodeInstance {
     Map<String, PortInstance>? ports,
     Map<String, FieldInstance>? fields,
     NodeState? state,
-    final Future<Map<String, dynamic>> Function(
-      Map<String, dynamic> ports,
+    Future<(Map<String, dynamic>, bool)> Function(
+      Map<String, dynamic> inputPorts,
       Map<String, dynamic> fields,
+      Map<String, dynamic> execState,
     )? onExecute,
     Function(NodeInstance node)? onRendered,
     Offset? offset,

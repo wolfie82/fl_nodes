@@ -460,7 +460,7 @@ class _NodeWidgetState extends State<NodeWidget> {
         );
       }
     } else {
-      bodyColor = const Color(0xFF212121);
+      bodyColor = const Color(0xFF212121).withAlpha(156);
       if (widget.node.state.isSelected) {
         headerColor = nodeColor;
       } else {

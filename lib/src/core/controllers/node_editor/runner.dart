@@ -11,6 +11,7 @@ class FlNodeEditorRunner {
   final FlNodeEditorController controller;
   Map<String, NodeInstance> _nodes = {};
   Map<String, Set<String>> _dataDeps = {};
+  Map<String, Map<String, dynamic>> _execState = {};
 
   FlNodeEditorRunner(this.controller) {
     controller.eventBus.events.listen(_handleRunnerEvents);
@@ -119,6 +120,8 @@ class FlNodeEditorRunner {
 
   /// Executes the entire graph asynchronously
   Future<void> executeGraph() async {
+    _execState = {};
+
     final Set<String> executed = {};
 
     for (final node in _nodes.values) {
@@ -135,18 +138,20 @@ class FlNodeEditorRunner {
   Future<void> _executeNode(NodeInstance node, Set<String> executed) async {
     if (executed.contains(node.id)) return;
 
-    executed.add(node.id);
-
     for (final dep in _dataDeps[node.id]!) {
       await _executeNode(_nodes[dep]!, executed);
     }
 
-    late final Map<String, dynamic> forwardedData;
+    _execState.putIfAbsent(node.id, () => node.prototype.execState);
+
+    late final Map<String, dynamic> data;
+    late final bool completed;
 
     try {
-      forwardedData = await node.prototype.onExecute(
+      (data, completed) = await node.prototype.onExecute(
         node.ports.map((portId, port) => MapEntry(portId, port.data)),
         node.fields.map((fieldId, field) => MapEntry(fieldId, field.data)),
+        _execState[node.id]!,
       );
     } catch (e) {
       controller.focusNodesById({node.id});
@@ -157,7 +162,9 @@ class FlNodeEditorRunner {
       return;
     }
 
-    for (final entry in forwardedData.entries) {
+    if (completed) executed.add(node.id);
+
+    for (final entry in data.entries) {
       final port = node.ports[entry.key]!;
 
       port.data = entry.value;
