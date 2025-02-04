@@ -310,6 +310,17 @@ class FlNodeEditorController {
     String port2IdName, {
     String? eventId,
   }) {
+    bool areTypesCompatible(Type type1, Type type2) {
+      if (type1 == dynamic || type2 == dynamic) return true;
+
+      if ((type1 == int || type1 == double) &&
+          (type2 == int || type2 == double)) {
+        return true;
+      }
+
+      return type1 == type2;
+    }
+
     // Check for self-links
     if (node1Id == node2Id) return null;
 
@@ -318,17 +329,15 @@ class FlNodeEditorController {
     final node2 = _nodes[node2Id]!;
     final port2 = node2.ports[port2IdName]!;
 
-    if (port1.prototype.dataType != port2.prototype.dataType) {
-      if (!(port1.prototype.dataType is num &&
-              port2.prototype.dataType is num) ||
-          // ignore: unnecessary_type_check
-          port2.prototype.dataType is dynamic) {
-        showNodeEditorSnackbar(
-          'Cannot connect ports of different data types: ${port1.prototype.dataType} and ${port2.prototype.dataType}',
-          SnackbarType.error,
-        );
-        return null;
-      }
+    if (!areTypesCompatible(
+      port1.prototype.dataType,
+      port2.prototype.dataType,
+    )) {
+      showNodeEditorSnackbar(
+        'Cannot connect ports of different data types: ${port1.prototype.dataType} and ${port2.prototype.dataType}',
+        SnackbarType.error,
+      );
+      return null;
     }
 
     if (port1.prototype.portType == port2.prototype.portType) {
