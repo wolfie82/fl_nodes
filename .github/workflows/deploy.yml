@@ -16,5 +16,4 @@ jobs:
       - uses: erickzanardo/flutter-gh-pages@v7
         with:
           workingDir: example
-          webRenderer: skwasm
           targetBranch: gh-live-example
