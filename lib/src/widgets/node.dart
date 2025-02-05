@@ -7,6 +7,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 
 import 'package:flutter_context_menu/flutter_context_menu.dart';
+import 'package:os_detect/os_detect.dart' as os_detect;
 import 'package:tuple/tuple.dart';
 
 import 'package:fl_nodes/src/core/controllers/node_editor/core.dart';
@@ -16,7 +17,6 @@ import 'package:fl_nodes/src/utils/improved_listener.dart';
 import '../core/models/entities.dart';
 import '../core/models/events.dart';
 import '../core/utils/constants.dart';
-import '../core/utils/platform.dart';
 import '../core/utils/renderbox.dart';
 
 class NodeWidget extends StatefulWidget {
@@ -369,7 +369,7 @@ class _NodeWidgetState extends State<NodeWidget> {
     }
 
     Widget controlsWrapper(Widget child) {
-      return isMobile()
+      return os_detect.isAndroid || os_detect.isIOS
           ? child
           : ImprovedListener(
               behavior: HitTestBehavior.translucent,

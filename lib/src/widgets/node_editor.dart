@@ -9,9 +9,9 @@ import 'package:flutter/services.dart';
 
 import 'package:flutter_context_menu/flutter_context_menu.dart';
 import 'package:keymap/keymap.dart';
+import 'package:os_detect/os_detect.dart' as os_detect;
 import 'package:tuple/tuple.dart';
 
-import 'package:fl_nodes/src/core/utils/platform.dart';
 import 'package:fl_nodes/src/core/utils/renderbox.dart';
 import 'package:fl_nodes/src/utils/context_menu.dart';
 import 'package:fl_nodes/src/utils/improved_listener.dart';
@@ -705,7 +705,7 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
     }
 
     Widget controlsWrapper(Widget child) {
-      return isMobile()
+      return os_detect.isAndroid || os_detect.isIOS
           ? GestureDetector(
               onDoubleTap: () => widget.controller.clearSelection(),
               onScaleStart: (details) => _onDragStart(),

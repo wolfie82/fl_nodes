@@ -423,6 +423,8 @@ class NodeEditorRenderBox extends RenderBox
     Offset inPortOffset,
     Offset outPortOffset,
   ) {
+    // TODO: Smoothen the bezier curve
+
     final path = Path()..moveTo(outPortOffset.dx, outPortOffset.dy);
     final midX = (outPortOffset.dx + inPortOffset.dx) / 2;
 
@@ -459,6 +461,8 @@ class NodeEditorRenderBox extends RenderBox
     Offset outPortOffset,
     Offset inPortOffset,
   ) {
+    // TODO: Dynamically space the link based on the direction and other links
+
     final gradient = LinearGradient(
       colors: [Colors.green[300]!, Colors.purple[200]!],
       begin: Alignment.centerLeft,
