@@ -51,6 +51,8 @@ class NodeEditorExampleScreen extends StatefulWidget {
 class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
   late final FlNodeEditorController _nodeEditorController;
 
+  bool isHierarchyCollapsed = true;
+
   @override
   void initState() {
     super.initState();
@@ -202,7 +204,10 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.start,
           children: [
-            HierarchyWidget(controller: _nodeEditorController),
+            HierarchyWidget(
+              controller: _nodeEditorController,
+              isCollapsed: isHierarchyCollapsed,
+            ),
             Expanded(
               child: FlNodeEditorWidget(
                 controller: _nodeEditorController,
@@ -218,7 +223,30 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
                     FlOverlayData(
                       child: Padding(
                         padding: const EdgeInsets.all(8),
-                        child: SearchWidget(controller: _nodeEditorController),
+                        child: Row(
+                          spacing: 8,
+                          children: [
+                            Container(
+                              decoration: BoxDecoration(
+                                color: Colors.blue,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: IconButton(
+                                onPressed: () => setState(() {
+                                  isHierarchyCollapsed = !isHierarchyCollapsed;
+                                }),
+                                icon: Icon(
+                                  isHierarchyCollapsed
+                                      ? Icons.keyboard_arrow_right
+                                      : Icons.keyboard_arrow_left,
+                                  size: 32,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                            SearchWidget(controller: _nodeEditorController),
+                          ],
+                        ),
                       ),
                     ),
                     FlOverlayData(

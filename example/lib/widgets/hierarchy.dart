@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'package:fl_nodes/fl_nodes.dart';
+import 'package:fl_nodes/fl_nodes_ext.dart';
 
 class HierarchyWidget extends StatefulWidget {
   final FlNodeEditorController controller;
+  final bool isCollapsed;
 
   const HierarchyWidget({
     required this.controller,
+    required this.isCollapsed,
     super.key,
   });
 
@@ -19,74 +21,84 @@ class _HierarchyWidgetState extends State<HierarchyWidget> {
   @override
   void initState() {
     super.initState();
-
-    _handleControllerEvents();
+    _subscribeToControllerEvents();
   }
 
-  void _handleControllerEvents() {
-    widget.controller.eventBus.events.listen(
-      (event) {
-        if (event is SelectionEvent ||
-            event is DragSelectionEvent ||
-            event is NodeRenderModeEvent ||
-            event is AddNodeEvent ||
-            event is RemoveNodeEvent) {
+  void _subscribeToControllerEvents() {
+    widget.controller.eventBus.events.listen((event) {
+      if (event is SelectionEvent ||
+          event is DragSelectionEvent ||
+          event is NodeRenderModeEvent ||
+          event is AddNodeEvent ||
+          event is RemoveNodeEvent) {
+        if (mounted) {
           setState(() {});
         }
-      },
+      }
+    });
+  }
+
+  void _onNodeTap(NodeInstance node) {
+    widget.controller.selectNodesById(
+      {node.id},
+      holdSelection: HardwareKeyboard.instance.isControlPressed,
+    );
+    widget.controller.focusNodesById(
+      widget.controller.selectedNodeIds.toSet(),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(maxWidth: 300),
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      width: widget.isCollapsed ? 0 : 300,
       color: const Color(0xFF212121),
       padding: const EdgeInsets.all(8),
       child: Column(
-        spacing: 8,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Hierarchy',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          Expanded(
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: widget.controller.nodesAsList.length,
-              itemBuilder: (context, index) {
-                final node = widget.controller.nodesAsList[index];
-                return Container(
-                  decoration: node.state.isSelected
-                      ? BoxDecoration(
-                          color: Colors.blue.withValues(alpha: 0.5),
-                          borderRadius: BorderRadius.circular(4),
-                        )
-                      : null,
-                  child: ListTile(
-                    title: Text(
-                      '${node.offset} - ${node.prototype.displayName}',
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    onTap: () {
-                      widget.controller.selectNodesById(
-                        {node.id},
-                        holdSelection:
-                            HardwareKeyboard.instance.isControlPressed,
-                      );
+          if (!widget.isCollapsed)
+            Expanded(
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: widget.controller.nodesAsList.length,
+                itemBuilder: (context, index) {
+                  final reversedIdx =
+                      widget.controller.nodesAsList.length - index - 1;
+                  final node = widget.controller.nodesAsList[reversedIdx];
 
-                      widget.controller.focusNodesById(
-                        widget.controller.selectedNodeIds.toSet(),
-                      );
-                    },
-                  ),
-                );
-              },
+                  // Custom selection style
+                  final isSelected = node.state.isSelected;
+                  final backgroundColor = isSelected
+                      ? Colors.blue.withAlpha(156)
+                      : Colors.transparent;
+
+                  return Container(
+                    decoration: BoxDecoration(
+                      color: backgroundColor,
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(
+                        color: isSelected ? Colors.blue : Colors.transparent,
+                        width: 2,
+                      ),
+                    ),
+                    child: ListTile(
+                      title: Text(
+                        '${node.offset} - ${node.prototype.displayName}',
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: isSelected ? Colors.white : Colors.white70,
+                          fontWeight:
+                              isSelected ? FontWeight.bold : FontWeight.normal,
+                        ),
+                      ),
+                      onTap: () => _onNodeTap(node),
+                    ),
+                  );
+                },
+              ),
             ),
-          ),
         ],
       ),
     );
