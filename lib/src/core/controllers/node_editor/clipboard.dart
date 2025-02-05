@@ -7,7 +7,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../models/entities.dart';
 import '../../models/events.dart';
-import '../../utils/constants.dart';
+import '../../../constants.dart';
 import '../../utils/json_extensions.dart';
 import '../../utils/renderbox.dart';
 import '../../utils/snackbar.dart';

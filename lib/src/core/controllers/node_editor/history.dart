@@ -1,5 +1,5 @@
 import '../../models/events.dart';
-import '../../utils/constants.dart';
+import '../../../constants.dart';
 import '../../utils/stack.dart';
 
 import 'core.dart';

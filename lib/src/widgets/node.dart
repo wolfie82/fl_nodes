@@ -16,7 +16,7 @@ import 'package:fl_nodes/src/utils/improved_listener.dart';
 
 import '../core/models/entities.dart';
 import '../core/models/events.dart';
-import '../core/utils/constants.dart';
+import '../constants.dart';
 import '../core/utils/renderbox.dart';
 
 class NodeWidget extends StatefulWidget {

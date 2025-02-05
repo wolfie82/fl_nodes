@@ -18,11 +18,11 @@ import 'package:fl_nodes/src/utils/improved_listener.dart';
 import 'package:fl_nodes/src/widgets/debug_info.dart';
 import 'package:fl_nodes/src/widgets/node_editor_render_object.dart';
 
+import '../constants.dart';
 import '../core/controllers/node_editor/core.dart';
 import '../core/models/entities.dart';
 import '../core/models/events.dart';
 import '../core/models/styles.dart';
-import '../core/utils/constants.dart';
 
 class FlOverlayData {
   final Widget child;
