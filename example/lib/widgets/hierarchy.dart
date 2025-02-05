@@ -72,28 +72,38 @@ class _HierarchyWidgetState extends State<HierarchyWidget> {
                   final isSelected = node.state.isSelected;
                   final backgroundColor = isSelected
                       ? Colors.blue.withAlpha(156)
-                      : Colors.transparent;
+                      : const Color(0xFF333333);
 
-                  return Container(
-                    decoration: BoxDecoration(
-                      color: backgroundColor,
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(
-                        color: isSelected ? Colors.blue : Colors.transparent,
-                        width: 2,
-                      ),
-                    ),
-                    child: ListTile(
-                      title: Text(
-                        '${node.offset} - ${node.prototype.displayName}',
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: isSelected ? Colors.white : Colors.white70,
-                          fontWeight:
-                              isSelected ? FontWeight.bold : FontWeight.normal,
+                  return Padding(
+                    padding: const EdgeInsets.all(4),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: backgroundColor,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(
+                          color: isSelected ? Colors.blue : Colors.transparent,
+                          width: 2,
                         ),
                       ),
-                      onTap: () => _onNodeTap(node),
+                      child: ListTile(
+                        title: Text(
+                          node.prototype.displayName,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: isSelected ? Colors.white : Colors.white70,
+                            fontWeight: isSelected
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                          ),
+                        ),
+                        subtitle: Text(
+                          'x: ${node.offset.dx.toStringAsFixed(2)} y: ${node.offset.dy.toStringAsFixed(2)}',
+                          style: TextStyle(
+                            color: isSelected ? Colors.white : Colors.white70,
+                          ),
+                        ),
+                        onTap: () => _onNodeTap(node),
+                      ),
                     ),
                   );
                 },
