@@ -3,11 +3,13 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 
 import 'package:example/data_handlers.dart';
 import 'package:example/nodes.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:os_detect/os_detect.dart' as os_detect;
 
 import 'package:fl_nodes/fl_nodes.dart';
 
@@ -150,8 +152,40 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
     );
 
     registerDataHandlers(_nodeEditorController);
-
     registerNodes(context, _nodeEditorController);
+
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            "Welcome to FlNodes live example! Keep in mind that this is a work in progress and some features may not work as expected.",
+          ),
+          backgroundColor: Colors.blue,
+        ),
+      );
+
+      if (os_detect.isBrowser) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              "Currently our example code depends on https://pub.dev/packages/file_picker so you won't be able to save files on the web",
+            ),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+
+      if (os_detect.isAndroid || os_detect.isIOS) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              "This example is not optimized for mobile devices. Please use a desktop browser for the best experience.",
+            ),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+    });
   }
 
   @override
