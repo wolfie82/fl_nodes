@@ -53,7 +53,7 @@ class _HierarchyWidgetState extends State<HierarchyWidget> {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
       width: widget.isCollapsed ? 0 : 300,
-      color: const Color(0xFF212121),
+      color: const Color.fromRGBO(33, 33, 33, 1),
       padding: const EdgeInsets.all(8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -72,7 +72,7 @@ class _HierarchyWidgetState extends State<HierarchyWidget> {
                   final isSelected = node.state.isSelected;
                   final backgroundColor = isSelected
                       ? Colors.blue.withAlpha(156)
-                      : const Color(0xFF333333);
+                      : const Color.fromRGBO(51, 51, 51, 1);
 
                   return Padding(
                     padding: const EdgeInsets.all(4),

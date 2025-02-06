@@ -14,7 +14,7 @@ void registerNodes(BuildContext context, FlNodeEditorController controller) {
       idName: 'operator',
       displayName: 'Operator',
       description: 'Applies a chosen operation to two numbers.',
-      color: Colors.yellow,
+      color: Colors.pink,
       ports: [
         InputPortPrototype(
           idName: 'a',
@@ -38,16 +38,9 @@ void registerNodes(BuildContext context, FlNodeEditorController controller) {
           displayName: 'Operation',
           dataType: Operator,
           defaultData: Operator.add,
-          visualizerBuilder: (data) => Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            decoration: BoxDecoration(
-              color: const Color(0xFF333333),
-              borderRadius: BorderRadius.circular(4.0),
-            ),
-            child: Text(
-              data.toString().split('.').last,
-              style: const TextStyle(color: Colors.white),
-            ),
+          visualizerBuilder: (data) => Text(
+            data.toString().split('.').last,
+            style: const TextStyle(color: Colors.white),
           ),
           editorBuilder: (context, removeOverlay, data, setData) =>
               SegmentedButton<Operator>(
@@ -165,16 +158,9 @@ void registerNodes(BuildContext context, FlNodeEditorController controller) {
           displayName: 'Comparator',
           dataType: Comparator,
           defaultData: Comparator.equal,
-          visualizerBuilder: (data) => Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            decoration: BoxDecoration(
-              color: const Color(0xFF333333),
-              borderRadius: BorderRadius.circular(4.0),
-            ),
-            child: Text(
-              data.toString().split('.').last,
-              style: const TextStyle(color: Colors.white),
-            ),
+          visualizerBuilder: (data) => Text(
+            data.toString().split('.').last,
+            style: const TextStyle(color: Colors.white),
           ),
           editorBuilder: (context, removeOverlay, data, setData) =>
               SegmentedButton<Comparator>(
@@ -237,16 +223,9 @@ void registerNodes(BuildContext context, FlNodeEditorController controller) {
           displayName: 'Value',
           dataType: double,
           defaultData: 0.0,
-          visualizerBuilder: (data) => Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            decoration: BoxDecoration(
-              color: const Color(0xFF333333),
-              borderRadius: BorderRadius.circular(4.0),
-            ),
-            child: Text(
-              data.toString(),
-              style: const TextStyle(color: Colors.white),
-            ),
+          visualizerBuilder: (data) => Text(
+            data.toString(),
+            style: const TextStyle(color: Colors.white),
           ),
           editorBuilder: (context, removeOverlay, data, setData) =>
               ConstrainedBox(
@@ -335,16 +314,9 @@ void registerNodes(BuildContext context, FlNodeEditorController controller) {
           displayName: 'Decimals',
           dataType: int,
           defaultData: 2,
-          visualizerBuilder: (data) => Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            decoration: BoxDecoration(
-              color: const Color(0xFF333333),
-              borderRadius: BorderRadius.circular(4.0),
-            ),
-            child: Text(
-              data.toString(),
-              style: const TextStyle(color: Colors.white),
-            ),
+          visualizerBuilder: (data) => Text(
+            data.toString(),
+            style: const TextStyle(color: Colors.white),
           ),
           editorBuilder: (context, removeOverlay, data, setData) =>
               ConstrainedBox(

@@ -5,9 +5,9 @@ import 'package:flutter_context_menu/flutter_context_menu.dart';
 bool isContextMenuVisible = false;
 
 void createAndShowContextMenu(
-  BuildContext context,
-  List<ContextMenuEntry> entries,
-  Offset position, {
+  BuildContext context, {
+  required List<ContextMenuEntry> entries,
+  required Offset position,
   Function(String? value)? onDismiss,
 }) async {
   if (isContextMenuVisible) return;
@@ -17,7 +17,7 @@ void createAndShowContextMenu(
   final menu = ContextMenu(
     entries: entries,
     position: position,
-    padding: const EdgeInsets.all(8.0),
+    padding: const EdgeInsets.all(8),
   );
 
   final copiedValue = await showContextMenu(

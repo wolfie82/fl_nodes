@@ -33,8 +33,9 @@ class NodeEditorRenderObjectWidget extends MultiChildRenderObjectWidget {
           children: controller.nodesAsList
               .map(
                 (node) => NodeWidget(
-                  node: node,
                   controller: controller,
+                  node: node,
+                  style: style.nodeStyle,
                 ),
               )
               .toList(),
@@ -405,7 +406,7 @@ class NodeEditorRenderBox extends RenderBox
       }
     }
 
-    switch (style.linkCurveType) {
+    switch (style.nodeStyle.linkStyle.curveType) {
       case FlLinkCurveType.straight:
         paintLinksAsStraights(canvas);
         break;
@@ -417,6 +418,11 @@ class NodeEditorRenderBox extends RenderBox
         break;
     }
   }
+
+  List<Color> get linkColors => [
+        style.nodeStyle.portStyle.color[PortType.output]!,
+        style.nodeStyle.portStyle.color[PortType.input]!,
+      ];
 
   void _paintBezierLink(
     Canvas canvas,
@@ -438,7 +444,7 @@ class NodeEditorRenderBox extends RenderBox
     );
 
     final gradient = LinearGradient(
-      colors: [Colors.green[300]!, Colors.purple[200]!],
+      colors: linkColors,
       begin: Alignment.centerLeft,
       end: Alignment.centerRight,
     );
@@ -451,7 +457,7 @@ class NodeEditorRenderBox extends RenderBox
     final Paint gradientPaint = Paint()
       ..shader = defaultShader
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 3;
+      ..strokeWidth = style.nodeStyle.linkStyle.lineWidth;
 
     canvas.drawPath(path, gradientPaint);
   }
@@ -464,7 +470,7 @@ class NodeEditorRenderBox extends RenderBox
     // TODO: Dynamically space the link based on the direction and other links
 
     final gradient = LinearGradient(
-      colors: [Colors.green[300]!, Colors.purple[200]!],
+      colors: linkColors,
       begin: Alignment.centerLeft,
       end: Alignment.centerRight,
     );
@@ -476,7 +482,7 @@ class NodeEditorRenderBox extends RenderBox
     final Paint gradientPaint = Paint()
       ..shader = shader
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 3;
+      ..strokeWidth = style.nodeStyle.linkStyle.lineWidth;
 
     canvas.drawLine(outPortOffset, inPortOffset, gradientPaint);
   }
@@ -487,7 +493,7 @@ class NodeEditorRenderBox extends RenderBox
     Offset inPortOffset,
   ) {
     final gradient = LinearGradient(
-      colors: [Colors.green[300]!, Colors.purple[200]!],
+      colors: linkColors,
       begin: Alignment.centerLeft,
       end: Alignment.centerRight,
     );
@@ -499,7 +505,7 @@ class NodeEditorRenderBox extends RenderBox
     final Paint gradientPaint = Paint()
       ..shader = shader
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 3;
+      ..strokeWidth = style.nodeStyle.linkStyle.lineWidth;
 
     final midX = (outPortOffset.dx + inPortOffset.dx) / 2;
 
@@ -516,7 +522,7 @@ class NodeEditorRenderBox extends RenderBox
     final outPortOffset = tempLink!.item1;
     final inPortOffset = tempLink!.item2;
 
-    switch (style.linkCurveType) {
+    switch (style.nodeStyle.linkStyle.curveType) {
       case FlLinkCurveType.straight:
         _paintStraightLink(canvas, outPortOffset, inPortOffset);
         break;

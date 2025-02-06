@@ -212,12 +212,7 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
               child: FlNodeEditorWidget(
                 controller: _nodeEditorController,
                 expandToParent: true,
-                style: const FlNodeEditorStyle(
-                  gridStyle: FlGridStyle(
-                    lineWidth: 1,
-                    intersectionRadius: 2,
-                  ),
-                ),
+                style: const FlNodeEditorStyle(),
                 overlay: () {
                   return [
                     FlOverlayData(

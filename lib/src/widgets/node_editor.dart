@@ -820,18 +820,18 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
                         /// If a port is near the cursor, show the port context menu
                         createAndShowContextMenu(
                           context,
-                          portContextMenuEntries(
+                          entries: portContextMenuEntries(
                             event.position,
                             locator: locator,
                           ),
-                          event.position,
+                          position: event.position,
                         );
                       } else if (!isContextMenuVisible) {
                         // Else show the editor context menu
                         createAndShowContextMenu(
                           context,
-                          editorContextMenuEntries(event.position),
-                          event.position,
+                          entries: editorContextMenuEntries(event.position),
+                          position: event.position,
                         );
                       }
                     }
@@ -858,8 +858,8 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
                         // Show the create submenu if no port is near the cursor
                         createAndShowContextMenu(
                           context,
-                          createSubmenuEntries(event.position),
-                          event.position,
+                          entries: createSubmenuEntries(event.position),
+                          position: event.position,
                           onDismiss: (value) => _onLinkCancel(),
                         );
                       }

@@ -64,7 +64,7 @@ final class SelectionAreaEvent extends NodeEditorEvent {
   const SelectionAreaEvent(this.area, {required super.id, super.isHandled});
 }
 
-final class DragSelectionEvent extends NodeEditorEvent {
+class DragSelectionEvent extends NodeEditorEvent {
   final Set<String> nodeIds;
   final Offset delta;
 
@@ -90,6 +90,24 @@ final class DragSelectionEvent extends NodeEditorEvent {
       isHandled: json['isHandled'] as bool,
     );
   }
+}
+
+final class DragSelectionStartEvent extends DragSelectionEvent {
+  const DragSelectionStartEvent(
+    super.nodeIds,
+    super.delta, {
+    required super.id,
+    super.isHandled,
+  });
+}
+
+final class DragSelectionEndEvent extends DragSelectionEvent {
+  const DragSelectionEndEvent(
+    super.nodeIds,
+    super.delta, {
+    required super.id,
+    super.isHandled,
+  });
 }
 
 final class SelectionEvent extends NodeEditorEvent {

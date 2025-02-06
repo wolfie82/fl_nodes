@@ -10,22 +10,24 @@ import 'package:flutter_context_menu/flutter_context_menu.dart';
 import 'package:os_detect/os_detect.dart' as os_detect;
 import 'package:tuple/tuple.dart';
 
-import 'package:fl_nodes/src/core/controllers/node_editor/core.dart';
+import 'package:fl_nodes/fl_nodes.dart';
 import 'package:fl_nodes/src/utils/context_menu.dart';
 import 'package:fl_nodes/src/utils/improved_listener.dart';
 
-import '../core/models/entities.dart';
-import '../core/models/events.dart';
 import '../constants.dart';
+import '../core/models/entities.dart';
 import '../core/utils/renderbox.dart';
 
 class NodeWidget extends StatefulWidget {
-  final NodeInstance node;
   final FlNodeEditorController controller;
+  final NodeInstance node;
+  final FlNodeStyle style;
+
   const NodeWidget({
     super.key,
-    required this.node,
     required this.controller,
+    required this.node,
+    required this.style,
   });
 
   @override
@@ -389,18 +391,18 @@ class _NodeWidgetState extends State<NodeWidget> {
                     /// If a port is near the cursor, show the port context menu
                     createAndShowContextMenu(
                       context,
-                      portContextMenuEntries(
+                      entries: portContextMenuEntries(
                         event.position,
                         locator: locator,
                       ),
-                      event.position,
+                      position: event.position,
                     );
                   } else if (!isContextMenuVisible) {
                     // Else show the node context menu
                     createAndShowContextMenu(
                       context,
-                      nodeContextMenuEntries(),
-                      event.position,
+                      entries: nodeContextMenuEntries(),
+                      position: event.position,
                     );
                   }
                 } else if (event.buttons == kPrimaryMouseButton) {
@@ -432,8 +434,8 @@ class _NodeWidgetState extends State<NodeWidget> {
                   } else {
                     createAndShowContextMenu(
                       context,
-                      createSubmenuEntries(event.position),
-                      event.position,
+                      entries: createSubmenuEntries(event.position),
+                      position: event.position,
                       onDismiss: (value) => _onLinkCancel(),
                     );
                   }
@@ -445,33 +447,6 @@ class _NodeWidgetState extends State<NodeWidget> {
             );
     }
 
-    late Color bodyColor;
-    late Color headerColor;
-
-    if (widget.node.state.isCollapsed) {
-      headerColor = Colors.transparent;
-      if (widget.node.state.isSelected) {
-        bodyColor = nodeColor;
-      } else {
-        bodyColor = nodeColor.withValues(
-          red: nodeColor.r / 1.35,
-          green: nodeColor.g / 1.35,
-          blue: nodeColor.b / 1.35,
-        );
-      }
-    } else {
-      bodyColor = const Color(0xFF212121).withAlpha(156);
-      if (widget.node.state.isSelected) {
-        headerColor = nodeColor;
-      } else {
-        headerColor = nodeColor.withValues(
-          red: nodeColor.r / 1.35,
-          green: nodeColor.g / 1.35,
-          blue: nodeColor.b / 1.35,
-        );
-      }
-    }
-
     return controlsWrapper(
       IntrinsicHeight(
         child: IntrinsicWidth(
@@ -480,23 +455,9 @@ class _NodeWidgetState extends State<NodeWidget> {
             clipBehavior: Clip.none,
             children: [
               Container(
-                decoration: BoxDecoration(
-                  color: bodyColor,
-                  border: Border.all(
-                    color: widget.node.state.isSelected
-                        ? nodeColor
-                        : Colors.transparent,
-                  ),
-                  borderRadius: BorderRadius.circular(8.0),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color.fromARGB(64, 0, 0, 0),
-                      blurRadius: 4.0,
-                      spreadRadius: 2.0,
-                      offset: Offset(0.0, 4.0),
-                    ),
-                  ],
-                ),
+                decoration: widget.node.state.isSelected
+                    ? widget.style.selectedDecoration
+                    : widget.style.decoration,
               ),
               ...widget.node.ports.entries.map(
                 (entry) => _buildPortIndicator(entry.value),
@@ -511,7 +472,7 @@ class _NodeWidgetState extends State<NodeWidget> {
                       vertical: 8,
                     ),
                     decoration: BoxDecoration(
-                      color: headerColor,
+                      color: widget.node.prototype.color,
                       borderRadius: BorderRadius.only(
                         topLeft: const Radius.circular(7),
                         topRight: const Radius.circular(7),
@@ -579,7 +540,7 @@ class _NodeWidgetState extends State<NodeWidget> {
                         spacing: widget.node.state.isCollapsed ? 0 : 2,
                         children: [
                           ...widget.node.fields.values.map(_buildField),
-                          ...widget.node.ports.values.map(_buildPortRow),
+                          ...widget.node.ports.values.map(_buildPort),
                         ],
                       ),
                     ),
@@ -614,6 +575,7 @@ class _NodeWidgetState extends State<NodeWidget> {
               left: details.globalPosition.dx,
               top: details.globalPosition.dy,
               child: Material(
+                color: widget.style.fieldStyle.decoration.color,
                 child: field.prototype.editorBuilder!(
                   context,
                   () => overlayEntry?.remove(),
@@ -672,7 +634,11 @@ class _NodeWidgetState extends State<NodeWidget> {
               );
             }
           },
-          child: field.prototype.visualizerBuilder(field.data),
+          child: Container(
+            padding: widget.style.fieldStyle.padding,
+            decoration: widget.style.fieldStyle.decoration,
+            child: field.prototype.visualizerBuilder(field.data),
+          ),
         ),
         Text(
           field.prototype.displayName,
@@ -693,7 +659,7 @@ class _NodeWidgetState extends State<NodeWidget> {
     );
   }
 
-  Widget _buildPortRow(PortInstance port) {
+  Widget _buildPort(PortInstance port) {
     if (widget.node.state.isCollapsed) {
       return SizedBox(
         key: port.key,
@@ -772,7 +738,7 @@ class _NodeWidgetState extends State<NodeWidget> {
                 alignRight ? 0 : constraints.maxWidth,
                 relativeOffset.dy + portBox.size.height / 2,
               ),
-              color: alignRight ? Colors.purple[200]! : Colors.green[300]!,
+              color: widget.style.portStyle.color[port.prototype.portType]!,
             ),
           );
         },
