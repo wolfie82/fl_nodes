@@ -64,7 +64,35 @@ final class SelectionAreaEvent extends NodeEditorEvent {
   const SelectionAreaEvent(this.area, {required super.id, super.isHandled});
 }
 
-class DragSelectionEvent extends NodeEditorEvent {
+final class DragSelectionStartEvent extends NodeEditorEvent {
+  final Set<String> nodeIds;
+  final Offset position;
+
+  const DragSelectionStartEvent(
+    this.nodeIds,
+    this.position, {
+    required super.id,
+    super.isHandled,
+  });
+
+  @override
+  Map<String, dynamic> toJson(dataHandlers) => {
+        ...super.toJson(dataHandlers),
+        'nodeIds': nodeIds.toList(),
+        'position': [position.dx, position.dy],
+      };
+
+  factory DragSelectionStartEvent.fromJson(Map<String, dynamic> json) {
+    return DragSelectionStartEvent(
+      (json['nodeIds'] as List).cast<String>().toSet(),
+      Offset(json['position'][0], json['position'][1]),
+      id: json['id'] as String,
+      isHandled: json['isHandled'] as bool,
+    );
+  }
+}
+
+final class DragSelectionEvent extends NodeEditorEvent {
   final Set<String> nodeIds;
   final Offset delta;
 
@@ -92,22 +120,32 @@ class DragSelectionEvent extends NodeEditorEvent {
   }
 }
 
-final class DragSelectionStartEvent extends DragSelectionEvent {
-  const DragSelectionStartEvent(
-    super.nodeIds,
-    super.delta, {
-    required super.id,
-    super.isHandled,
-  });
-}
+final class DragSelectionEndEvent extends NodeEditorEvent {
+  final Offset position;
+  final Set<String> nodeIds;
 
-final class DragSelectionEndEvent extends DragSelectionEvent {
   const DragSelectionEndEvent(
-    super.nodeIds,
-    super.delta, {
+    this.position,
+    this.nodeIds, {
     required super.id,
     super.isHandled,
   });
+
+  @override
+  Map<String, dynamic> toJson(dataHandlers) => {
+        ...super.toJson(dataHandlers),
+        'position': [position.dx, position.dy],
+        'nodeIds': nodeIds.toList(),
+      };
+
+  factory DragSelectionEndEvent.fromJson(Map<String, dynamic> json) {
+    return DragSelectionEndEvent(
+      Offset(json['position'][0], json['position'][1]),
+      (json['nodeIds'] as List).cast<String>().toSet(),
+      id: json['id'] as String,
+      isHandled: json['isHandled'] as bool,
+    );
+  }
 }
 
 final class SelectionEvent extends NodeEditorEvent {
