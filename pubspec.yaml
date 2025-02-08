@@ -6,6 +6,14 @@ homepage: https://williamkaroldicioccio.github.io/fl_nodes/
 repository: https://github.com/WilliamKarolDiCioccio/fl_nodes
 issue_tracker: https://github.com/WilliamKarolDiCioccio/fl_nodes/issues
 
+platforms:
+  android:
+  ios:
+  linux:
+  macos:
+  web:
+  windows:
+
 topics:
   - visual-scripting
   - workflow-editor
