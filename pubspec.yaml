@@ -1,7 +1,18 @@
 name: fl_nodes
-description: A Flutter package for building node-based editors.
+description: A lightweight, scalable, and highly customizable package that empowers Flutter developers to create dynamic, interactive, and visually appealing node-based UIs.
 version: 0.1.0
-homepage: https://github.com/WilliamKarolDiCioccio/fl_nodes
+
+homepage: https://williamkaroldicioccio.github.io/fl_nodes/
+repository: https://github.com/WilliamKarolDiCioccio/fl_nodes
+issue_tracker: https://github.com/WilliamKarolDiCioccio/fl_nodes/issues
+
+topics:
+  - visual-scripting
+  - workflow-editor
+  - node-editor
+
+funding:
+  - https://studio.buymeacoffee.com/dashboard
 
 environment:
   sdk: ">=3.0.0 <4.0.0"
