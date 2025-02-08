@@ -495,8 +495,10 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
 
     if (trackpadInput) {
       // Trackpad: amount is in range (0, 1] for zoom out, (1, ∞) for zoom in
-      // Due to the logarithmic scale, we need to multiply by 10 to get a reasonable delta
-      delta = log(amount) * sensitivity * 10;
+      // Due to the logarithmic scale, we need to multiply by 10 to get a reasonable delta.
+      // NOTE: macOS seems to have a different behavior, so we need to account for that.
+      final deltaScale = os_detect.isMacOS ? 1 : 10;
+      delta = log(amount) * sensitivity * deltaScale;
     } else {
       // Mouse wheel or other input: positive zooms in, negative zooms out
       delta = amount * zoomSpeed * sensitivity;
@@ -508,7 +510,7 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
     final double targetZoom =
         exp(targetLogZoom); // Convert back to linear space
 
-    _setZoom(targetZoom, animate: true);
+    _setZoom(targetZoom);
   }
 
   void _setZoom(double targetZoom, {bool animate = false}) {
@@ -884,11 +886,17 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
                     }
                   },
                   onPointerSignalReceived: (event) {
-                    if (widget.controller.behavior.zoomSensitivity > 0 &&
-                        event is PointerScrollEvent) {
+                    if (event is PointerScrollEvent &&
+                        widget.controller.behavior.panSensitivity > 0 &&
+                        event.scrollDelta != const Offset(10, 10)) {
+                      _onDragUpdate(-event.scrollDelta);
+                    }
+                    if (event is PointerScaleEvent &&
+                        widget.controller.behavior.zoomSensitivity > 0) {
                       _setZoomFromRawInput(
-                        event.scrollDelta.dy,
+                        event.scale,
                         event.position,
+                        trackpadInput: true,
                       );
                     }
                   },
