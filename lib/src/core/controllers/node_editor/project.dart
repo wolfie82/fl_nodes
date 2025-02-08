@@ -187,7 +187,7 @@ class FlNodeEditorProject {
   /// The behavior of this method is determined by the [projectSaver] callback and user defined logic.
   ///
   /// e.g. Save to a file, save to a database, etc.
-  void saveProject() async {
+  void save() async {
     late final Map<String, dynamic> jsonData;
 
     try {
@@ -220,8 +220,14 @@ class FlNodeEditorProject {
   /// The behavior of this method is determined by the [projectLoader] callback and user defined logic.
   ///
   /// e.g. If the project data is invalid, the user will be prompted to save the project.
-  void loadProject() async {
-    final jsonData = await projectLoader?.call(isSaved);
+  void load({Map<String, dynamic>? data}) async {
+    late final Map<String, dynamic>? jsonData;
+
+    if (data != null) {
+      jsonData = data;
+    } else {
+      jsonData = await projectLoader?.call(isSaved);
+    }
 
     if (jsonData == null) {
       showNodeEditorSnackbar(
@@ -256,7 +262,7 @@ class FlNodeEditorProject {
   /// The behavior of this method is determined by the [projectCreator] callback and user defined logic.
   ///
   /// e.g. If the project is not saved, the user will be prompted to save the project.
-  void newProject() async {
+  void create() async {
     final shouldProceed = await projectCreator?.call(isSaved);
 
     if (shouldProceed == false) return;

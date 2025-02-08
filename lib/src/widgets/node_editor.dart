@@ -684,17 +684,17 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
             MenuItem(
               label: 'Save',
               icon: Icons.save,
-              onSelected: () => widget.controller.project.saveProject(),
+              onSelected: () => widget.controller.project.save(),
             ),
             MenuItem(
               label: 'Open',
               icon: Icons.folder_open,
-              onSelected: () => widget.controller.project.loadProject(),
+              onSelected: () => widget.controller.project.load(),
             ),
             MenuItem(
               label: 'New',
               icon: Icons.new_label,
-              onSelected: () => widget.controller.project.newProject(),
+              onSelected: () => widget.controller.project.create(),
             ),
           ],
         ),
@@ -779,19 +779,19 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
                 KeyAction(
                   LogicalKeyboardKey.keyS,
                   "Save project",
-                  () => widget.controller.project.saveProject(),
+                  () => widget.controller.project.save(),
                   isControlPressed: true,
                 ),
                 KeyAction(
                   LogicalKeyboardKey.keyO,
                   "Open project",
-                  () => widget.controller.project.loadProject(),
+                  () => widget.controller.project.load(),
                   isControlPressed: true,
                 ),
                 KeyAction(
                   LogicalKeyboardKey.keyN,
                   "Create new project",
-                  () => widget.controller.project.newProject(),
+                  () => widget.controller.project.create(),
                   isControlPressed: true,
                   isShiftPressed: true,
                 ),

@@ -10,6 +10,7 @@ import 'package:example/data_handlers.dart';
 import 'package:example/nodes.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:os_detect/os_detect.dart' as os_detect;
+import 'package:universal_html/html.dart' as universal_html;
 
 import 'package:fl_nodes/fl_nodes.dart';
 
@@ -59,6 +60,8 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
 
     _nodeEditorController = FlNodeEditorController(
       projectSaver: (jsonData) async {
+        if (kIsWeb) return false;
+
         final String? outputPath = await FilePicker.platform.saveFile(
           dialogTitle: 'Save Project',
           fileName: 'node_project.json',
@@ -119,8 +122,7 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
           fileContent = await file.readAsString();
         }
 
-        final Map<String, dynamic> jsonData = jsonDecode(fileContent);
-        return jsonData;
+        return jsonDecode(fileContent);
       },
       projectCreator: (isSaved) async {
         if (kIsWeb) return false;
@@ -155,6 +157,17 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
 
     registerDataHandlers(_nodeEditorController);
     registerNodes(context, _nodeEditorController);
+
+    const sampleProjectLink =
+        'https://raw.githubusercontent.com/WilliamKarolDiCioccio/fl_nodes/refs/heads/main/example/assets/www/node_project.json';
+
+    () async {
+      _nodeEditorController.project.load(
+        data: jsonDecode(
+          await universal_html.HttpRequest.getString(sampleProjectLink),
+        ),
+      );
+    }();
 
     SchedulerBinding.instance.addPostFrameCallback((_) {
       ScaffoldMessenger.of(context).showSnackBar(
