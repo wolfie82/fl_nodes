@@ -510,7 +510,7 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
     final double targetZoom =
         exp(targetLogZoom); // Convert back to linear space
 
-    _setZoom(targetZoom);
+    _setZoom(targetZoom, animate: !os_detect.isMacOS && !os_detect.isIOS);
   }
 
   void _setZoom(double targetZoom, {bool animate = false}) {
@@ -889,15 +889,24 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
                     if (event is PointerScrollEvent &&
                         widget.controller.behavior.panSensitivity > 0 &&
                         event.scrollDelta != const Offset(10, 10)) {
-                      _onDragUpdate(-event.scrollDelta);
+                      if (kIsWeb) {
+                        _onDragUpdate(-event.scrollDelta);
+                      } else {
+                        _setZoomFromRawInput(
+                          event.scrollDelta.dy,
+                          event.position,
+                        );
+                      }
                     }
                     if (event is PointerScaleEvent &&
                         widget.controller.behavior.zoomSensitivity > 0) {
-                      _setZoomFromRawInput(
-                        event.scale,
-                        event.position,
-                        trackpadInput: true,
-                      );
+                      if (kIsWeb) {
+                        _setZoomFromRawInput(
+                          event.scale,
+                          event.position,
+                          trackpadInput: true,
+                        );
+                      }
                     }
                   },
                   onPointerPanZoomStart:
