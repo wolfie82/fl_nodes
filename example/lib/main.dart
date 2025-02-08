@@ -295,7 +295,7 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
                               ),
                               Text(' - Left Click: Select Node'),
                               Text(' - Right Click: Open Context Menu'),
-                              Text(' - Scroll: Zoom In/Out'),
+                              Text(' - Scroll + Ctrl: Zoom In/Out'),
                               Text(' - Middle Click: Pan'),
                               SizedBox(height: 8),
                               Text(
