@@ -26,12 +26,12 @@ Whether you're building tools for developers, designers, or end-users, **FlNodes
 
 Inspired by Flutter’s **no-compromises** philosophy, **FlNodes** offers:
 
-✅ **Fully Customizable UI** – Tailor the editor to match your app's design.  
-💾 **Fully Customizable storage** - The editor converts the project to JSON and provides callbacks for actual storage.
-⚡ **High Performance** – Optimized rendering for smooth interactions.  
-🔗 **Flexible Node & Connection System** – Create complex graph structures with ease.  
-📏 **Scalable Architecture** – Handles everything from simple node diagrams to massive, interconnected graphs.  
-🎨 **Beautiful & Lightweight** – Minimal overhead, ensuring a seamless user experience.
+- ✅ **Fully Customizable UI** – Tailor the editor to match your app's design.
+- 💾 **Fully Customizable storage** - The editor converts the project to JSON and provides callbacks for actual storage.
+- ⚡ **High Performance** – Optimized rendering for smooth interactions.
+- 🔗 **Flexible Node & Connection System** – Create complex graph structures with ease.
+- 📏 **Scalable Architecture** – Handles everything from simple node diagrams to massive, interconnected graphs.
+- 🎨 **Beautiful & Lightweight** – Minimal overhead, ensuring a seamless user experience.
 
 ---
 
