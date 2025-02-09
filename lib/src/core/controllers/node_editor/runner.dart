@@ -15,6 +15,9 @@ typedef OnExecute = Future<void> Function(
   void Function(Set<(String, dynamic)>) put,
 );
 
+/// A class that manages the execution of the node editor graph.
+///
+/// NOTE: This class is still in development and there are performance improvements to be made.
 class FlNodeEditorRunner {
   final FlNodeEditorController controller;
   Map<String, NodeInstance> _nodes = {};
@@ -71,6 +74,9 @@ class FlNodeEditorRunner {
   }
 
   /// Builds the data dependency map.
+  ///
+  /// The data dependency map is a map of node IDs to the unique IDs of nodes connected to the node's data input ports.
+  /// This map is used to determine the order in which nodes are executed to ensure that data is propagated correctly.
   void _buildDepsMap() {
     _dataDeps = {};
 
@@ -86,6 +92,28 @@ class FlNodeEditorRunner {
       }
 
       _findDeps(node.id, visited);
+    }
+  }
+
+  void _findDeps(String nodeId, Set<String> visited) {
+    if (visited.contains(nodeId)) return;
+
+    visited.add(nodeId);
+
+    _dataDeps[nodeId] = _getConnectedNodeIdsFromNode(
+      _nodes[nodeId]!,
+      PortDirection.input,
+      PortType.data,
+    );
+
+    final connectedOutputNodeIds = _getConnectedNodeIdsFromNode(
+      _nodes[nodeId]!,
+      PortDirection.output,
+      PortType.control,
+    );
+
+    for (final connectedNodeId in connectedOutputNodeIds) {
+      _findDeps(connectedNodeId, visited);
     }
   }
 
@@ -124,28 +152,6 @@ class FlNodeEditorRunner {
     return connectedNodeIds;
   }
 
-  void _findDeps(String nodeId, Set<String> visited) {
-    if (visited.contains(nodeId)) return;
-
-    visited.add(nodeId);
-
-    _dataDeps[nodeId] = _getConnectedNodeIdsFromNode(
-      _nodes[nodeId]!,
-      PortDirection.input,
-      PortType.data,
-    );
-
-    final connectedOutputNodeIds = _getConnectedNodeIdsFromNode(
-      _nodes[nodeId]!,
-      PortDirection.output,
-      PortType.control,
-    );
-
-    for (final connectedNodeId in connectedOutputNodeIds) {
-      _findDeps(connectedNodeId, visited);
-    }
-  }
-
   /// Executes the entire graph asynchronously
   Future<void> executeGraph() async {
     _executedNodes = {};
@@ -163,7 +169,16 @@ class FlNodeEditorRunner {
   }
 
   /// Executes a node asynchronously
+  ///
+  /// This method is responsible for executing a node and propagating accordingly
+  /// with the data dependecy map. It provides the onExecute callback with the
+  /// necessary context information and callbacks to forward events and put data.
+  /// The method also handles errors and displays them in the node editor.
   Future<void> _executeNode(NodeInstance node) async {
+    /// A function that forwards events to connected nodes through control ports.
+    ///
+    /// The function takes a [Set] of unique IDs of the ports to forward events to and
+    /// returns a [Future] that completes when all connected nodes have been executed
     Future<void> forward(Set<String> portIdNames) async {
       final futures = <Future<void>>[];
 
@@ -186,6 +201,9 @@ class FlNodeEditorRunner {
       await Future.wait(futures);
     }
 
+    /// A function that puts data into connected nodes through data ports.
+    ///
+    /// The function takes a [Set] of records containing the unique ID of the port and the data to be put into the port.
     void put(Set<(String, dynamic)> idNamesAndData) {
       for (final idNameAndData in idNamesAndData) {
         final (idName, data) = idNameAndData;

@@ -10,6 +10,7 @@ import '../../utils/snackbar.dart';
 
 import 'core.dart';
 
+/// A class that allows to specify serialization and deserialization logic for custom data types.
 class DataHandler {
   final String Function(dynamic data) toJson;
   final dynamic Function(String json) fromJson;
@@ -17,6 +18,12 @@ class DataHandler {
   DataHandler(this.toJson, this.fromJson);
 }
 
+/// A class that manages the project data of the node editor.
+///
+/// The package does not provide a default implementation for saving and loading project data,
+/// instead it simpliy converts the project data to JSON and vice versa. JSON was chosen as it
+/// was quick and easy to implement and can be easily manipulated and converted to other formats
+/// (e.g. structured data in a database).
 class FlNodeEditorProject {
   final FlNodeEditorController controller;
 
