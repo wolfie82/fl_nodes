@@ -87,7 +87,7 @@ For web platforms we strongly recommend to disallow most default browser interac
 
   <title>example</title>
   <link rel="manifest" href="manifest.json">
-  
+
   <style>
     /* Disable touch gestures */
     html, body {
@@ -100,7 +100,7 @@ For web platforms we strongly recommend to disallow most default browser interac
 <body>
   <canvas></canvas>
   <script src="flutter_bootstrap.js" async></script>
-  
+
   <script>
     // Prevent pinch-to-zoom
     document.addEventListener('gesturestart', function (e) {
@@ -112,12 +112,12 @@ For web platforms we strongly recommend to disallow most default browser interac
     document.addEventListener('gestureend', function (e) {
       e.preventDefault();
     });
-    
+
     // Disable right-click
     document.addEventListener("contextmenu", function (e) {
       e.preventDefault();
     });
-    
+
     // Block certain keyboard shortcuts
     document.addEventListener("keydown", function (e) {
       if (e.ctrlKey && (e.key === "r" || e.key === "R")) {
@@ -348,8 +348,6 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
     );
   }
 }
-
-
 ```
 
 This is the prototpye registration process for an hypotetical `For Each Loop`:
@@ -413,8 +411,6 @@ void registerNodes(BuildContext context, FlNodeEditorController controller) {
     ),
   );
 }
-
-
 ```
 
 This is the data handler registration process for an hypothetical `Operator` custom enumerator type:
@@ -428,8 +424,99 @@ void registerDataHandlers(FlNodeEditorController controller) {
     ),
   );
 }
-
 ```
+
+---
+
+## 🎨 Extensive Styling Options
+
+### FlGridStyle
+
+Defines the grid appearance in the node editor:
+
+- **gridSpacingX**: Horizontal grid spacing.
+- **gridSpacingY**: Vertical grid spacing.
+- **lineWidth**: Width of the grid lines.
+- **lineColor**: Color of the grid lines.
+- **intersectionColor**: Color of the grid intersections.
+- **intersectionRadius**: Radius of the grid intersection points.
+- **showGrid**: Whether the grid is visible.
+
+---
+
+### FlLinkCurveType
+
+Defines the curve style of links between nodes:
+
+- **straight**: Straight lines.
+- **bezier**: Smooth Bezier curves.
+- **ninetyDegree**: Right-angle connections.
+
+---
+
+### FlLinkDrawMode
+
+Defines the visual style of links:
+
+- **solid**: Continuous line.
+- **dashed**: Dashed line.
+- **dotted**: Dotted line.
+
+---
+
+### FlLinkStyle
+
+Defines the appearance of links:
+
+- **lineWidth**: Thickness of the link.
+- **drawMode**: Drawing style (solid, dashed, or dotted).
+- **curveType**: Curve type of the link.
+
+---
+
+### FlPortStyle
+
+Defines port colors based on type and direction:
+
+- **color**: Mapping of port types to colors for input and output directions e.g.
+  - **PortType.data**:
+    - **input**: Soft Purple
+    - **output**: Coral Pink
+  - **PortType.control**:
+    - **input**: Green
+    - **output**: Blue
+
+---
+
+### FlFieldStyle
+
+Defines the appearance of fields in a node:
+
+- **decoration**: Background styling (default: dark blue-grey with rounded corners).
+- **padding**: Internal padding of the field.
+
+---
+
+### FlNodeStyle
+
+Defines the styling of nodes:
+
+- **decoration**: Default node appearance.
+- **selectedDecoration**: Appearance when a node is selected.
+- **linkStyle**: Link appearance settings.
+- **portStyle**: Port appearance settings.
+- **fieldStyle**: Field appearance settings.
+
+---
+
+### FlNodeEditorStyle
+
+Defines the overall editor appearance:
+
+- **decoration**: Background styling.
+- **padding**: Padding inside the editor.
+- **gridStyle**: Grid appearance settings.
+- **nodeStyle**: Node appearance settings.
 
 ---
 
