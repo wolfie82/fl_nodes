@@ -8,7 +8,6 @@ import 'package:flutter/services.dart';
 
 import 'package:flutter_context_menu/flutter_context_menu.dart';
 import 'package:os_detect/os_detect.dart' as os_detect;
-import 'package:tuple/tuple.dart';
 
 import 'package:fl_nodes/fl_nodes.dart';
 import 'package:fl_nodes/src/utils/context_menu.dart';
@@ -17,6 +16,9 @@ import 'package:fl_nodes/src/utils/improved_listener.dart';
 import '../constants.dart';
 import '../core/models/entities.dart';
 import '../core/utils/renderbox.dart';
+
+typedef _TempLink = ({String nodeId, String portId});
+typedef _Row = ({PortInstance? inPort, FieldInstance? field, PortInstance? outPort});
 
 class NodeWidget extends StatefulWidget {
   final FlNodeEditorController controller;
@@ -40,7 +42,7 @@ class _NodeWidgetState extends State<NodeWidget> {
 
   // Interaction kinematics
   Timer? _edgeTimer;
-  Tuple2<String, String>? _tempLink;
+  _TempLink? _tempLink;
 
   double get viewportZoom => widget.controller.viewportZoom;
   Offset get viewportOffset => widget.controller.viewportOffset;
@@ -126,7 +128,7 @@ class _NodeWidgetState extends State<NodeWidget> {
     _edgeTimer?.cancel();
   }
 
-  Tuple2<String, String>? _isNearPort(Offset position) {
+  _TempLink? _isNearPort(Offset position) {
     final worldPosition = screenToWorld(
       position,
       viewportOffset,
@@ -149,7 +151,7 @@ class _NodeWidgetState extends State<NodeWidget> {
         final absolutePortPosition = node.offset + port.offset;
 
         if ((worldPosition - absolutePortPosition).distance < 12) {
-          return Tuple2(node.id, port.prototype.idName);
+          return (nodeId: node.id, portId: port.prototype.idName);
         }
       }
     }
@@ -159,8 +161,8 @@ class _NodeWidgetState extends State<NodeWidget> {
 
   // TODO: Find a way to decouple the link drawing code
 
-  void _onLinkStart(Tuple2<String, String> locator) {
-    _tempLink = Tuple2(locator.item1, locator.item2);
+  void _onLinkStart(_TempLink locator) {
+    _tempLink = (nodeId: locator.nodeId, portId: locator.portId);
     _isLinking = true;
   }
 
@@ -171,8 +173,8 @@ class _NodeWidgetState extends State<NodeWidget> {
       viewportZoom,
     );
 
-    final node = widget.controller.nodes[_tempLink!.item1]!;
-    final port = node.ports[_tempLink!.item2]!;
+    final node = widget.controller.nodes[_tempLink!.nodeId]!;
+    final port = node.ports[_tempLink!.portId]!;
 
     final absolutePortOffset = node.offset + port.offset;
 
@@ -189,12 +191,12 @@ class _NodeWidgetState extends State<NodeWidget> {
     widget.controller.clearTempLink();
   }
 
-  void _onLinkEnd(Tuple2<String, String> locator) {
+  void _onLinkEnd(_TempLink locator) {
     widget.controller.addLink(
-      _tempLink!.item1,
-      _tempLink!.item2,
-      locator.item1,
-      locator.item2,
+      _tempLink!.nodeId,
+      _tempLink!.portId,
+      locator.nodeId,
+      locator.portId,
     );
 
     _isLinking = false;
@@ -276,7 +278,7 @@ class _NodeWidgetState extends State<NodeWidget> {
 
     List<ContextMenuEntry> portContextMenuEntries(
       Offset position, {
-      required Tuple2<String, String> locator,
+      required _TempLink locator,
     }) {
       return [
         const MenuHeader(text: "Port Menu"),
@@ -285,8 +287,8 @@ class _NodeWidgetState extends State<NodeWidget> {
           icon: Icons.remove_circle,
           onSelected: () {
             widget.controller.breakPortLinks(
-              locator.item1,
-              locator.item2,
+              locator.nodeId,
+              locator.portId,
             );
           },
         ),
@@ -300,7 +302,7 @@ class _NodeWidgetState extends State<NodeWidget> {
 
       if (fromLink) {
         final startPort =
-            widget.controller.nodes[_tempLink!.item1]!.ports[_tempLink!.item2]!;
+            widget.controller.nodes[_tempLink!.nodeId]!.ports[_tempLink!.portId]!;
 
         widget.controller.nodePrototypes.forEach(
           (key, value) {
@@ -340,12 +342,12 @@ class _NodeWidgetState extends State<NodeWidget> {
 
             if (fromLink) {
               final addedNode = widget.controller.nodes.values.last;
-              final startPort = widget
-                  .controller.nodes[_tempLink!.item1]!.ports[_tempLink!.item2]!;
+              final startPort =
+                  widget.controller.nodes[_tempLink!.nodeId]!.ports[_tempLink!.portId]!;
 
               widget.controller.addLink(
-                _tempLink!.item1,
-                _tempLink!.item2,
+                _tempLink!.nodeId,
+                _tempLink!.portId,
                 addedNode.id,
                 addedNode.ports.entries
                     .firstWhere(
@@ -529,7 +531,7 @@ class _NodeWidgetState extends State<NodeWidget> {
                         spacing: widget.node.state.isCollapsed ? 0 : 2,
                         children: [
                           ..._generateRows().map(
-                            (row) => _buildRow(row.item1, row.item2, row.item3),
+                            (row) => _buildRow(row.inPort, row.field, row.outPort),
                           ),
                         ],
                       ),
@@ -544,8 +546,8 @@ class _NodeWidgetState extends State<NodeWidget> {
     );
   }
 
-  List<Tuple3<PortInstance?, FieldInstance?, PortInstance?>> _generateRows() {
-    final rows = <Tuple3<PortInstance?, FieldInstance?, PortInstance?>>[];
+  List<_Row> _generateRows() {
+    final rows = <_Row>[];
 
     final inPorts = widget.node.ports.values
         .where((port) => port.prototype.direction == PortDirection.input)
@@ -562,7 +564,7 @@ class _NodeWidgetState extends State<NodeWidget> {
       final inPort = i < inPorts.length ? inPorts[i] : null;
       final field = i < fields.length ? fields[i] : null;
       final outPort = i < outPorts.length ? outPorts[i] : null;
-      rows.add(Tuple3(inPort, field, outPort));
+      rows.add((inPort: inPort, field: field, outPort: outPort));
     }
 
     return rows;

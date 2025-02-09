@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:tuple/tuple.dart';
 
 import '../../constants.dart';
 
@@ -15,36 +14,36 @@ class SpatialHashGrid {
   final double cellSize;
 
   /// The main grid structure that maps grid cell indices to a set of nodes.
-  /// Each node is represented as a tuple containing an identifier (`String`)
+  /// Each node is represented as a record containing an identifier (`String`)
   /// and its bounding rectangle (`Rect`).
-  final Map<Tuple2<int, int>, Set<Tuple2<String, Rect>>> grid = {};
+  final Map<({int x, int y}), Set<({String id, Rect rect})>> grid = {};
 
-  /// Maps each node's identifier (`String`) to the set of grid cells it occupies.
-  final Map<String, Set<Tuple2<int, int>>> nodeToCells = {};
+  /// Maps each node's identifier to the set of grid cells it occupies.
+  final Map<String, Set<({int x, int y})>> nodeToCells = {};
 
   /// Constructs a `SpatialHashGrid` using a predefined cell size defined in `constants.dart`.
   SpatialHashGrid() : cellSize = kSpatialHashingCellSize;
 
-  /// Calculates the grid cell index (`Tuple2<int, int>`) for a given point in 2D space.
-  Tuple2<int, int> _getGridIndex(Offset point) {
-    return Tuple2(
-      (point.dx / cellSize).floor(),
-      (point.dy / cellSize).floor(),
+  /// Calculates the grid cell index for a given point in 2D space.
+  ({int x, int y}) _getGridIndex(Offset point) {
+    return (
+      x: (point.dx / cellSize).floor(),
+      y: (point.dy / cellSize).floor(),
     );
   }
 
   /// Determines all grid cells that a given rectangle (`Rect`) overlaps.
   ///
-  /// Returns a set of cell indices (`Tuple2<int, int>`).
-  Set<Tuple2<int, int>> _getCoveredCells(Rect rect) {
-    final Tuple2<int, int> topLeft = _getGridIndex(rect.topLeft);
-    final Tuple2<int, int> bottomRight = _getGridIndex(rect.bottomRight);
+  /// Returns a set of cell indices `({int x, int y})`.
+  Set<({int x, int y})> _getCoveredCells(Rect rect) {
+    final ({int x, int y}) topLeft = _getGridIndex(rect.topLeft);
+    final ({int x, int y}) bottomRight = _getGridIndex(rect.bottomRight);
 
-    final Set<Tuple2<int, int>> cells = {};
+    final Set<({int x, int y})> cells = {};
 
-    for (int x = topLeft.item1; x <= bottomRight.item1; x++) {
-      for (int y = topLeft.item2; y <= bottomRight.item2; y++) {
-        cells.add(Tuple2(x, y));
+    for (int x = topLeft.x; x <= bottomRight.x; x++) {
+      for (int y = topLeft.y; y <= bottomRight.y; y++) {
+        cells.add((x: x, y: y));
       }
     }
 
@@ -53,13 +52,13 @@ class SpatialHashGrid {
 
   /// Inserts a new node into the spatial hash grid.
   ///
-  /// A node is represented by a tuple (`Tuple2<String, Rect>`), where:
-  /// - `node.item1` is the unique identifier of the node.
-  /// - `node.item2` is the bounding rectangle of the node.
-  void insert(Tuple2<String, Rect> node) {
-    final Set<Tuple2<int, int>> cells = _getCoveredCells(node.item2);
+  /// A node is represented by a record `(String id, Rect rect)`, where:
+  /// - `node.id` is the unique identifier of the node.
+  /// - `node.rect` is the bounding rectangle of the node.
+  void insert(({String id, Rect rect}) node) {
+    final Set<({int x, int y})> cells = _getCoveredCells(node.rect);
 
-    for (final Tuple2<int, int> cell in cells) {
+    for (final ({int x, int y}) cell in cells) {
       if (!grid.containsKey(cell)) {
         grid[cell] = {};
       }
@@ -67,15 +66,15 @@ class SpatialHashGrid {
       grid[cell]!.add(node);
     }
 
-    nodeToCells[node.item1] = cells;
+    nodeToCells[node.id] = cells;
   }
 
   /// Removes a node from the spatial hash grid by its identifier (`nodeId`).
   void remove(String nodeId) {
     if (nodeToCells.containsKey(nodeId)) {
-      for (final Tuple2<int, int> cell in nodeToCells[nodeId]!) {
+      for (final ({int x, int y}) cell in nodeToCells[nodeId]!) {
         if (grid.containsKey(cell)) {
-          grid[cell]!.removeWhere((node) => node.item1 == nodeId);
+          grid[cell]!.removeWhere((node) => node.id == nodeId);
         }
       }
 
@@ -96,13 +95,13 @@ class SpatialHashGrid {
   Set<String> queryNodeIdsInArea(Rect bounds) {
     final Set<String> nodeIds = {};
 
-    final Set<Tuple2<int, int>> cells = _getCoveredCells(bounds);
+    final Set<({int x, int y})> cells = _getCoveredCells(bounds);
 
-    for (final Tuple2<int, int> cell in cells) {
+    for (final ({int x, int y}) cell in cells) {
       if (grid.containsKey(cell)) {
-        for (final Tuple2<String, Rect> node in grid[cell]!) {
-          if (bounds.overlaps(node.item2)) {
-            nodeIds.add(node.item1);
+        for (final ({String id, Rect rect}) node in grid[cell]!) {
+          if (bounds.overlaps(node.rect)) {
+            nodeIds.add(node.id);
           }
         }
       }

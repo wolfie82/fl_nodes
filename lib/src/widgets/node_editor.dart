@@ -10,7 +10,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_context_menu/flutter_context_menu.dart';
 import 'package:keymap/keymap.dart';
 import 'package:os_detect/os_detect.dart' as os_detect;
-import 'package:tuple/tuple.dart';
 
 import 'package:fl_nodes/src/core/utils/renderbox.dart';
 import 'package:fl_nodes/src/utils/context_menu.dart';
@@ -23,6 +22,8 @@ import '../core/controllers/node_editor/core.dart';
 import '../core/models/entities.dart';
 import '../core/models/events.dart';
 import '../core/models/styles.dart';
+
+typedef _TempLink = ({String nodeId, String portId});
 
 class FlOverlayData {
   final Widget child;
@@ -152,7 +153,7 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
   Offset _kineticEnergy = Offset.zero;
   Timer? _kineticTimer;
   Offset _selectionStart = Offset.zero;
-  Tuple2<String, String>? _tempLink;
+  _TempLink? _tempLink;
 
   // Animation controllers and animations
   late final AnimationController _offsetAnimationController;
@@ -306,7 +307,7 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
     });
   }
 
-  Tuple2<String, String>? _isNearPort(Offset position) {
+  _TempLink? _isNearPort(Offset position) {
     final worldPosition = screenToWorld(
       position,
       offset,
@@ -329,7 +330,7 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
         final absolutePortPosition = node.offset + port.offset;
 
         if ((worldPosition - absolutePortPosition).distance < 12) {
-          return Tuple2(node.id, port.prototype.idName);
+          return (nodeId: node.id, portId: port.prototype.idName);
         }
       }
     }
@@ -337,8 +338,8 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
     return null;
   }
 
-  void _onLinkStart(Tuple2<String, String> locator) {
-    _tempLink = Tuple2(locator.item1, locator.item2);
+  void _onLinkStart(_TempLink locator) {
+    _tempLink = (nodeId: locator.nodeId, portId: locator.portId);
     _isLinking = true;
   }
 
@@ -349,8 +350,8 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
       zoom,
     );
 
-    final node = widget.controller.nodes[_tempLink!.item1]!;
-    final port = node.ports[_tempLink!.item2]!;
+    final node = widget.controller.nodes[_tempLink!.nodeId]!;
+    final port = node.ports[_tempLink!.portId]!;
 
     final absolutePortOffset = node.offset + port.offset;
 
@@ -367,12 +368,12 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
     widget.controller.clearTempLink();
   }
 
-  void _onLinkEnd(Tuple2<String, String> locator) {
+  void _onLinkEnd(_TempLink locator) {
     widget.controller.addLink(
-      _tempLink!.item1,
-      _tempLink!.item2,
-      locator.item1,
-      locator.item2,
+      _tempLink!.nodeId,
+      _tempLink!.portId,
+      locator.nodeId,
+      locator.portId,
     );
 
     _isLinking = false;
@@ -559,7 +560,7 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
 
       if (fromLink) {
         final startPort =
-            widget.controller.nodes[_tempLink!.item1]!.ports[_tempLink!.item2]!;
+            widget.controller.nodes[_tempLink!.nodeId]!.ports[_tempLink!.portId]!;
 
         widget.controller.nodePrototypes.forEach(
           (key, value) {
@@ -601,11 +602,11 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
             if (fromLink) {
               final addedNode = widget.controller.nodes.values.last;
               final startPort = widget
-                  .controller.nodes[_tempLink!.item1]!.ports[_tempLink!.item2]!;
+                  .controller.nodes[_tempLink!.nodeId]!.ports[_tempLink!.portId]!;
 
               widget.controller.addLink(
-                _tempLink!.item1,
-                _tempLink!.item2,
+                _tempLink!.nodeId,
+                _tempLink!.portId,
                 addedNode.id,
                 addedNode.ports.entries
                     .firstWhere(
@@ -705,7 +706,7 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
 
     List<ContextMenuEntry> portContextMenuEntries(
       Offset position, {
-      required Tuple2<String, String> locator,
+      required _TempLink locator,
     }) {
       return [
         const MenuHeader(text: "Port Menu"),
@@ -714,8 +715,8 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
           icon: Icons.remove_circle,
           onSelected: () {
             widget.controller.breakPortLinks(
-              locator.item1,
-              locator.item2,
+              locator.nodeId,
+              locator.portId,
             );
           },
         ),
@@ -833,7 +834,7 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
                       }
                     } else if (event.buttons == kSecondaryMouseButton) {
                       if (locator != null &&
-                          !widget.controller.nodes[locator.item1]!.state
+                          !widget.controller.nodes[locator.nodeId]!.state
                               .isCollapsed) {
                         /// If a port is near the cursor, show the port context menu
                         createAndShowContextMenu(
