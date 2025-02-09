@@ -109,6 +109,7 @@ class FlNodeEditorProject {
   /// Clears the history and sets the project as saved.
   void clear() {
     controller.history.clear();
+    controller.runner.dispose();
 
     _isSaved = true;
   }

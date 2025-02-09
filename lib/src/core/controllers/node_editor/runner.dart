@@ -30,6 +30,13 @@ class FlNodeEditorRunner {
     controller.eventBus.events.listen(_handleRunnerEvents);
   }
 
+  void dispose() {
+    _nodes = {};
+    _dataDeps = {};
+    _executedNodes = {};
+    _execState = {};
+  }
+
   /// Handles events from the controller and updates the graph accordingly.
   void _handleRunnerEvents(NodeEditorEvent event) {
     if (event is AddNodeEvent ||

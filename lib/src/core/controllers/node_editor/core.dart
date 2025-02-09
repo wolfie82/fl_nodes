@@ -60,6 +60,7 @@ class FlNodeEditorController {
     eventBus.close();
     history.clear();
     project.clear();
+    runner.dispose();
 
     clear();
   }
