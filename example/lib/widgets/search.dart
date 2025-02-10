@@ -17,6 +17,7 @@ class SearchWidget extends StatefulWidget {
 class _SearchWidgetState extends State<SearchWidget> {
   final TextEditingController _searchController = TextEditingController();
   final List<String> _searchResults = [];
+  final FocusNode _focusNode = FocusNode();
   String? _currentFocus;
   bool _isSearching = false;
   bool _showSearch = false;
@@ -58,7 +59,7 @@ class _SearchWidgetState extends State<SearchWidget> {
       duration: const Duration(milliseconds: 900),
       decoration: BoxDecoration(
         color: Colors.blue,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(24),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -99,11 +100,14 @@ class _SearchWidgetState extends State<SearchWidget> {
                           width: 200,
                           child: TextField(
                             autofocus: true,
+                            focusNode: _focusNode,
                             controller: _searchController,
                             decoration: const InputDecoration(
                               hintText: 'Search nodes by name...',
+                              hintStyle: TextStyle(color: Colors.white),
                               border: InputBorder.none,
                             ),
+                            style: const TextStyle(color: Colors.white),
                             onChanged: (value) async {
                               if (value.isEmpty) {
                                 setState(() {
@@ -139,7 +143,10 @@ class _SearchWidgetState extends State<SearchWidget> {
                               } else {
                                 _toNextResult();
                               }
+
+                              _focusNode.requestFocus();
                             },
+                            onTapOutside: (event) => _focusNode.unfocus(),
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -164,6 +171,7 @@ class _SearchWidgetState extends State<SearchWidget> {
                           _isSearching
                               ? 'Searching...'
                               : '${_searchResults.length} results',
+                          style: const TextStyle(color: Colors.white),
                         ),
                       ],
                     ),

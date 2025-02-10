@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'package:uuid/uuid.dart';
 
+import 'package:fl_nodes/fl_nodes.dart';
 import 'package:fl_nodes/src/constants.dart';
 import 'package:fl_nodes/src/core/controllers/node_editor/history.dart';
 import 'package:fl_nodes/src/core/controllers/node_editor/project.dart';
@@ -12,10 +13,10 @@ import 'package:fl_nodes/src/core/utils/renderbox.dart';
 import 'package:fl_nodes/src/core/utils/snackbar.dart';
 import 'package:fl_nodes/src/core/utils/spatial_hash_grid.dart';
 
+import '../../models/config.dart';
 import '../../models/entities.dart';
 
 import 'clipboard.dart';
-import 'config.dart';
 import 'event_bus.dart';
 import 'runner.dart';
 import 'utils.dart';
@@ -30,7 +31,8 @@ import 'utils.dart';
 /// different parts of the application to communicate with each other by
 /// sending and receiving events.
 class FlNodeEditorController {
-  final NodeEditorConfig behavior;
+  FlNodeEditorConfig config;
+  FlNodeEditorStyle style;
   final eventBus = NodeEditorEventBus();
 
   late final FlNodeEditorClipboard clipboard;
@@ -39,7 +41,8 @@ class FlNodeEditorController {
   late final FlNodeEditorProject project;
 
   FlNodeEditorController({
-    this.behavior = const NodeEditorConfig(),
+    this.config = const FlNodeEditorConfig(),
+    this.style = const FlNodeEditorStyle(),
     Future<bool> Function(Map<String, dynamic> jsonData)? projectSaver,
     Future<Map<String, dynamic>?> Function(bool isSaved)? projectLoader,
     Future<bool> Function(bool isSaved)? projectCreator,
@@ -71,6 +74,50 @@ class FlNodeEditorController {
     _spatialHashGrid.clear();
     _selectedNodeIds.clear();
     _renderLinks.clear();
+  }
+
+  // Configuration
+
+  /// Set the global configuration of the node editor.
+  void setConfig(FlNodeEditorConfig config) {
+    this.config = config;
+  }
+
+  /// Enable or disable zooming in the node editor.
+  void enableSnapToGrid(bool enable) {
+    config = config.copyWith(enableSnapToGrid: enable);
+  }
+
+  /// Set the size of the grid to snap to in the node editor.
+  void setSnapToGridSize(double size) {
+    config = config.copyWith(snapToGridSize: size);
+  }
+
+  /// Enable or disable auto placement of nodes in the node editor.
+  void enableAutoPlacement(bool enable) {
+    config = config.copyWith(enableAutoPlacement: enable);
+  }
+
+  // Styles
+
+  /// Set the global style of the node editor.
+  void setStyle(FlNodeEditorStyle style) {
+    this.style = style;
+
+    eventBus.emit(UpdateStyleEvent(id: const Uuid().v4()));
+  }
+
+  /// Set the curve type of the links in the node editor.
+  void setLinkCurveType(FlLinkCurveType curveType) {
+    style = style.copyWith(
+      nodeStyle: style.nodeStyle.copyWith(
+        linkStyle: style.nodeStyle.linkStyle.copyWith(
+          curveType: curveType,
+        ),
+      ),
+    );
+
+    eventBus.emit(UpdateStyleEvent(id: const Uuid().v4()));
   }
 
   // Viewport
@@ -577,7 +624,7 @@ class FlNodeEditorController {
     }
 
     eventBus.emit(
-      NodeRenderModeEvent(id: const Uuid().v4(), collapse, _selectedNodeIds),
+      NodeStateEvent(id: const Uuid().v4(), collapse, _selectedNodeIds),
     );
   }
 

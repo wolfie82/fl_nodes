@@ -43,7 +43,6 @@ class FlOverlayData {
 
 class FlNodeEditorWidget extends StatelessWidget {
   final FlNodeEditorController controller;
-  final FlNodeEditorStyle style;
   final bool expandToParent;
   final Size? fixedSize;
   final List<FlOverlayData> Function() overlay;
@@ -51,9 +50,6 @@ class FlNodeEditorWidget extends StatelessWidget {
   const FlNodeEditorWidget({
     super.key,
     required this.controller,
-    this.style = const FlNodeEditorStyle(
-      gridStyle: FlGridStyle(),
-    ),
     this.expandToParent = true,
     this.fixedSize,
     required this.overlay,
@@ -62,8 +58,8 @@ class FlNodeEditorWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final Widget editor = Container(
-      decoration: style.decoration,
-      padding: style.padding,
+      decoration: controller.style.decoration,
+      padding: controller.style.padding,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
@@ -74,7 +70,6 @@ class FlNodeEditorWidget extends StatelessWidget {
             left: 0,
             child: _NodeEditorDataLayer(
               controller: controller,
-              style: style,
               expandToParent: expandToParent,
               fixedSize: fixedSize,
               overlay: overlay,
@@ -118,14 +113,12 @@ class FlNodeEditorWidget extends StatelessWidget {
 
 class _NodeEditorDataLayer extends StatefulWidget {
   final FlNodeEditorController controller;
-  final FlNodeEditorStyle style;
   final bool expandToParent;
   final Size? fixedSize;
   final List<FlOverlayData> Function() overlay;
 
   const _NodeEditorDataLayer({
     required this.controller,
-    required this.style,
     required this.expandToParent,
     required this.fixedSize,
     required this.overlay,
@@ -142,6 +135,7 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
   double get zoom => widget.controller.viewportZoom;
   set offset(Offset value) => widget.controller.viewportOffset = value;
   set zoom(double value) => widget.controller.viewportZoom = value;
+  FlNodeEditorStyle get style => widget.controller.style;
 
   // Interaction state
   bool _isDragging = false;
@@ -203,11 +197,12 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
         event is DrawTempLinkEvent ||
         event is CutSelectionEvent) {
       setState(() {});
-    } else if (event is AddLinkEvent ||
+    } else if (event is UpdateStyleEvent ||
+        event is AddLinkEvent ||
         event is PasteSelectionEvent ||
         event is LoadProjectEvent ||
         event is NewProjectEvent ||
-        event is NodeRenderModeEvent ||
+        event is NodeStateEvent ||
         event is NodeFieldEvent &&
             (event.eventType == FieldEventType.submit ||
                 event.eventType == FieldEventType.cancel)) {
@@ -245,14 +240,13 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
   }
 
   void _onScaleUpdate(ScaleUpdateDetails details) {
-    if (widget.controller.behavior.zoomSensitivity > 0 &&
-        details.scale != 1.0) {
+    if (widget.controller.config.zoomSensitivity > 0 && details.scale != 1.0) {
       _setZoomFromRawInput(
         details.scale,
         details.focalPoint,
         trackpadInput: true,
       );
-    } else if (widget.controller.behavior.panSensitivity > 0 &&
+    } else if (widget.controller.config.panSensitivity > 0 &&
         details.focalPointDelta != const Offset(10, 10)) {
       _onDragUpdate(details.focalPointDelta);
     }
@@ -426,7 +420,7 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
 
   void _setOffsetFromRawInput(Offset delta) {
     final Offset offsetFactor =
-        delta * widget.controller.behavior.panSensitivity / zoom;
+        delta * widget.controller.config.panSensitivity / zoom;
 
     final Offset targetOffset = offset + offsetFactor;
 
@@ -440,12 +434,12 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
 
     final Offset endOffset = Offset(
       targetOffset.dx.clamp(
-        -widget.controller.behavior.maxPanX,
-        widget.controller.behavior.maxPanX,
+        -widget.controller.config.maxPanX,
+        widget.controller.config.maxPanX,
       ),
       targetOffset.dy.clamp(
-        -widget.controller.behavior.maxPanY,
-        widget.controller.behavior.maxPanY,
+        -widget.controller.config.maxPanY,
+        widget.controller.config.maxPanY,
       ),
     );
 
@@ -487,7 +481,7 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
   }) {
     const double zoomSpeed = 0.1; // Adjust this to fine-tune zoom sensitivity
 
-    final double sensitivity = widget.controller.behavior.zoomSensitivity;
+    final double sensitivity = widget.controller.config.zoomSensitivity;
     final double logZoom = log(zoom); // Convert to logarithmic scale
 
     // Calculate new zoom level in log space
@@ -520,8 +514,8 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
     final beginZoom = zoom;
 
     final endZoom = targetZoom.clamp(
-      widget.controller.behavior.minZoom,
-      widget.controller.behavior.maxZoom,
+      widget.controller.config.minZoom,
+      widget.controller.config.maxZoom,
     );
 
     if (animate) {
@@ -559,8 +553,8 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
       final List<MapEntry<String, NodePrototype>> compatiblePrototypes = [];
 
       if (fromLink) {
-        final startPort =
-            widget.controller.nodes[_tempLink!.nodeId]!.ports[_tempLink!.portId]!;
+        final startPort = widget
+            .controller.nodes[_tempLink!.nodeId]!.ports[_tempLink!.portId]!;
 
         widget.controller.nodePrototypes.forEach(
           (key, value) {
@@ -601,8 +595,8 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
 
             if (fromLink) {
               final addedNode = widget.controller.nodes.values.last;
-              final startPort = widget
-                  .controller.nodes[_tempLink!.nodeId]!.ports[_tempLink!.portId]!;
+              final startPort = widget.controller.nodes[_tempLink!.nodeId]!
+                  .ports[_tempLink!.portId]!;
 
               widget.controller.addLink(
                 _tempLink!.nodeId,
@@ -856,8 +850,7 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
                     }
                   },
                   onPointerMoved: (event) {
-                    if (_isDragging &&
-                        widget.controller.behavior.panSensitivity > 0) {
+                    if (_isDragging && widget.controller.config.enablePan) {
                       _onDragUpdate(event.localDelta);
                     } else if (_isLinking) {
                       _onLinkUpdate(event.position);
@@ -888,7 +881,7 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
                   },
                   onPointerSignalReceived: (event) {
                     if (event is PointerScrollEvent &&
-                        widget.controller.behavior.panSensitivity > 0 &&
+                        widget.controller.config.enablePan &&
                         event.scrollDelta != const Offset(10, 10)) {
                       if (kIsWeb) {
                         _onDragUpdate(-event.scrollDelta);
@@ -900,7 +893,7 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
                       }
                     }
                     if (event is PointerScaleEvent &&
-                        widget.controller.behavior.zoomSensitivity > 0) {
+                        widget.controller.config.enableZoom) {
                       if (kIsWeb) {
                         _setZoomFromRawInput(
                           event.scale,
@@ -923,7 +916,7 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
         child: NodeEditorRenderObjectWidget(
           key: kNodeEditorWidgetKey,
           controller: widget.controller,
-          style: widget.style,
+          style: style,
         ),
       ),
     );

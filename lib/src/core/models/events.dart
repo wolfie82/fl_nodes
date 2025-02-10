@@ -16,7 +16,7 @@ import 'entities.dart';
 
 /// Event base class for the [FlNodeEditorController] events bus.
 @immutable
-abstract class NodeEditorEvent {
+abstract base class NodeEditorEvent {
   final String id;
   final bool isHandled;
   final bool isUndoable;
@@ -272,11 +272,11 @@ final class DrawTempLinkEvent extends NodeEditorEvent {
   });
 }
 
-final class NodeRenderModeEvent extends NodeEditorEvent {
+final class NodeStateEvent extends NodeEditorEvent {
   final bool collpased;
   final Set<String> nodeIds;
 
-  const NodeRenderModeEvent(
+  const NodeStateEvent(
     this.collpased,
     this.nodeIds, {
     required super.id,
@@ -326,14 +326,18 @@ final class NodeFieldEvent extends NodeEditorEvent {
   });
 }
 
-class SaveProjectEvent extends NodeEditorEvent {
+final class SaveProjectEvent extends NodeEditorEvent {
   const SaveProjectEvent({required super.id});
 }
 
-class LoadProjectEvent extends NodeEditorEvent {
+final class LoadProjectEvent extends NodeEditorEvent {
   const LoadProjectEvent({required super.id});
 }
 
-class NewProjectEvent extends NodeEditorEvent {
+final class NewProjectEvent extends NodeEditorEvent {
   const NewProjectEvent({required super.id});
+}
+
+final class UpdateStyleEvent extends NodeEditorEvent {
+  const UpdateStyleEvent({required super.id});
 }

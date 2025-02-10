@@ -225,7 +225,6 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
               child: FlNodeEditorWidget(
                 controller: _nodeEditorController,
                 expandToParent: true,
-                style: const FlNodeEditorStyle(),
                 overlay: () {
                   return [
                     FlOverlayData(
@@ -234,48 +233,66 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
                         child: Row(
                           spacing: 8,
                           children: [
-                            Container(
-                              decoration: BoxDecoration(
-                                color: Colors.blue,
-                                borderRadius: BorderRadius.circular(8),
+                            IconButton.filled(
+                              style: IconButton.styleFrom(
+                                backgroundColor: Colors.blue,
                               ),
-                              child: IconButton(
-                                onPressed: () => setState(() {
-                                  isHierarchyCollapsed = !isHierarchyCollapsed;
-                                }),
-                                icon: Icon(
-                                  isHierarchyCollapsed
-                                      ? Icons.keyboard_arrow_right
-                                      : Icons.keyboard_arrow_left,
-                                  size: 32,
-                                  color: Colors.white,
-                                ),
+                              onPressed: () => setState(() {
+                                isHierarchyCollapsed = !isHierarchyCollapsed;
+                              }),
+                              icon: Icon(
+                                isHierarchyCollapsed
+                                    ? Icons.keyboard_arrow_right
+                                    : Icons.keyboard_arrow_left,
+                                size: 32,
+                                color: Colors.white,
                               ),
                             ),
                             SearchWidget(controller: _nodeEditorController),
-                          ],
-                        ),
-                      ),
-                    ),
-                    FlOverlayData(
-                      top: 0,
-                      right: 0,
-                      child: Padding(
-                        padding: const EdgeInsets.all(8),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.blue,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: IconButton(
-                            onPressed: () =>
-                                _nodeEditorController.runner.executeGraph(),
-                            icon: const Icon(
-                              Icons.play_arrow,
-                              size: 32,
-                              color: Colors.white,
+                            const Spacer(),
+                            IconButton.filled(
+                              style: IconButton.styleFrom(
+                                backgroundColor: Colors.blue,
+                              ),
+                              onPressed: () {
+                                switch (_nodeEditorController
+                                    .style.nodeStyle.linkStyle.curveType) {
+                                  case FlLinkCurveType.straight:
+                                    _nodeEditorController.setLinkCurveType(
+                                      FlLinkCurveType.bezier,
+                                    );
+                                    break;
+                                  case FlLinkCurveType.bezier:
+                                    _nodeEditorController.setLinkCurveType(
+                                      FlLinkCurveType.ninetyDegree,
+                                    );
+                                    break;
+                                  case FlLinkCurveType.ninetyDegree:
+                                    _nodeEditorController.setLinkCurveType(
+                                      FlLinkCurveType.straight,
+                                    );
+                                    break;
+                                }
+                              },
+                              icon: const Icon(
+                                Icons.draw,
+                                size: 32,
+                                color: Colors.white,
+                              ),
                             ),
-                          ),
+                            IconButton.filled(
+                              style: IconButton.styleFrom(
+                                backgroundColor: Colors.blue,
+                              ),
+                              onPressed: () =>
+                                  _nodeEditorController.runner.executeGraph(),
+                              icon: const Icon(
+                                Icons.play_arrow,
+                                size: 32,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),

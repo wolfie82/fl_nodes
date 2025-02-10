@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
-import 'package:fl_nodes/src/core/controllers/node_editor/config.dart';
+import 'package:fl_nodes/src/core/models/config.dart';
 import 'package:fl_nodes/src/utils/grid_drawing.dart';
 import 'package:fl_nodes/src/widgets/node.dart';
 
@@ -43,14 +43,14 @@ class _ParentData extends ContainerBoxParentData<RenderBox> {
 
 class NodeEditorRenderObjectWidget extends MultiChildRenderObjectWidget {
   final FlNodeEditorController controller;
-  final NodeEditorConfig behavior;
+  final FlNodeEditorConfig behavior;
   final FlNodeEditorStyle style;
 
   NodeEditorRenderObjectWidget({
     super.key,
     required this.controller,
     required this.style,
-  })  : behavior = controller.behavior,
+  })  : behavior = controller.config,
         super(
           children: controller.nodesAsList
               .map(
@@ -83,6 +83,7 @@ class NodeEditorRenderObjectWidget extends MultiChildRenderObjectWidget {
     NodeEditorRenderBox renderObject,
   ) {
     renderObject
+      ..style = style
       ..offset = controller.viewportOffset
       ..zoom = controller.viewportZoom
       ..tempLinkDrawData = _getTempLinkData()
@@ -139,7 +140,7 @@ class NodeEditorRenderBox extends RenderBox
         RenderBoxContainerDefaultsMixin<RenderBox, _ParentData> {
   NodeEditorRenderBox({
     required FlNodeEditorStyle style,
-    required NodeEditorConfig behavior,
+    required FlNodeEditorConfig behavior,
     required Offset offset,
     required double zoom,
     required LinkDrawData? tempLink,
@@ -156,9 +157,9 @@ class NodeEditorRenderBox extends RenderBox
     shouldUpdateNodes(nodesData);
   }
 
-  NodeEditorConfig _behavior;
-  NodeEditorConfig get behavior => _behavior;
-  set behavior(NodeEditorConfig value) {
+  FlNodeEditorConfig _behavior;
+  FlNodeEditorConfig get behavior => _behavior;
+  set behavior(FlNodeEditorConfig value) {
     if (_behavior == value) return;
     _behavior = value;
     markNeedsPaint();
