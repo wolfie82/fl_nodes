@@ -45,6 +45,8 @@ We're actively working on improving **FlNodes**! Here are some planned features:
 - **📦 Node Grouping** – Organize nodes into groups that can be moved and managed together.
 - **♻️ Macros/Functions** – Define reusable node collections that expand at graph build time.
 
+Click [here](https://hackmd.io/@l7G0TmToRX-GFgwRUOHloA/Byi53IwFyx) for a quick detailed and updated TODO list for the project.
+
 ---
 
 ## 📸 **Screenshots**
