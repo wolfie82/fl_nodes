@@ -18,18 +18,48 @@ import '../core/models/entities.dart';
 import '../core/utils/renderbox.dart';
 
 typedef _TempLink = ({String nodeId, String portId});
-typedef _Row = ({PortInstance? inPort, FieldInstance? field, PortInstance? outPort});
 
+/// The main NodeWidget which represents a node in the editor.
+/// It now ensures that fields (regardless of whether a custom fieldBuilder is used)
+/// still respond to tap events in the same way as before.
 class NodeWidget extends StatefulWidget {
   final FlNodeEditorController controller;
   final NodeInstance node;
   final FlNodeStyle style;
+
+  /// Optional custom builder for a field.
+  final Widget Function(
+    BuildContext context,
+    FieldInstance field,
+    FlNodeStyle style,
+  )? fieldBuilder;
+
+  /// Other builder callbacks (header, port, context menu) can be defined similarly.
+  final Widget Function(
+    BuildContext context,
+    NodeInstance node,
+    FlNodeStyle style,
+    VoidCallback onToggleCollapse,
+  )? headerBuilder;
+  final Widget Function(
+    BuildContext context,
+    PortInstance port,
+    FlNodeStyle style,
+  )? portBuilder;
+  final List<ContextMenuEntry> Function(
+    BuildContext context,
+    NodeInstance node,
+  )? contextMenuBuilder;
 
   const NodeWidget({
     super.key,
     required this.controller,
     required this.node,
     required this.style,
+    this.fieldBuilder,
+    this.headerBuilder,
+    this.portBuilder,
+    this.contextMenuBuilder,
   });
 
   @override
@@ -37,22 +67,21 @@ class NodeWidget extends StatefulWidget {
 }
 
 class _NodeWidgetState extends State<NodeWidget> {
-  // Interaction state
+  // Interaction state for linking ports.
   bool _isLinking = false;
 
-  // Interaction kinematics
+  // Timer for auto-scrolling when dragging near the edge.
   Timer? _edgeTimer;
+
+  // Temporary link locator used during linking.
   _TempLink? _tempLink;
 
   double get viewportZoom => widget.controller.viewportZoom;
   Offset get viewportOffset => widget.controller.viewportOffset;
-  String get nodeName => widget.node.prototype.displayName;
-  Color get nodeColor => widget.node.prototype.color;
 
   @override
   void initState() {
     super.initState();
-
     widget.controller.eventBus.events.listen(_handleControllerEvents);
   }
 
@@ -66,15 +95,9 @@ class _NodeWidgetState extends State<NodeWidget> {
     if (!mounted || event.isHandled) return;
 
     if (event is SelectionEvent) {
-      if (event.nodeIds.contains(widget.node.id)) {
-        setState(() {
-          widget.node.state.isSelected = true;
-        });
-      } else {
-        setState(() {
-          widget.node.state.isSelected = false;
-        });
-      }
+      setState(() {
+        widget.node.state.isSelected = event.nodeIds.contains(widget.node.id);
+      });
     } else if (event is DragSelectionEvent) {
       if (event.nodeIds.contains(widget.node.id)) {
         setState(() {});
@@ -87,18 +110,14 @@ class _NodeWidgetState extends State<NodeWidget> {
   }
 
   void _startEdgeTimer(Offset position) {
-    // Distance from edge to start moving
     const edgeThreshold = 50.0;
-    // Amount to move per frame
     final moveAmount = 5.0 / widget.controller.viewportZoom;
-
     final editorBounds = getEditorBoundsInScreen(kNodeEditorWidgetKey);
     if (editorBounds == null) return;
 
     _edgeTimer?.cancel();
 
-    _edgeTimer =
-        Timer.periodic(const Duration(milliseconds: 16), (timer) async {
+    _edgeTimer = Timer.periodic(const Duration(milliseconds: 16), (timer) {
       double dx = 0;
       double dy = 0;
       final rect = editorBounds;
@@ -129,37 +148,26 @@ class _NodeWidgetState extends State<NodeWidget> {
   }
 
   _TempLink? _isNearPort(Offset position) {
-    final worldPosition = screenToWorld(
-      position,
-      viewportOffset,
-      viewportZoom,
-    );
-
+    final worldPosition = screenToWorld(position, viewportOffset, viewportZoom);
     final near = Rect.fromCenter(
       center: worldPosition!,
       width: kSpatialHashingCellSize,
       height: kSpatialHashingCellSize,
     );
-
     final nearNodeIds =
         widget.controller.spatialHashGrid.queryNodeIdsInArea(near);
 
     for (final nodeId in nearNodeIds) {
       final node = widget.controller.nodes[nodeId]!;
-
       for (final port in node.ports.values) {
         final absolutePortPosition = node.offset + port.offset;
-
         if ((worldPosition - absolutePortPosition).distance < 12) {
           return (nodeId: node.id, portId: port.prototype.idName);
         }
       }
     }
-
     return null;
   }
-
-  // TODO: Find a way to decouple the link drawing code
 
   void _onLinkStart(_TempLink locator) {
     _tempLink = (nodeId: locator.nodeId, portId: locator.portId);
@@ -167,22 +175,12 @@ class _NodeWidgetState extends State<NodeWidget> {
   }
 
   void _onLinkUpdate(Offset position) {
-    final worldPosition = screenToWorld(
-      position,
-      viewportOffset,
-      viewportZoom,
-    );
-
+    final worldPosition = screenToWorld(position, viewportOffset, viewportZoom);
     final node = widget.controller.nodes[_tempLink!.nodeId]!;
     final port = node.ports[_tempLink!.portId]!;
-
     final absolutePortOffset = node.offset + port.offset;
-
-    widget.controller.drawTempLink(
-      port.prototype.type,
-      absolutePortOffset,
-      worldPosition!,
-    );
+    widget.controller
+        .drawTempLink(port.prototype.type, absolutePortOffset, worldPosition!);
   }
 
   void _onLinkCancel() {
@@ -198,357 +196,105 @@ class _NodeWidgetState extends State<NodeWidget> {
       locator.nodeId,
       locator.portId,
     );
-
     _isLinking = false;
     _tempLink = null;
     widget.controller.clearTempLink();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    SchedulerBinding.instance.addPostFrameCallback((_) {
-      if (mounted) widget.node.onRendered(widget.node);
-    });
-
-    // TODO: Find a way to decouple the context menu entries
-
-    List<ContextMenuEntry> nodeContextMenuEntries() {
-      return [
-        const MenuHeader(text: 'Node Menu'),
-        MenuItem(
-          label: 'See Description',
-          icon: Icons.info,
-          onSelected: () {
-            showDialog(
-              context: context,
-              builder: (context) {
-                return AlertDialog(
-                  title: Text(widget.node.prototype.displayName),
-                  content: Text(widget.node.prototype.description),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('Close'),
-                    ),
-                  ],
-                );
-              },
-            );
-          },
-        ),
-        const MenuDivider(),
-        MenuItem(
-          label: widget.node.state.isCollapsed ? 'Expand' : 'Collapse',
-          icon: widget.node.state.isCollapsed
-              ? Icons.arrow_drop_down
-              : Icons.arrow_right,
-          onSelected: () => widget.controller.toggleCollapseSelectedNodes(
-            !widget.node.state.isCollapsed,
-          ),
-        ),
-        const MenuDivider(),
-        MenuItem(
-          label: 'Delete',
-          icon: Icons.delete,
-          onSelected: () {
-            if (widget.node.state.isSelected) {
-              for (final nodeId in widget.controller.selectedNodeIds) {
-                widget.controller.removeNode(nodeId);
-              }
-            } else {
-              for (final nodeId in widget.controller.selectedNodeIds) {
-                widget.controller.removeNode(nodeId);
-              }
-            }
-            widget.controller.clearSelection();
-          },
-        ),
-        MenuItem(
-          label: 'Cut',
-          icon: Icons.content_cut,
-          onSelected: () => widget.controller.clipboard.cutSelection(),
-        ),
-        MenuItem(
-          label: 'Copy',
-          icon: Icons.copy,
-          onSelected: () => widget.controller.clipboard.copySelection(),
-        ),
-      ];
+  /// UPDATED _buildField:
+  /// This method now always wraps the field content in a GestureDetector that
+  /// handles tap events—even when a custom fieldBuilder is provided.
+  Widget _buildField(FieldInstance field) {
+    if (widget.node.state.isCollapsed) {
+      return SizedBox(key: field.key, height: 0, width: 0);
     }
 
-    List<ContextMenuEntry> portContextMenuEntries(
-      Offset position, {
-      required _TempLink locator,
-    }) {
-      return [
-        const MenuHeader(text: "Port Menu"),
-        MenuItem(
-          label: 'Remove Links',
-          icon: Icons.remove_circle,
-          onSelected: () {
-            widget.controller.breakPortLinks(
-              locator.nodeId,
-              locator.portId,
-            );
-          },
-        ),
-      ];
-    }
-
-    List<ContextMenuEntry> createSubmenuEntries(Offset position) {
-      final fromLink = _tempLink != null;
-
-      final List<MapEntry<String, NodePrototype>> compatiblePrototypes = [];
-
-      if (fromLink) {
-        final startPort =
-            widget.controller.nodes[_tempLink!.nodeId]!.ports[_tempLink!.portId]!;
-
-        widget.controller.nodePrototypes.forEach(
-          (key, value) {
-            if (value.ports.any(
-              (port) =>
-                  port.direction != startPort.prototype.direction &&
-                  port.type == startPort.prototype.type &&
-                  (port.dataType == startPort.prototype.dataType ||
-                      port.dataType == dynamic ||
-                      startPort.prototype.dataType == dynamic),
-            )) {
-              compatiblePrototypes.add(MapEntry(key, value));
-            }
-          },
-        );
-      } else {
-        widget.controller.nodePrototypes.forEach(
-          (key, value) => compatiblePrototypes.add(MapEntry(key, value)),
-        );
-      }
-
-      final worldPosition = screenToWorld(
-        position,
-        viewportOffset,
-        viewportZoom,
-      );
-
-      return compatiblePrototypes.map((entry) {
-        return MenuItem(
-          label: entry.value.displayName,
-          icon: Icons.widgets,
-          onSelected: () {
-            widget.controller.addNode(
-              entry.key,
-              offset: worldPosition,
-            );
-
-            if (fromLink) {
-              final addedNode = widget.controller.nodes.values.last;
-              final startPort =
-                  widget.controller.nodes[_tempLink!.nodeId]!.ports[_tempLink!.portId]!;
-
-              widget.controller.addLink(
-                _tempLink!.nodeId,
-                _tempLink!.portId,
-                addedNode.id,
-                addedNode.ports.entries
-                    .firstWhere(
-                      (port) =>
-                          port.value.prototype.direction !=
-                              startPort.prototype.direction &&
-                          port.value.prototype.type ==
-                              startPort.prototype.type &&
-                          (port.value.prototype.dataType ==
-                                  startPort.prototype.dataType ||
-                              port.value.prototype.dataType == dynamic ||
-                              startPort.prototype.dataType == dynamic),
-                    )
-                    .value
-                    .prototype
-                    .idName,
-              );
-
-              _isLinking = false;
-              _tempLink = null;
-
-              setState(() {});
-            }
-          },
-        );
-      }).toList();
-    }
-
-    Widget controlsWrapper(Widget child) {
-      return os_detect.isAndroid || os_detect.isIOS
-          ? child
-          : ImprovedListener(
-              behavior: HitTestBehavior.translucent,
-              onPointerPressed: (event) async {
-                _isLinking = false;
-                _tempLink = null;
-
-                final locator = _isNearPort(event.position);
-
-                if (event.buttons == kSecondaryMouseButton) {
-                  if (!widget.node.state.isSelected) {
-                    widget.controller.clearSelection();
-                    widget.controller.selectNodesById({widget.node.id});
-                  }
-
-                  if (locator != null && !widget.node.state.isCollapsed) {
-                    /// If a port is near the cursor, show the port context menu
-                    createAndShowContextMenu(
-                      context,
-                      entries: portContextMenuEntries(
-                        event.position,
-                        locator: locator,
-                      ),
-                      position: event.position,
-                    );
-                  } else if (!isContextMenuVisible) {
-                    // Else show the node context menu
-                    createAndShowContextMenu(
-                      context,
-                      entries: nodeContextMenuEntries(),
-                      position: event.position,
-                    );
-                  }
-                } else if (event.buttons == kPrimaryMouseButton) {
-                  // Abort if the cursor is over a port
-                  if (locator != null && !_isLinking && _tempLink == null) {
-                    _onLinkStart(locator);
-                  } else if (!widget.controller.selectedNodeIds
-                      .contains(widget.node.id)) {
-                    widget.controller.selectNodesById(
-                      {widget.node.id},
-                      holdSelection: HardwareKeyboard.instance.isControlPressed,
-                    );
-                  }
-                }
-              },
-              onPointerMoved: (event) async {
-                if (_isLinking) {
-                  _onLinkUpdate(event.position);
-                } else if (event.buttons == kPrimaryMouseButton) {
-                  _startEdgeTimer(event.position);
-                  widget.controller.dragSelection(event.delta);
-                }
-              },
-              onPointerReleased: (event) async {
-                if (_isLinking) {
-                  final locator = _isNearPort(event.position);
-                  if (locator != null) {
-                    _onLinkEnd(locator);
-                  } else {
-                    createAndShowContextMenu(
-                      context,
-                      entries: createSubmenuEntries(event.position),
-                      position: event.position,
-                      onDismiss: (value) => _onLinkCancel(),
-                    );
-                  }
-                } else {
-                  _resetEdgeTimer();
-                }
-              },
-              child: child,
-            );
-    }
-
-    return controlsWrapper(
-      IntrinsicHeight(
-        child: IntrinsicWidth(
-          child: Stack(
-            key: widget.node.key,
-            clipBehavior: Clip.none,
-            children: [
-              Container(
-                decoration: widget.node.state.isSelected
-                    ? widget.style.selectedDecoration
-                    : widget.style.decoration,
-              ),
-              ...widget.node.ports.entries.map(
-                (entry) => _buildPortIndicator(entry.value),
-              ),
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: widget.node.prototype.color,
-                      borderRadius: BorderRadius.only(
-                        topLeft: const Radius.circular(7),
-                        topRight: const Radius.circular(7),
-                        bottomLeft: widget.node.state.isCollapsed
-                            ? const Radius.circular(7)
-                            : Radius.zero,
-                        bottomRight: widget.node.state.isCollapsed
-                            ? const Radius.circular(7)
-                            : Radius.zero,
-                      ),
-                    ),
-                    child: Row(
-                      spacing: 8,
-                      mainAxisSize: MainAxisSize.max,
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        InkWell(
-                          splashColor: Colors.transparent,
-                          highlightColor: Colors.transparent,
-                          onTap: () =>
-                              widget.controller.toggleCollapseSelectedNodes(
-                            !widget.node.state.isCollapsed,
-                          ),
-                          child: Icon(
-                            widget.node.state.isCollapsed
-                                ? Icons.expand_more
-                                : Icons.expand_less,
-                            color: Colors.white,
-                            size: 20,
-                          ),
-                        ),
-                        Text(
-                          nodeName,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  ),
-                  Offstage(
-                    offstage: widget.node.state.isCollapsed,
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        spacing: widget.node.state.isCollapsed ? 0 : 2,
-                        children: [
-                          ..._generateRows().map(
-                            (row) => _buildRow(row.inPort, row.field, row.outPort),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+    // Get the field content either from the custom builder or use default visualizer.
+    final fieldContent = widget.fieldBuilder != null
+        ? widget.fieldBuilder!(context, field, widget.style)
+        : Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.grey[850],
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                if (field.prototype.icon != null) ...[
+                  const SizedBox(width: 4),
+                  Icon(field.prototype.icon, color: Colors.white70, size: 16),
                 ],
-              ),
-            ],
-          ),
-        ),
+                Flexible(
+                  child: Text(
+                    field.prototype.displayName,
+                    style: const TextStyle(color: Colors.white70, fontSize: 13),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(child: field.prototype.visualizerBuilder(field.data)),
+              ],
+            ),
+          );
+
+    // Wrap the content with a GestureDetector to ensure tap handling.
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: GestureDetector(
+        onTapDown: (details) {
+          if (field.prototype.onVisualizerTap != null) {
+            field.prototype.onVisualizerTap!(field.data, (dynamic data) {
+              widget.controller.setFieldData(
+                widget.node.id,
+                field.prototype.idName,
+                data: data,
+                eventType: FieldEventType.submit,
+              );
+            });
+          } else {
+            _showFieldEditorOverlay(widget.node.id, field, details);
+          }
+        },
+        child: fieldContent,
       ),
     );
   }
 
-  List<_Row> _generateRows() {
-    final rows = <_Row>[];
+  Widget _buildPort(PortInstance port) {
+    if (widget.node.state.isCollapsed) {
+      return SizedBox(key: port.key, height: 0, width: 0);
+    }
 
+    if (widget.portBuilder != null) {
+      return widget.portBuilder!(context, port, widget.style);
+    }
+
+    final isInput = port.prototype.direction == PortDirection.input;
+    return Row(
+      mainAxisAlignment:
+          isInput ? MainAxisAlignment.start : MainAxisAlignment.end,
+      mainAxisSize: MainAxisSize.min,
+      key: port.key,
+      children: [
+        if (!isInput && port.prototype.icon != null)
+          Icon(port.prototype.icon, color: Colors.white70, size: 16),
+        if (!isInput && port.prototype.icon != null) const SizedBox(width: 4),
+        Flexible(
+          child: Text(
+            port.prototype.displayName,
+            style: const TextStyle(color: Colors.white70, fontSize: 13),
+            overflow: TextOverflow.ellipsis,
+            textAlign: isInput ? TextAlign.left : TextAlign.right,
+          ),
+        ),
+        if (isInput && port.prototype.icon != null) const SizedBox(width: 4),
+        if (isInput && port.prototype.icon != null)
+          Icon(port.prototype.icon, color: Colors.white70, size: 16),
+      ],
+    );
+  }
+
+  List<Widget> _generateLayout() {
     final inPorts = widget.node.ports.values
         .where((port) => port.prototype.direction == PortDirection.input)
         .toList();
@@ -557,49 +303,30 @@ class _NodeWidgetState extends State<NodeWidget> {
         .toList();
     final fields = widget.node.fields.values.toList();
 
-    final maxLength = [inPorts.length, fields.length, outPorts.length]
-        .reduce((a, b) => a > b ? a : b);
-
-    for (var i = 0; i < maxLength; i++) {
-      final inPort = i < inPorts.length ? inPorts[i] : null;
-      final field = i < fields.length ? fields[i] : null;
-      final outPort = i < outPorts.length ? outPorts[i] : null;
-      rows.add((inPort: inPort, field: field, outPort: outPort));
-    }
-
-    return rows;
+    return [
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: inPorts.map((port) => _buildPort(port)).toList(),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: outPorts.map((port) => _buildPort(port)).toList(),
+            ),
+          ),
+        ],
+      ),
+      if (fields.isNotEmpty) const SizedBox(height: 16),
+      ...fields.map((field) => _buildField(field)),
+    ];
   }
 
-  Widget _buildRow(
-    PortInstance? inPort,
-    FieldInstance? field,
-    PortInstance? outPort,
-  ) {
-    late final MainAxisAlignment alignment;
-
-    if (inPort != null && field == null && outPort == null) {
-      alignment = MainAxisAlignment.start;
-    } else if (inPort == null && field != null && outPort == null) {
-      alignment = MainAxisAlignment.center;
-    } else if (inPort == null && field == null && outPort != null) {
-      alignment = MainAxisAlignment.end;
-    } else {
-      alignment = MainAxisAlignment.spaceBetween;
-    }
-
-    return Row(
-      mainAxisAlignment: alignment,
-      mainAxisSize: MainAxisSize.max,
-      spacing: 16,
-      children: [
-        if (inPort != null) _buildPort(inPort),
-        if (field != null) _buildField(field),
-        if (outPort != null) _buildPort(outPort),
-      ],
-    );
-  }
-
-  // See https://github.com/WilliamKarolDiCioccio/fl_nodes/issues/8
   void _showFieldEditorOverlay(
     String nodeId,
     FieldInstance field,
@@ -644,96 +371,287 @@ class _NodeWidgetState extends State<NodeWidget> {
     overlay.insert(overlayEntry);
   }
 
-  Widget _buildField(FieldInstance field) {
-    if (widget.node.state.isCollapsed) {
-      return SizedBox(
-        key: field.key,
-        height: 0,
-        width: 0,
-      );
-    }
+  Widget controlsWrapper(Widget child) {
+    return os_detect.isAndroid || os_detect.isIOS
+        ? child
+        : ImprovedListener(
+            behavior: HitTestBehavior.translucent,
+            onPointerPressed: (event) async {
+              _isLinking = false;
+              _tempLink = null;
 
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      spacing: 4,
-      children: [
-        GestureDetector(
-          onTapDown: (details) {
-            if (field.prototype.onVisualizerTap != null) {
-              field.prototype.onVisualizerTap?.call(
-                field.data,
-                (dynamic data) {
-                  widget.controller.setFieldData(
-                    widget.node.id,
-                    field.prototype.idName,
-                    data: data,
-                    eventType: FieldEventType.submit,
+              final locator = _isNearPort(event.position);
+              if (event.buttons == kSecondaryMouseButton) {
+                if (!widget.node.state.isSelected) {
+                  widget.controller.clearSelection();
+                  widget.controller.selectNodesById({widget.node.id});
+                }
+                if (locator != null && !widget.node.state.isCollapsed) {
+                  createAndShowContextMenu(
+                    context,
+                    entries: _portContextMenuEntries(
+                      event.position,
+                      locator: locator,
+                    ),
+                    position: event.position,
                   );
-                },
-              );
-            } else {
-              _showFieldEditorOverlay(
-                widget.node.id,
-                field,
-                details,
-              );
-            }
-          },
-          child: Container(
-            padding: widget.style.fieldStyle.padding,
-            decoration: widget.style.fieldStyle.decoration,
-            child: field.prototype.visualizerBuilder(field.data),
-          ),
-        ),
-        Text(
-          field.prototype.displayName,
-          style: const TextStyle(
-            color: Colors.white70,
-            fontSize: 13,
-          ),
-        ),
-        if (field.prototype.icon != null)
-          Icon(
-            field.prototype.icon,
-            color: Colors.white70,
-            size: 16,
-          ),
-      ],
-    );
+                } else if (!isContextMenuVisible) {
+                  final entries = widget.contextMenuBuilder != null
+                      ? widget.contextMenuBuilder!(context, widget.node)
+                      : _defaultNodeContextMenuEntries();
+                  createAndShowContextMenu(
+                    context,
+                    entries: entries,
+                    position: event.position,
+                  );
+                }
+              } else if (event.buttons == kPrimaryMouseButton) {
+                if (locator != null && !_isLinking && _tempLink == null) {
+                  _onLinkStart(locator);
+                } else if (!widget.controller.selectedNodeIds
+                    .contains(widget.node.id)) {
+                  widget.controller.selectNodesById(
+                    {widget.node.id},
+                    holdSelection: HardwareKeyboard.instance.isControlPressed,
+                  );
+                }
+              }
+            },
+            onPointerMoved: (event) async {
+              if (_isLinking) {
+                _onLinkUpdate(event.position);
+              } else if (event.buttons == kPrimaryMouseButton) {
+                _startEdgeTimer(event.position);
+                widget.controller.dragSelection(event.delta);
+              }
+            },
+            onPointerReleased: (event) async {
+              if (_isLinking) {
+                final locator = _isNearPort(event.position);
+                if (locator != null) {
+                  _onLinkEnd(locator);
+                } else {
+                  createAndShowContextMenu(
+                    context,
+                    entries: _createSubmenuEntries(event.position),
+                    position: event.position,
+                    onDismiss: (value) => _onLinkCancel(),
+                  );
+                }
+              } else {
+                _resetEdgeTimer();
+              }
+            },
+            child: child,
+          );
   }
 
-  Widget _buildPort(PortInstance port) {
-    if (widget.node.state.isCollapsed) {
-      return SizedBox(
-        key: port.key,
-        height: 0,
-        width: 0,
+  List<ContextMenuEntry> _defaultNodeContextMenuEntries() {
+    return [
+      const MenuHeader(text: 'Node Menu'),
+      MenuItem(
+        label: 'See Description',
+        icon: Icons.info,
+        onSelected: () {
+          showDialog(
+            context: context,
+            builder: (context) {
+              return AlertDialog(
+                title: Text(widget.node.prototype.displayName),
+                content: Text(widget.node.prototype.description),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Close'),
+                  ),
+                ],
+              );
+            },
+          );
+        },
+      ),
+      const MenuDivider(),
+      MenuItem(
+        label: widget.node.state.isCollapsed ? 'Expand' : 'Collapse',
+        icon: widget.node.state.isCollapsed
+            ? Icons.arrow_drop_down
+            : Icons.arrow_right,
+        onSelected: () => widget.controller
+            .toggleCollapseSelectedNodes(!widget.node.state.isCollapsed),
+      ),
+      const MenuDivider(),
+      MenuItem(
+        label: 'Delete',
+        icon: Icons.delete,
+        onSelected: () {
+          if (widget.node.state.isSelected) {
+            for (final nodeId in widget.controller.selectedNodeIds) {
+              widget.controller.removeNode(nodeId);
+            }
+          } else {
+            for (final nodeId in widget.controller.selectedNodeIds) {
+              widget.controller.removeNode(nodeId);
+            }
+          }
+          widget.controller.clearSelection();
+        },
+      ),
+      MenuItem(
+        label: 'Cut',
+        icon: Icons.content_cut,
+        onSelected: () => widget.controller.clipboard.cutSelection(),
+      ),
+      MenuItem(
+        label: 'Copy',
+        icon: Icons.copy,
+        onSelected: () => widget.controller.clipboard.copySelection(),
+      ),
+    ];
+  }
+
+  List<ContextMenuEntry> _portContextMenuEntries(
+    Offset position, {
+    required _TempLink locator,
+  }) {
+    return [
+      const MenuHeader(text: "Port Menu"),
+      MenuItem(
+        label: 'Remove Links',
+        icon: Icons.remove_circle,
+        onSelected: () {
+          widget.controller.breakPortLinks(locator.nodeId, locator.portId);
+        },
+      ),
+    ];
+  }
+
+  List<ContextMenuEntry> _createSubmenuEntries(Offset position) {
+    final fromLink = _tempLink != null;
+    final List<MapEntry<String, NodePrototype>> compatiblePrototypes = [];
+
+    if (fromLink) {
+      final startPort =
+          widget.controller.nodes[_tempLink!.nodeId]!.ports[_tempLink!.portId]!;
+      widget.controller.nodePrototypes.forEach((key, value) {
+        if (value.ports.any(
+          (port) =>
+              port.direction != startPort.prototype.direction &&
+              port.type == startPort.prototype.type &&
+              (port.dataType == startPort.prototype.dataType ||
+                  port.dataType == dynamic ||
+                  startPort.prototype.dataType == dynamic),
+        )) {
+          compatiblePrototypes.add(MapEntry(key, value));
+        }
+      });
+    } else {
+      widget.controller.nodePrototypes.forEach(
+        (key, value) => compatiblePrototypes.add(MapEntry(key, value)),
       );
     }
 
-    return Row(
-      mainAxisAlignment: port.prototype.direction == PortDirection.input
-          ? MainAxisAlignment.start
-          : MainAxisAlignment.end,
-      mainAxisSize: MainAxisSize.min,
-      key: port.key,
-      spacing: 4,
-      children: [
-        Text(
-          port.prototype.displayName,
-          style: const TextStyle(
-            color: Colors.white70,
-            fontSize: 13,
+    final worldPosition = screenToWorld(position, viewportOffset, viewportZoom);
+
+    return compatiblePrototypes.map((entry) {
+      return MenuItem(
+        label: entry.value.displayName,
+        icon: Icons.widgets,
+        onSelected: () {
+          widget.controller.addNode(
+            entry.key,
+            offset: worldPosition,
+          );
+          if (fromLink) {
+            final addedNode = widget.controller.nodes.values.last;
+            final startPort = widget
+                .controller.nodes[_tempLink!.nodeId]!.ports[_tempLink!.portId]!;
+            widget.controller.addLink(
+              _tempLink!.nodeId,
+              _tempLink!.portId,
+              addedNode.id,
+              addedNode.ports.entries
+                  .firstWhere(
+                    (port) =>
+                        port.value.prototype.direction !=
+                            startPort.prototype.direction &&
+                        port.value.prototype.type == startPort.prototype.type &&
+                        (port.value.prototype.dataType ==
+                                startPort.prototype.dataType ||
+                            port.value.prototype.dataType == dynamic ||
+                            startPort.prototype.dataType == dynamic),
+                  )
+                  .value
+                  .prototype
+                  .idName,
+            );
+            _isLinking = false;
+            _tempLink = null;
+            setState(() {});
+          }
+        },
+      );
+    }).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      if (mounted) widget.node.onRendered(widget.node);
+    });
+
+    return controlsWrapper(
+      IntrinsicHeight(
+        child: IntrinsicWidth(
+          child: Stack(
+            key: widget.node.key,
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                decoration: widget.node.state.isSelected
+                    ? widget.style.selectedDecoration
+                    : widget.style.decoration,
+              ),
+              ...widget.node.ports.entries.map(
+                (entry) => _buildPortIndicator(entry.value),
+              ),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  widget.headerBuilder != null
+                      ? widget.headerBuilder!(
+                          context,
+                          widget.node,
+                          widget.style,
+                          () => widget.controller.toggleCollapseSelectedNodes(
+                            !widget.node.state.isCollapsed,
+                          ),
+                        )
+                      : NodeHeader(
+                          node: widget.node,
+                          style: widget.style,
+                          onToggleCollapse: () =>
+                              widget.controller.toggleCollapseSelectedNodes(
+                            !widget.node.state.isCollapsed,
+                          ),
+                        ),
+                  Offstage(
+                    offstage: widget.node.state.isCollapsed,
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: _generateLayout(),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
-        if (port.prototype.icon != null)
-          Icon(
-            port.prototype.icon,
-            color: Colors.white70,
-            size: 16,
-          ),
-      ],
+      ),
     );
   }
 
@@ -744,7 +662,6 @@ class _NodeWidgetState extends State<NodeWidget> {
           final portKey = port.key;
           final RenderBox? portBox =
               portKey.currentContext?.findRenderObject() as RenderBox?;
-
           if (portBox == null) return const SizedBox();
 
           final nodeBox =
@@ -781,6 +698,59 @@ class _NodeWidgetState extends State<NodeWidget> {
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+class NodeHeader extends StatelessWidget {
+  final NodeInstance node;
+  final FlNodeStyle style;
+  final VoidCallback onToggleCollapse;
+
+  const NodeHeader({
+    super.key,
+    required this.node,
+    required this.style,
+    required this.onToggleCollapse,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: node.prototype.color,
+        borderRadius: BorderRadius.only(
+          topLeft: const Radius.circular(7),
+          topRight: const Radius.circular(7),
+          bottomLeft:
+              node.state.isCollapsed ? const Radius.circular(7) : Radius.zero,
+          bottomRight:
+              node.state.isCollapsed ? const Radius.circular(7) : Radius.zero,
+        ),
+      ),
+      child: Row(
+        children: [
+          InkWell(
+            splashColor: Colors.transparent,
+            highlightColor: Colors.transparent,
+            onTap: onToggleCollapse,
+            child: Icon(
+              node.state.isCollapsed ? Icons.expand_more : Icons.expand_less,
+              color: Colors.white,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              node.prototype.displayName,
+              style: const TextStyle(color: Colors.white, fontSize: 14),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -856,7 +826,6 @@ class _PortSymbolPainter extends CustomPainter {
       width: hitBoxSize,
       height: hitBoxSize,
     );
-
     return hitBoxRect.contains(position);
   }
 }
