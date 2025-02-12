@@ -254,6 +254,24 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
                               style: IconButton.styleFrom(
                                 backgroundColor: Colors.blue,
                               ),
+                              onPressed: () => setState(() {
+                                _nodeEditorController.enableSnapToGrid(
+                                  !_nodeEditorController
+                                      .config.enableSnapToGrid,
+                                );
+                              }),
+                              icon: Icon(
+                                _nodeEditorController.config.enableSnapToGrid
+                                    ? Icons.grid_on
+                                    : Icons.grid_off,
+                                size: 32,
+                                color: Colors.white,
+                              ),
+                            ),
+                            IconButton.filled(
+                              style: IconButton.styleFrom(
+                                backgroundColor: Colors.blue,
+                              ),
                               onPressed: () {
                                 switch (_nodeEditorController
                                     .style.nodeStyle.linkStyle.curveType) {
@@ -275,7 +293,7 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
                                 }
                               },
                               icon: const Icon(
-                                Icons.draw,
+                                Icons.timeline,
                                 size: 32,
                                 color: Colors.white,
                               ),

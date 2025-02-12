@@ -55,9 +55,9 @@ class NodeEditorRenderObjectWidget extends MultiChildRenderObjectWidget {
           children: controller.nodesAsList
               .map(
                 (node) => NodeWidget(
+                  style: style.nodeStyle,
                   controller: controller,
                   node: node,
-                  style: style.nodeStyle,
                 ),
               )
               .toList(),

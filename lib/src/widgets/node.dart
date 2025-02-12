@@ -18,7 +18,11 @@ import '../core/models/entities.dart';
 import '../core/utils/renderbox.dart';
 
 typedef _TempLink = ({String nodeId, String portId});
-typedef _Row = ({PortInstance? inPort, FieldInstance? field, PortInstance? outPort});
+typedef _Row = ({
+  PortInstance? inPort,
+  FieldInstance? field,
+  PortInstance? outPort
+});
 
 class NodeWidget extends StatefulWidget {
   final FlNodeEditorController controller;
@@ -301,8 +305,8 @@ class _NodeWidgetState extends State<NodeWidget> {
       final List<MapEntry<String, NodePrototype>> compatiblePrototypes = [];
 
       if (fromLink) {
-        final startPort =
-            widget.controller.nodes[_tempLink!.nodeId]!.ports[_tempLink!.portId]!;
+        final startPort = widget
+            .controller.nodes[_tempLink!.nodeId]!.ports[_tempLink!.portId]!;
 
         widget.controller.nodePrototypes.forEach(
           (key, value) {
@@ -337,13 +341,13 @@ class _NodeWidgetState extends State<NodeWidget> {
           onSelected: () {
             widget.controller.addNode(
               entry.key,
-              offset: worldPosition,
+              offset: worldPosition!,
             );
 
             if (fromLink) {
               final addedNode = widget.controller.nodes.values.last;
-              final startPort =
-                  widget.controller.nodes[_tempLink!.nodeId]!.ports[_tempLink!.portId]!;
+              final startPort = widget.controller.nodes[_tempLink!.nodeId]!
+                  .ports[_tempLink!.portId]!;
 
               widget.controller.addLink(
                 _tempLink!.nodeId,
@@ -531,7 +535,8 @@ class _NodeWidgetState extends State<NodeWidget> {
                         spacing: widget.node.state.isCollapsed ? 0 : 2,
                         children: [
                           ..._generateRows().map(
-                            (row) => _buildRow(row.inPort, row.field, row.outPort),
+                            (row) =>
+                                _buildRow(row.inPort, row.field, row.outPort),
                           ),
                         ],
                       ),
