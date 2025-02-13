@@ -84,8 +84,19 @@ class FlNodeEditorController {
   }
 
   /// Enable or disable zooming in the node editor.
-  void enableSnapToGrid(bool enable) {
+  void enableSnapToGrid(bool enable) async {
     config = config.copyWith(enableSnapToGrid: enable);
+
+    for (final node in _nodes.values) {
+      if (enable) {
+        node.offset = Offset(
+          (node.offset.dx / config.snapToGridSize).round() *
+              config.snapToGridSize,
+          (node.offset.dy / config.snapToGridSize).round() *
+              config.snapToGridSize,
+        );
+      }
+    }
   }
 
   /// Set the size of the grid to snap to in the node editor.
@@ -196,6 +207,7 @@ class FlNodeEditorController {
   final Map<String, NodePrototype> _nodePrototypes = {};
   final SpatialHashGrid _spatialHashGrid = SpatialHashGrid();
   final Map<String, NodeInstance> _nodes = {};
+  final Map<String, Offset> _unboundNodeOffsets = {};
 
   List<NodePrototype> get nodePrototypesAsList =>
       _nodePrototypes.values.map((e) => e).toList();
@@ -253,9 +265,16 @@ class FlNodeEditorController {
   /// See [SpatialHashGrid] and [selectNodesByArea].
   ///
   /// Emits an [AddNodeEvent] event.
-  NodeInstance addNode(String name, {Offset? offset}) {
+  NodeInstance addNode(String name, {Offset offset = Offset.zero}) {
     if (!_nodePrototypes.containsKey(name)) {
       throw Exception('Node prototype $name does not exist.');
+    }
+
+    if (config.enableSnapToGrid) {
+      offset = Offset(
+        (offset.dx / config.snapToGridSize).round() * config.snapToGridSize,
+        (offset.dy / config.snapToGridSize).round() * config.snapToGridSize,
+      );
     }
 
     final instance = createNode(
@@ -289,9 +308,18 @@ class FlNodeEditorController {
   }) {
     if (_nodes.containsKey(node.id)) return;
 
+    Offset offset = node.offset;
+
+    if (config.enableSnapToGrid) {
+      offset = Offset(
+        (offset.dx / config.snapToGridSize).round() * config.snapToGridSize,
+        (offset.dy / config.snapToGridSize).round() * config.snapToGridSize,
+      );
+    }
+
     _nodes.putIfAbsent(
       node.id,
-      () => node,
+      () => node.copyWith(offset: offset),
     );
 
     eventBus.emit(
@@ -638,12 +666,28 @@ class FlNodeEditorController {
   /// This method is used to drag the selected nodes by a given delta affecting their offsets.
   ///
   /// Emits a [DragSelectionEvent] event.
-  void dragSelection(Offset delta, {String? eventId}) {
+  void dragSelection(Offset delta, {String? eventId}) async {
     if (_selectedNodeIds.isEmpty) return;
 
     for (final id in _selectedNodeIds) {
-      final node = _nodes[id];
-      node?.offset += delta / _viewportZoom;
+      final node = _nodes[id]!;
+
+      _unboundNodeOffsets.putIfAbsent(id, () => node.offset);
+      _unboundNodeOffsets[id] =
+          _unboundNodeOffsets[id]! + delta / _viewportZoom;
+
+      if (config.enableSnapToGrid) {
+        final unboundOffset = _unboundNodeOffsets[id]!;
+
+        node.offset = Offset(
+          (unboundOffset.dx / config.snapToGridSize).round() *
+              config.snapToGridSize,
+          (unboundOffset.dy / config.snapToGridSize).round() *
+              config.snapToGridSize,
+        );
+      } else {
+        node.offset += delta / _viewportZoom;
+      }
     }
 
     eventBus.emit(

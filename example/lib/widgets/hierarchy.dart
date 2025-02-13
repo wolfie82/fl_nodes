@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'package:fl_nodes/fl_nodes_ext.dart';
+import 'package:fl_nodes/fl_nodes.dart';
 
 class HierarchyWidget extends StatefulWidget {
   final FlNodeEditorController controller;

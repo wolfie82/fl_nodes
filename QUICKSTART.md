@@ -57,12 +57,6 @@ Start by importing the package:
 import 'package:fl_nodes/fl_nodes.dart';
 ```
 
-For advanced functionalities, use:
-
-```dart
-import 'package:fl_nodes/fl_nodes_ext.dart';
-```
-
 For web platforms we strongly recommend to disallow most default browser interactions:
 
 ```html

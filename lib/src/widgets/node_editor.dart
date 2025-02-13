@@ -632,7 +632,7 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
           onSelected: () {
             widget.controller.addNode(
               entry.key,
-              offset: worldPosition,
+              offset: worldPosition!,
             );
 
             if (fromLink) {

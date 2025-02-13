@@ -559,7 +559,7 @@ class _NodeWidgetState extends State<NodeWidget> {
         onSelected: () {
           widget.controller.addNode(
             entry.key,
-            offset: worldPosition,
+            offset: worldPosition ?? Offset.zero,
           );
           if (fromLink) {
             final addedNode = widget.controller.nodes.values.last;

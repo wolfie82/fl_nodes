@@ -29,8 +29,8 @@ class FlNodeEditorConfig {
     this.maxPanY = 100000.0,
     this.enableKineticScrolling = true,
     this.enableAutoScrolling = true,
-    this.enableSnapToGrid = false,
-    this.snapToGridSize = 10.0,
+    this.enableSnapToGrid = true,
+    this.snapToGridSize = 64.0,
     this.enableAutoPlacement = false,
   });
 

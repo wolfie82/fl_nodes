@@ -456,7 +456,7 @@ FieldInstance createField(String idName, FieldPrototype prototype) {
 NodeInstance createNode(
   NodePrototype prototype, {
   required FlNodeEditorController controller,
-  Offset? offset,
+  required Offset offset,
 }) {
   return NodeInstance(
     id: const Uuid().v4(),
@@ -474,6 +474,6 @@ NodeInstance createNode(
       }),
     ),
     onRendered: controller.onRenderedCallback,
-    offset: offset ?? Offset.zero,
+    offset: offset,
   );
 }
