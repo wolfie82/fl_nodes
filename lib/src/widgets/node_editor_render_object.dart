@@ -57,6 +57,7 @@ class NodeEditorRenderObjectWidget extends MultiChildRenderObjectWidget {
   final Widget Function(BuildContext, PortInstance, FlNodeStyle)? portBuilder;
   final List<ContextMenuEntry> Function(BuildContext, NodeInstance)?
       contextMenuBuilder;
+  final Widget Function(BuildContext, NodeInstance, FlNodeStyle)? nodeBuilder;
 
   NodeEditorRenderObjectWidget({
     super.key,
@@ -66,18 +67,20 @@ class NodeEditorRenderObjectWidget extends MultiChildRenderObjectWidget {
     this.fieldBuilder,
     this.portBuilder,
     this.contextMenuBuilder,
+    this.nodeBuilder,
   })  : behavior = controller.config,
         super(
           children: controller.nodesAsList
               .map(
                 (node) => NodeWidget(
-                  style: style.nodeStyle,
                   controller: controller,
                   node: node,
+                  style: style.nodeStyle,
                   headerBuilder: headerBuilder,
                   fieldBuilder: fieldBuilder,
                   portBuilder: portBuilder,
                   contextMenuBuilder: contextMenuBuilder,
+                  nodeBuilder: nodeBuilder,
                 ),
               )
               .toList(),

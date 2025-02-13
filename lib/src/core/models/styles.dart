@@ -114,6 +114,7 @@ class FlNodeStyle {
   final FlLinkStyle linkStyle;
   final FlPortStyle portStyle;
   final FlFieldStyle fieldStyle;
+  final FlNodeHeaderStyle headerStyle; // new
 
   const FlNodeStyle({
     this.decoration = const BoxDecoration(
@@ -127,6 +128,7 @@ class FlNodeStyle {
     this.linkStyle = const FlLinkStyle(),
     this.portStyle = const FlPortStyle(),
     this.fieldStyle = const FlFieldStyle(),
+    this.headerStyle = const FlNodeHeaderStyle(), // new
   });
 
   FlNodeStyle copyWith({
@@ -174,4 +176,32 @@ class FlNodeEditorStyle {
       nodeStyle: nodeStyle ?? this.nodeStyle,
     );
   }
+}
+
+class FlNodeHeaderStyle {
+  final EdgeInsets padding;
+  final Decoration decoration;
+  final TextStyle titleTextStyle;
+
+  const FlNodeHeaderStyle({
+    this.padding = const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    this.decoration = const BoxDecoration(
+      gradient: LinearGradient(
+        colors: [Color(0xFF4A90E2), Color(0xFF357ABD)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
+      borderRadius: BorderRadius.only(
+        topLeft: Radius.circular(7),
+        topRight: Radius.circular(7),
+        bottomLeft: Radius.circular(7),
+        bottomRight: Radius.circular(7),
+      ),
+    ),
+    this.titleTextStyle = const TextStyle(
+      color: Colors.white,
+      fontSize: 16,
+      fontWeight: FontWeight.bold,
+    ),
+  });
 }

@@ -51,6 +51,9 @@ class NodeWidget extends StatefulWidget {
     NodeInstance node,
   )? contextMenuBuilder;
 
+  // NEW: nodeBuilder for fully custom node layouts
+  final Widget Function(BuildContext, NodeInstance, FlNodeStyle)? nodeBuilder;
+
   const NodeWidget({
     super.key,
     required this.controller,
@@ -60,6 +63,7 @@ class NodeWidget extends StatefulWidget {
     this.headerBuilder,
     this.portBuilder,
     this.contextMenuBuilder,
+    this.nodeBuilder,
   });
 
   @override
@@ -347,7 +351,7 @@ class _NodeWidgetState extends State<NodeWidget> {
               left: details.globalPosition.dx,
               top: details.globalPosition.dy,
               child: Material(
-                color: widget.style.fieldStyle.decoration.color,
+                color: Colors.transparent,
                 child: field.prototype.editorBuilder!(
                   context,
                   () => overlayEntry?.remove(),
@@ -599,6 +603,11 @@ class _NodeWidgetState extends State<NodeWidget> {
       if (mounted) widget.node.onRendered(widget.node);
     });
 
+    // If a custom nodeBuilder is provided, use it directly.
+    if (widget.nodeBuilder != null) {
+      return widget.nodeBuilder!(context, widget.node, widget.style);
+    }
+
     return controlsWrapper(
       IntrinsicHeight(
         child: IntrinsicWidth(
@@ -717,19 +726,10 @@ class NodeHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final headerStyle = style.headerStyle;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: node.prototype.color,
-        borderRadius: BorderRadius.only(
-          topLeft: const Radius.circular(7),
-          topRight: const Radius.circular(7),
-          bottomLeft:
-              node.state.isCollapsed ? const Radius.circular(7) : Radius.zero,
-          bottomRight:
-              node.state.isCollapsed ? const Radius.circular(7) : Radius.zero,
-        ),
-      ),
+      padding: headerStyle.padding,
+      decoration: headerStyle.decoration,
       child: Row(
         children: [
           InkWell(

@@ -66,6 +66,11 @@ class FlNodeEditorWidget extends StatelessWidget {
     BuildContext context,
     NodeInstance node,
   )? contextMenuBuilder;
+  final Widget Function(
+    BuildContext context,
+    NodeInstance node,
+    FlNodeStyle style,
+  )? nodeBuilder;
 
   const FlNodeEditorWidget({
     super.key,
@@ -77,6 +82,7 @@ class FlNodeEditorWidget extends StatelessWidget {
     this.fieldBuilder,
     this.portBuilder,
     this.contextMenuBuilder,
+    this.nodeBuilder,
   });
 
   @override
@@ -101,6 +107,7 @@ class FlNodeEditorWidget extends StatelessWidget {
               fieldBuilder: fieldBuilder,
               portBuilder: portBuilder,
               contextMenuBuilder: contextMenuBuilder,
+              nodeBuilder: nodeBuilder,
             ),
           ),
           ...overlay().map(
@@ -154,6 +161,7 @@ class _NodeEditorDataLayer extends StatefulWidget {
   final Widget Function(BuildContext, PortInstance, FlNodeStyle)? portBuilder;
   final List<ContextMenuEntry> Function(BuildContext, NodeInstance)?
       contextMenuBuilder;
+  final Widget Function(BuildContext, NodeInstance, FlNodeStyle)? nodeBuilder;
 
   const _NodeEditorDataLayer({
     required this.controller,
@@ -164,6 +172,7 @@ class _NodeEditorDataLayer extends StatefulWidget {
     this.fieldBuilder,
     this.portBuilder,
     this.contextMenuBuilder,
+    this.nodeBuilder,
   });
 
   @override
@@ -632,7 +641,7 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
           onSelected: () {
             widget.controller.addNode(
               entry.key,
-              offset: worldPosition!,
+              offset: worldPosition ?? Offset.zero,
             );
 
             if (fromLink) {
@@ -963,6 +972,7 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
           portBuilder: widget.portBuilder,
           fieldBuilder: widget.fieldBuilder,
           contextMenuBuilder: widget.contextMenuBuilder,
+          nodeBuilder: widget.nodeBuilder,
         ),
       ),
     );
