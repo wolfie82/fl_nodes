@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
+import 'package:flutter_context_menu/flutter_context_menu.dart';
+
 import 'package:fl_nodes/src/core/models/config.dart';
 import 'package:fl_nodes/src/utils/grid_drawing.dart';
 import 'package:fl_nodes/src/widgets/node.dart';
@@ -45,19 +47,40 @@ class NodeEditorRenderObjectWidget extends MultiChildRenderObjectWidget {
   final FlNodeEditorController controller;
   final FlNodeEditorConfig behavior;
   final FlNodeEditorStyle style;
+  final Widget Function(
+    BuildContext,
+    NodeInstance,
+    FlNodeStyle,
+    VoidCallback onToggleCollapse,
+  )? headerBuilder;
+  final Widget Function(BuildContext, FieldInstance, FlNodeStyle)? fieldBuilder;
+  final Widget Function(BuildContext, PortInstance, FlNodeStyle)? portBuilder;
+  final List<ContextMenuEntry> Function(BuildContext, NodeInstance)?
+      contextMenuBuilder;
+  final Widget Function(BuildContext, NodeInstance, FlNodeStyle)? nodeBuilder;
 
   NodeEditorRenderObjectWidget({
     super.key,
     required this.controller,
     required this.style,
+    this.headerBuilder,
+    this.fieldBuilder,
+    this.portBuilder,
+    this.contextMenuBuilder,
+    this.nodeBuilder,
   })  : behavior = controller.config,
         super(
           children: controller.nodesAsList
               .map(
                 (node) => NodeWidget(
-                  style: style.nodeStyle,
                   controller: controller,
                   node: node,
+                  style: style.nodeStyle,
+                  headerBuilder: headerBuilder,
+                  fieldBuilder: fieldBuilder,
+                  portBuilder: portBuilder,
+                  contextMenuBuilder: contextMenuBuilder,
+                  nodeBuilder: nodeBuilder,
                 ),
               )
               .toList(),

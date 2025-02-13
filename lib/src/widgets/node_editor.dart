@@ -46,6 +46,31 @@ class FlNodeEditorWidget extends StatelessWidget {
   final bool expandToParent;
   final Size? fixedSize;
   final List<FlOverlayData> Function() overlay;
+  final Widget Function(
+    BuildContext context,
+    NodeInstance node,
+    FlNodeStyle style,
+    VoidCallback onToggleCollapse,
+  )? headerBuilder;
+  final Widget Function(
+    BuildContext context,
+    FieldInstance field,
+    FlNodeStyle style,
+  )? fieldBuilder;
+  final Widget Function(
+    BuildContext context,
+    PortInstance port,
+    FlNodeStyle style,
+  )? portBuilder;
+  final List<ContextMenuEntry> Function(
+    BuildContext context,
+    NodeInstance node,
+  )? contextMenuBuilder;
+  final Widget Function(
+    BuildContext context,
+    NodeInstance node,
+    FlNodeStyle style,
+  )? nodeBuilder;
 
   const FlNodeEditorWidget({
     super.key,
@@ -53,6 +78,11 @@ class FlNodeEditorWidget extends StatelessWidget {
     this.expandToParent = true,
     this.fixedSize,
     required this.overlay,
+    this.headerBuilder,
+    this.fieldBuilder,
+    this.portBuilder,
+    this.contextMenuBuilder,
+    this.nodeBuilder,
   });
 
   @override
@@ -73,6 +103,11 @@ class FlNodeEditorWidget extends StatelessWidget {
               expandToParent: expandToParent,
               fixedSize: fixedSize,
               overlay: overlay,
+              headerBuilder: headerBuilder,
+              fieldBuilder: fieldBuilder,
+              portBuilder: portBuilder,
+              contextMenuBuilder: contextMenuBuilder,
+              nodeBuilder: nodeBuilder,
             ),
           ),
           ...overlay().map(
@@ -116,12 +151,28 @@ class _NodeEditorDataLayer extends StatefulWidget {
   final bool expandToParent;
   final Size? fixedSize;
   final List<FlOverlayData> Function() overlay;
+  final Widget Function(
+    BuildContext,
+    NodeInstance,
+    FlNodeStyle,
+    VoidCallback onToggleCollapse,
+  )? headerBuilder;
+  final Widget Function(BuildContext, FieldInstance, FlNodeStyle)? fieldBuilder;
+  final Widget Function(BuildContext, PortInstance, FlNodeStyle)? portBuilder;
+  final List<ContextMenuEntry> Function(BuildContext, NodeInstance)?
+      contextMenuBuilder;
+  final Widget Function(BuildContext, NodeInstance, FlNodeStyle)? nodeBuilder;
 
   const _NodeEditorDataLayer({
     required this.controller,
     required this.expandToParent,
     required this.fixedSize,
     required this.overlay,
+    this.headerBuilder,
+    this.fieldBuilder,
+    this.portBuilder,
+    this.contextMenuBuilder,
+    this.nodeBuilder,
   });
 
   @override
@@ -590,7 +641,7 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
           onSelected: () {
             widget.controller.addNode(
               entry.key,
-              offset: worldPosition!,
+              offset: worldPosition ?? Offset.zero,
             );
 
             if (fromLink) {
@@ -917,6 +968,11 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
           key: kNodeEditorWidgetKey,
           controller: widget.controller,
           style: style,
+          headerBuilder: widget.headerBuilder,
+          portBuilder: widget.portBuilder,
+          fieldBuilder: widget.fieldBuilder,
+          contextMenuBuilder: widget.contextMenuBuilder,
+          nodeBuilder: widget.nodeBuilder,
         ),
       ),
     );
