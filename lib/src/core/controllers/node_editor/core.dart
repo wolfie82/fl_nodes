@@ -81,55 +81,57 @@ class FlNodeEditorController {
   /// Set the global configuration of the node editor.
   void setConfig(FlNodeEditorConfig config) {
     this.config = config;
+    eventBus.emit(UpdateConfigEvent(id: const Uuid().v4()));
   }
 
   /// Enable or disable zooming in the node editor.
   void enableSnapToGrid(bool enable) async {
-    config = config.copyWith(enableSnapToGrid: enable);
+    setConfig(config.copyWith(enableSnapToGrid: enable));
 
-    for (final node in _nodes.values) {
-      if (enable) {
-        node.offset = Offset(
-          (node.offset.dx / config.snapToGridSize).round() *
-              config.snapToGridSize,
-          (node.offset.dy / config.snapToGridSize).round() *
-              config.snapToGridSize,
-        );
+    if (!enable) {
+      for (final node in _nodes.values) {
+        node.offset = _unboundNodeOffsets[node.id]!;
+      }
+    } else {
+      for (final node in _nodes.values) {
+        if (enable) {
+          node.offset = Offset(
+            (node.offset.dx / config.snapToGridSize).round() *
+                config.snapToGridSize,
+            (node.offset.dy / config.snapToGridSize).round() *
+                config.snapToGridSize,
+          );
+        }
       }
     }
   }
 
   /// Set the size of the grid to snap to in the node editor.
-  void setSnapToGridSize(double size) {
-    config = config.copyWith(snapToGridSize: size);
-  }
+  void setSnapToGridSize(double size) =>
+      setConfig(config.copyWith(snapToGridSize: size));
 
   /// Enable or disable auto placement of nodes in the node editor.
-  void enableAutoPlacement(bool enable) {
-    config = config.copyWith(enableAutoPlacement: enable);
-  }
+  void enableAutoPlacement(bool enable) =>
+      setConfig(config = config.copyWith(enableAutoPlacement: enable));
 
   // Styles
 
   /// Set the global style of the node editor.
   void setStyle(FlNodeEditorStyle style) {
     this.style = style;
-
     eventBus.emit(UpdateStyleEvent(id: const Uuid().v4()));
   }
 
   /// Set the curve type of the links in the node editor.
-  void setLinkCurveType(FlLinkCurveType curveType) {
-    style = style.copyWith(
-      nodeStyle: style.nodeStyle.copyWith(
-        linkStyle: style.nodeStyle.linkStyle.copyWith(
-          curveType: curveType,
+  void setLinkCurveType(FlLinkCurveType curveType) => setStyle(
+        style.copyWith(
+          nodeStyle: style.nodeStyle.copyWith(
+            linkStyle: style.nodeStyle.linkStyle.copyWith(
+              curveType: curveType,
+            ),
+          ),
         ),
-      ),
-    );
-
-    eventBus.emit(UpdateStyleEvent(id: const Uuid().v4()));
-  }
+      );
 
   // Viewport
   Offset _viewportOffset = Offset.zero;
@@ -283,10 +285,8 @@ class FlNodeEditorController {
       offset: offset,
     );
 
-    _nodes.putIfAbsent(
-      instance.id,
-      () => instance,
-    );
+    _nodes.putIfAbsent(instance.id, () => instance);
+    _unboundNodeOffsets.putIfAbsent(instance.id, () => instance.offset);
 
     eventBus.emit(
       AddNodeEvent(id: const Uuid().v4(), instance),
@@ -317,10 +317,8 @@ class FlNodeEditorController {
       );
     }
 
-    _nodes.putIfAbsent(
-      node.id,
-      () => node.copyWith(offset: offset),
-    );
+    _nodes.putIfAbsent(node.id, () => node.copyWith(offset: offset));
+    _unboundNodeOffsets.putIfAbsent(node.id, () => node.offset);
 
     eventBus.emit(
       AddNodeEvent(
