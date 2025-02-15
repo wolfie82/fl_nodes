@@ -8,6 +8,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 
 import 'package:flutter_context_menu/flutter_context_menu.dart';
+import 'package:flutter_shaders/flutter_shaders.dart';
 import 'package:keymap/keymap.dart';
 import 'package:os_detect/os_detect.dart' as os_detect;
 
@@ -964,15 +965,19 @@ class _NodeEditorDataLayerState extends State<_NodeEditorDataLayer>
 
     return controlsWrapper(
       RepaintBoundary(
-        child: NodeEditorRenderObjectWidget(
-          key: kNodeEditorWidgetKey,
-          controller: widget.controller,
-          style: style,
-          headerBuilder: widget.headerBuilder,
-          portBuilder: widget.portBuilder,
-          fieldBuilder: widget.fieldBuilder,
-          contextMenuBuilder: widget.contextMenuBuilder,
-          nodeBuilder: widget.nodeBuilder,
+        child: ShaderBuilder(
+          assetKey: 'packages/fl_nodes/shaders/grid.frag',
+          (context, gridShader, child) => NodeEditorRenderObjectWidget(
+            key: kNodeEditorWidgetKey,
+            controller: widget.controller,
+            style: style,
+            gridShader: gridShader,
+            headerBuilder: widget.headerBuilder,
+            portBuilder: widget.portBuilder,
+            fieldBuilder: widget.fieldBuilder,
+            contextMenuBuilder: widget.contextMenuBuilder,
+            nodeBuilder: widget.nodeBuilder,
+          ),
         ),
       ),
     );

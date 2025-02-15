@@ -1,4 +1,5 @@
 import 'dart:ui' as ui;
+import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -6,8 +7,6 @@ import 'package:flutter/rendering.dart';
 
 import 'package:flutter_context_menu/flutter_context_menu.dart';
 
-import 'package:fl_nodes/src/core/models/config.dart';
-import 'package:fl_nodes/src/utils/grid_drawing.dart';
 import 'package:fl_nodes/src/widgets/node.dart';
 
 import '../core/controllers/node_editor/core.dart';
@@ -45,8 +44,9 @@ class _ParentData extends ContainerBoxParentData<RenderBox> {
 
 class NodeEditorRenderObjectWidget extends MultiChildRenderObjectWidget {
   final FlNodeEditorController controller;
-  final FlNodeEditorConfig behavior;
   final FlNodeEditorStyle style;
+  final FragmentShader gridShader;
+
   final Widget Function(
     BuildContext,
     NodeInstance,
@@ -63,13 +63,13 @@ class NodeEditorRenderObjectWidget extends MultiChildRenderObjectWidget {
     super.key,
     required this.controller,
     required this.style,
+    required this.gridShader,
     this.headerBuilder,
     this.fieldBuilder,
     this.portBuilder,
     this.contextMenuBuilder,
     this.nodeBuilder,
-  })  : behavior = controller.config,
-        super(
+  }) : super(
           children: controller.nodesAsList
               .map(
                 (node) => NodeWidget(
@@ -89,7 +89,7 @@ class NodeEditorRenderObjectWidget extends MultiChildRenderObjectWidget {
   NodeEditorRenderBox createRenderObject(BuildContext context) {
     return NodeEditorRenderBox(
       style: style,
-      behavior: behavior,
+      gridShader: gridShader,
       offset: controller.viewportOffset,
       zoom: controller.viewportZoom,
       tempLink: _getTempLinkData(),
@@ -162,7 +162,7 @@ class NodeEditorRenderBox extends RenderBox
         RenderBoxContainerDefaultsMixin<RenderBox, _ParentData> {
   NodeEditorRenderBox({
     required FlNodeEditorStyle style,
-    required FlNodeEditorConfig behavior,
+    required FragmentShader gridShader,
     required Offset offset,
     required double zoom,
     required LinkDrawData? tempLink,
@@ -170,7 +170,7 @@ class NodeEditorRenderBox extends RenderBox
     required List<NodeDrawData> nodesData,
     required List<LinkDrawData> linksData,
   })  : _style = style,
-        _behavior = behavior,
+        _gridShader = gridShader,
         _offset = offset,
         _zoom = zoom,
         _tempLinkDrawData = tempLink,
@@ -179,19 +179,19 @@ class NodeEditorRenderBox extends RenderBox
     shouldUpdateNodes(nodesData);
   }
 
-  FlNodeEditorConfig _behavior;
-  FlNodeEditorConfig get behavior => _behavior;
-  set behavior(FlNodeEditorConfig value) {
-    if (_behavior == value) return;
-    _behavior = value;
-    markNeedsPaint();
-  }
-
   FlNodeEditorStyle _style;
   FlNodeEditorStyle get style => _style;
   set style(FlNodeEditorStyle value) {
     if (_style == value) return;
     _style = value;
+    markNeedsPaint();
+  }
+
+  FragmentShader _gridShader;
+  FragmentShader get gridShader => _gridShader;
+  set gridShader(FragmentShader value) {
+    if (_gridShader == value) return;
+    _gridShader = value;
     markNeedsPaint();
   }
 
@@ -344,7 +344,7 @@ class NodeEditorRenderBox extends RenderBox
     final (viewport, startX, startY) = _prepareCanvas(canvas, size);
 
     if (style.gridStyle.showGrid) {
-      drawGrid(style.gridStyle, canvas, viewport, startX, startY);
+      _paintGrid(canvas, viewport, startX, startY);
     }
 
     _paintLinks(canvas);
@@ -446,6 +446,43 @@ class NodeEditorRenderBox extends RenderBox
 
     // Draw the offset point
     canvas.drawCircle(Offset.zero, 5, debugPaint);
+  }
+
+  void _paintGrid(Canvas canvas, Rect viewport, double startX, double startY) {
+    final style = this.style.gridStyle;
+
+    gridShader.setFloat(0, style.gridSpacingX);
+    gridShader.setFloat(1, style.gridSpacingY);
+    gridShader.setFloat(2, startX);
+    gridShader.setFloat(3, startY);
+
+    final lineColor = style.lineColor;
+
+    gridShader.setFloat(4, style.lineWidth);
+    gridShader.setFloat(5, lineColor.r * lineColor.a);
+    gridShader.setFloat(6, lineColor.g * lineColor.a);
+    gridShader.setFloat(7, lineColor.b * lineColor.a);
+    gridShader.setFloat(8, lineColor.a);
+
+    final intersectionColor = style.intersectionColor;
+
+    gridShader.setFloat(9, style.intersectionRadius);
+    gridShader.setFloat(10, intersectionColor.r * intersectionColor.a);
+    gridShader.setFloat(11, intersectionColor.g * intersectionColor.a);
+    gridShader.setFloat(12, intersectionColor.b * intersectionColor.a);
+    gridShader.setFloat(13, intersectionColor.a);
+
+    gridShader.setFloat(14, viewport.left);
+    gridShader.setFloat(15, viewport.top);
+    gridShader.setFloat(16, viewport.right);
+    gridShader.setFloat(17, viewport.bottom);
+
+    canvas.drawRect(
+      viewport,
+      Paint()
+        ..shader = gridShader
+        ..isAntiAlias = true,
+    );
   }
 
   void _paintLinks(Canvas canvas) {

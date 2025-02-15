@@ -343,7 +343,6 @@ class _NodeWidgetState extends State<NodeWidget> {
               left: details.globalPosition.dx,
               top: details.globalPosition.dy,
               child: Material(
-                color: Colors.transparent,
                 child: field.prototype.editorBuilder!(
                   context,
                   () => overlayEntry?.remove(),
