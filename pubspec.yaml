@@ -1,6 +1,9 @@
 name: fl_nodes
 description: A lightweight, scalable, and highly customizable package that empowers Flutter developers to create dynamic, interactive, and visually appealing node-based UIs.
 version: 0.1.0+1
+screenshots:
+  - path: ./.github/images/node_editor_example.png
+    description: A simple example of a node-based UI created with fl_nodes.
 
 homepage: https://williamkaroldicioccio.github.io/fl_nodes/
 repository: https://github.com/WilliamKarolDiCioccio/fl_nodes
