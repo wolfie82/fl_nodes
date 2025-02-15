@@ -5,13 +5,13 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
-import 'package:flutter_context_menu/flutter_context_menu.dart';
-
 import 'package:fl_nodes/src/widgets/node.dart';
 
 import '../core/controllers/node_editor/core.dart';
 import '../core/models/entities.dart';
 import '../core/models/styles.dart';
+
+import 'builders.dart';
 
 class NodeDrawData {
   Offset offset;
@@ -46,18 +46,11 @@ class NodeEditorRenderObjectWidget extends MultiChildRenderObjectWidget {
   final FlNodeEditorController controller;
   final FlNodeEditorStyle style;
   final FragmentShader gridShader;
-
-  final Widget Function(
-    BuildContext,
-    NodeInstance,
-    FlNodeStyle,
-    VoidCallback onToggleCollapse,
-  )? headerBuilder;
-  final Widget Function(BuildContext, FieldInstance, FlNodeStyle)? fieldBuilder;
-  final Widget Function(BuildContext, PortInstance, FlNodeStyle)? portBuilder;
-  final List<ContextMenuEntry> Function(BuildContext, NodeInstance)?
-      contextMenuBuilder;
-  final Widget Function(BuildContext, NodeInstance, FlNodeStyle)? nodeBuilder;
+  final FlNodeHeaderBuilder? headerBuilder;
+  final FlNodeFieldBuilder? fieldBuilder;
+  final FlNodePortBuilder? portBuilder;
+  final FlNodeContextMenuBuilder? contextMenuBuilder;
+  final FlNodeBuilder? nodeBuilder;
 
   NodeEditorRenderObjectWidget({
     super.key,

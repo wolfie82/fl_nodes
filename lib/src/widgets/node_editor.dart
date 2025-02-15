@@ -24,6 +24,8 @@ import '../core/models/entities.dart';
 import '../core/models/events.dart';
 import '../core/models/styles.dart';
 
+import 'builders.dart';
+
 typedef _TempLink = ({String nodeId, String portId});
 
 class FlOverlayData {
@@ -47,31 +49,11 @@ class FlNodeEditorWidget extends StatelessWidget {
   final bool expandToParent;
   final Size? fixedSize;
   final List<FlOverlayData> Function() overlay;
-  final Widget Function(
-    BuildContext context,
-    NodeInstance node,
-    FlNodeStyle style,
-    VoidCallback onToggleCollapse,
-  )? headerBuilder;
-  final Widget Function(
-    BuildContext context,
-    FieldInstance field,
-    FlNodeStyle style,
-  )? fieldBuilder;
-  final Widget Function(
-    BuildContext context,
-    PortInstance port,
-    FlNodeStyle style,
-  )? portBuilder;
-  final List<ContextMenuEntry> Function(
-    BuildContext context,
-    NodeInstance node,
-  )? contextMenuBuilder;
-  final Widget Function(
-    BuildContext context,
-    NodeInstance node,
-    FlNodeStyle style,
-  )? nodeBuilder;
+  final FlNodeHeaderBuilder? headerBuilder;
+  final FlNodeFieldBuilder? fieldBuilder;
+  final FlNodePortBuilder? portBuilder;
+  final FlNodeContextMenuBuilder? contextMenuBuilder;
+  final FlNodeBuilder? nodeBuilder;
 
   const FlNodeEditorWidget({
     super.key,
@@ -152,17 +134,11 @@ class _NodeEditorDataLayer extends StatefulWidget {
   final bool expandToParent;
   final Size? fixedSize;
   final List<FlOverlayData> Function() overlay;
-  final Widget Function(
-    BuildContext,
-    NodeInstance,
-    FlNodeStyle,
-    VoidCallback onToggleCollapse,
-  )? headerBuilder;
-  final Widget Function(BuildContext, FieldInstance, FlNodeStyle)? fieldBuilder;
-  final Widget Function(BuildContext, PortInstance, FlNodeStyle)? portBuilder;
-  final List<ContextMenuEntry> Function(BuildContext, NodeInstance)?
-      contextMenuBuilder;
-  final Widget Function(BuildContext, NodeInstance, FlNodeStyle)? nodeBuilder;
+  final FlNodeHeaderBuilder? headerBuilder;
+  final FlNodeFieldBuilder? fieldBuilder;
+  final FlNodePortBuilder? portBuilder;
+  final FlNodeContextMenuBuilder? contextMenuBuilder;
+  final FlNodeBuilder? nodeBuilder;
 
   const _NodeEditorDataLayer({
     required this.controller,

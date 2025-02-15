@@ -17,6 +17,8 @@ import '../constants.dart';
 import '../core/models/entities.dart';
 import '../core/utils/renderbox.dart';
 
+import 'builders.dart';
+
 typedef _TempLink = ({String nodeId, String portId});
 
 /// The main NodeWidget which represents a node in the editor.
@@ -25,35 +27,11 @@ typedef _TempLink = ({String nodeId, String portId});
 class NodeWidget extends StatefulWidget {
   final FlNodeEditorController controller;
   final NodeInstance node;
-
-  /// Optional custom builder for a field.
-  final Widget Function(
-    BuildContext context,
-    FieldInstance field,
-    FlNodeStyle style,
-  )? fieldBuilder;
-
-  /// Other builder callbacks (header, port, context menu) can be defined similarly.
-  final Widget Function(
-    BuildContext context,
-    NodeInstance node,
-    FlNodeStyle style,
-    VoidCallback onToggleCollapse,
-  )? headerBuilder;
-
-  final Widget Function(
-    BuildContext context,
-    PortInstance port,
-    FlNodeStyle style,
-  )? portBuilder;
-
-  final List<ContextMenuEntry> Function(
-    BuildContext context,
-    NodeInstance node,
-  )? contextMenuBuilder;
-
-  // NEW: nodeBuilder for fully custom node layouts
-  final Widget Function(BuildContext, NodeInstance, FlNodeStyle)? nodeBuilder;
+  final FlNodeHeaderBuilder? headerBuilder;
+  final FlNodeFieldBuilder? fieldBuilder;
+  final FlNodePortBuilder? portBuilder;
+  final FlNodeContextMenuBuilder? contextMenuBuilder;
+  final FlNodeBuilder? nodeBuilder;
 
   const NodeWidget({
     super.key,
@@ -596,7 +574,7 @@ class _NodeWidgetState extends State<NodeWidget> {
 
     // If a custom nodeBuilder is provided, use it directly.
     if (widget.nodeBuilder != null) {
-      return widget.nodeBuilder!(context, widget.node, style);
+      return widget.nodeBuilder!(context, widget.node);
     }
 
     return controlsWrapper(
