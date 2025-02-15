@@ -10,6 +10,46 @@ enum Operator { add, subtract, multiply, divide }
 
 enum Comparator { equal, notEqual, greater, greaterEqual, less, lessEqual }
 
+const FlPortStyle outputDataPortStyle = FlPortStyle(
+  color: Colors.orange,
+  shape: FlPortShape.circle,
+  linkStyle: FlLinkStyle(
+    gradient: LinearGradient(
+      colors: [Colors.orange, Colors.purple],
+      begin: Alignment.centerLeft,
+      end: Alignment.centerRight,
+    ),
+    lineWidth: 3.0,
+    drawMode: FlLinkDrawMode.solid,
+    curveType: FlLinkCurveType.bezier,
+  ),
+);
+
+const FlPortStyle inputDataPortStyle = FlPortStyle(
+  color: Colors.purple,
+  shape: FlPortShape.circle,
+);
+
+const FlPortStyle controlOutputPortStyle = FlPortStyle(
+  color: Colors.green,
+  shape: FlPortShape.triangle,
+  linkStyle: FlLinkStyle(
+    gradient: LinearGradient(
+      colors: [Colors.green, Colors.blue],
+      begin: Alignment.centerLeft,
+      end: Alignment.centerRight,
+    ),
+    lineWidth: 3.0,
+    drawMode: FlLinkDrawMode.solid,
+    curveType: FlLinkCurveType.bezier,
+  ),
+);
+
+const FlPortStyle controlInputPortStyle = FlPortStyle(
+  color: Colors.blue,
+  shape: FlPortShape.triangle,
+);
+
 NodePrototype createValueNode<T>({
   required String idName,
   required String displayName,
@@ -30,16 +70,28 @@ NodePrototype createValueNode<T>({
     idName: idName,
     displayName: displayName,
     description: 'Holds a constant $T value.',
-    color: Colors.orange,
+    style: const FlNodeStyle(
+      headerStyle: FlNodeHeaderStyle(
+        decoration: BoxDecoration(
+          color: Colors.orange,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(7),
+            topRight: Radius.circular(7),
+          ),
+        ),
+      ),
+    ),
     ports: [
       ControlOutputPortPrototype(
         idName: 'completed',
         displayName: 'Completed',
+        style: controlOutputPortStyle,
       ),
       DataOutputPortPrototype(
         idName: 'value',
         displayName: 'Value',
         dataType: T,
+        style: outputDataPortStyle,
       ),
     ],
     fields: [
@@ -253,30 +305,45 @@ void registerNodes(BuildContext context, FlNodeEditorController controller) {
       idName: 'operator',
       displayName: 'Operator',
       description: 'Applies a chosen operation to two numbers.',
-      color: Colors.pink,
+      style: const FlNodeStyle(
+        headerStyle: FlNodeHeaderStyle(
+          decoration: BoxDecoration(
+            color: Colors.pink,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(7),
+              topRight: Radius.circular(7),
+            ),
+          ),
+        ),
+      ),
       ports: [
         ControlInputPortPrototype(
           idName: 'exec',
           displayName: 'Exec',
+          style: controlInputPortStyle,
         ),
         DataInputPortPrototype(
           idName: 'a',
           displayName: 'A',
           dataType: double,
+          style: inputDataPortStyle,
         ),
         DataInputPortPrototype(
           idName: 'b',
           displayName: 'B',
           dataType: double,
+          style: inputDataPortStyle,
         ),
         ControlOutputPortPrototype(
           idName: 'completed',
           displayName: 'Completed',
+          style: controlOutputPortStyle,
         ),
         DataOutputPortPrototype(
           idName: 'result',
           displayName: 'Result',
           dataType: double,
+          style: outputDataPortStyle,
         ),
       ],
       fields: [
@@ -332,16 +399,28 @@ void registerNodes(BuildContext context, FlNodeEditorController controller) {
       idName: 'random',
       displayName: 'Random',
       description: 'Outputs a random number between 0 and 1.',
-      color: Colors.purple,
+      style: const FlNodeStyle(
+        headerStyle: FlNodeHeaderStyle(
+          decoration: BoxDecoration(
+            color: Colors.purple,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(7),
+              topRight: Radius.circular(7),
+            ),
+          ),
+        ),
+      ),
       ports: [
         ControlOutputPortPrototype(
           idName: 'completed',
           displayName: 'Completed',
+          style: controlOutputPortStyle,
         ),
         DataOutputPortPrototype(
           idName: 'value',
           displayName: 'Value',
           dataType: double,
+          style: outputDataPortStyle,
         ),
       ],
       onExecute: (ports, fields, state, f, p) async {
@@ -357,24 +436,38 @@ void registerNodes(BuildContext context, FlNodeEditorController controller) {
       idName: 'if',
       displayName: 'If',
       description: 'Executes a branch based on a condition.',
-      color: Colors.green,
+      style: const FlNodeStyle(
+        headerStyle: FlNodeHeaderStyle(
+          decoration: BoxDecoration(
+            color: Colors.green,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(7),
+              topRight: Radius.circular(7),
+            ),
+          ),
+        ),
+      ),
       ports: [
         ControlInputPortPrototype(
           idName: 'exec',
           displayName: 'Exec',
+          style: controlInputPortStyle,
         ),
         DataInputPortPrototype(
           idName: 'condition',
           displayName: 'Condition',
           dataType: bool,
+          style: inputDataPortStyle,
         ),
         ControlOutputPortPrototype(
           idName: 'trueBranch',
           displayName: 'True',
+          style: controlOutputPortStyle,
         ),
         ControlOutputPortPrototype(
           idName: 'falseBranch',
           displayName: 'False',
+          style: controlOutputPortStyle,
         ),
       ],
       onExecute: (ports, fields, state, f, p) async {
@@ -392,30 +485,45 @@ void registerNodes(BuildContext context, FlNodeEditorController controller) {
       idName: 'comparator',
       displayName: 'Comparator',
       description: 'Compares two numbers based on a chosen comparator.',
-      color: Colors.cyan,
+      style: const FlNodeStyle(
+        headerStyle: FlNodeHeaderStyle(
+          decoration: BoxDecoration(
+            color: Colors.cyan,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(7),
+              topRight: Radius.circular(7),
+            ),
+          ),
+        ),
+      ),
       ports: [
         ControlInputPortPrototype(
           idName: 'exec',
           displayName: 'Exec',
+          style: controlInputPortStyle,
         ),
         DataInputPortPrototype(
           idName: 'a',
           displayName: 'A',
           dataType: dynamic,
+          style: inputDataPortStyle,
         ),
         DataInputPortPrototype(
           idName: 'b',
           displayName: 'B',
           dataType: dynamic,
+          style: inputDataPortStyle,
         ),
         ControlOutputPortPrototype(
           idName: 'completed',
           displayName: 'Completed',
+          style: controlOutputPortStyle,
         ),
         DataOutputPortPrototype(
           idName: 'result',
           displayName: 'Result',
           dataType: bool,
+          style: outputDataPortStyle,
         ),
       ],
       fields: [
@@ -477,20 +585,33 @@ void registerNodes(BuildContext context, FlNodeEditorController controller) {
       idName: 'print',
       displayName: 'Print',
       description: 'Prints a value to the console.',
-      color: Colors.deepPurple,
+      style: const FlNodeStyle(
+        headerStyle: FlNodeHeaderStyle(
+          decoration: BoxDecoration(
+            color: Colors.deepPurple,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(7),
+              topRight: Radius.circular(7),
+            ),
+          ),
+        ),
+      ),
       ports: [
         ControlInputPortPrototype(
           idName: 'exec',
           displayName: 'Exec',
+          style: controlInputPortStyle,
         ),
         DataInputPortPrototype(
           idName: 'value',
           displayName: 'Value',
           dataType: dynamic,
+          style: inputDataPortStyle,
         ),
         ControlOutputPortPrototype(
           idName: 'completed',
           displayName: 'Completed',
+          style: controlOutputPortStyle,
         ),
       ],
       onExecute: (ports, fields, state, f, p) async {
@@ -514,25 +635,39 @@ void registerNodes(BuildContext context, FlNodeEditorController controller) {
       idName: 'round',
       displayName: 'Round',
       description: 'Rounds a number to a specified number of decimals.',
-      color: Colors.blue,
+      style: const FlNodeStyle(
+        headerStyle: FlNodeHeaderStyle(
+          decoration: BoxDecoration(
+            color: Colors.blue,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(7),
+              topRight: Radius.circular(7),
+            ),
+          ),
+        ),
+      ),
       ports: [
         ControlInputPortPrototype(
           idName: 'exec',
           displayName: 'Exec',
+          style: controlInputPortStyle,
         ),
         DataInputPortPrototype(
           idName: 'value',
           displayName: 'Value',
           dataType: double,
+          style: inputDataPortStyle,
         ),
         ControlOutputPortPrototype(
           idName: 'completed',
           displayName: 'Completed',
+          style: controlOutputPortStyle,
         ),
         DataOutputPortPrototype(
           idName: 'rounded',
           displayName: 'Rounded',
           dataType: int,
+          style: outputDataPortStyle,
         ),
       ],
       fields: [
@@ -584,34 +719,50 @@ void registerNodes(BuildContext context, FlNodeEditorController controller) {
       idName: 'forEachLoop',
       displayName: 'For Each Loop',
       description: 'Executes a loop for a specified number of iterations.',
-      color: Colors.teal,
+      style: const FlNodeStyle(
+        headerStyle: FlNodeHeaderStyle(
+          decoration: BoxDecoration(
+            color: Colors.teal,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(7),
+              topRight: Radius.circular(7),
+            ),
+          ),
+        ),
+      ),
       ports: [
         ControlInputPortPrototype(
           idName: 'exec',
           displayName: 'Exec',
+          style: controlInputPortStyle,
         ),
         DataInputPortPrototype(
           idName: 'list',
           displayName: 'List',
           dataType: dynamic,
+          style: inputDataPortStyle,
         ),
         ControlOutputPortPrototype(
           idName: 'loopBody',
           displayName: 'Loop Body',
+          style: controlOutputPortStyle,
         ),
         ControlOutputPortPrototype(
           idName: 'completed',
           displayName: 'Completed',
+          style: controlOutputPortStyle,
         ),
         DataOutputPortPrototype(
           idName: 'listElem',
           displayName: 'List Element',
           dataType: dynamic,
+          style: outputDataPortStyle,
         ),
         DataOutputPortPrototype(
           idName: 'listIdx',
           displayName: 'List Index',
           dataType: int,
+          style: outputDataPortStyle,
         ),
       ],
       onExecute: (ports, fields, state, f, p) async {

@@ -25,14 +25,14 @@ class NodeDrawData {
 }
 
 class LinkDrawData {
-  final PortType portsType;
   final Offset outPortOffset;
   final Offset inPortOffset;
+  final FlLinkStyle linkStyle;
 
   LinkDrawData({
-    required this.portsType,
     required this.outPortOffset,
     required this.inPortOffset,
+    required this.linkStyle,
   });
 }
 
@@ -75,7 +75,6 @@ class NodeEditorRenderObjectWidget extends MultiChildRenderObjectWidget {
                 (node) => NodeWidget(
                   controller: controller,
                   node: node,
-                  style: style.nodeStyle,
                   headerBuilder: headerBuilder,
                   fieldBuilder: fieldBuilder,
                   portBuilder: portBuilder,
@@ -137,9 +136,9 @@ class NodeEditorRenderObjectWidget extends MultiChildRenderObjectWidget {
 
       // NOTE: The port offset is relative to the node
       return LinkDrawData(
-        portsType: outPort.prototype.type,
         outPortOffset: outNode.offset + outPort.offset,
         inPortOffset: inNode.offset + inPort.offset,
+        linkStyle: outPort.prototype.style.linkStyle,
       );
     }).toList();
   }
@@ -150,9 +149,9 @@ class NodeEditorRenderObjectWidget extends MultiChildRenderObjectWidget {
 
     // NOTE: The port offset its fake, it's just the position of the mouse
     return LinkDrawData(
-      portsType: controller.renderTempLink!.type,
-      outPortOffset: controller.renderTempLink!.from,
-      inPortOffset: controller.renderTempLink!.to,
+      linkStyle: tempLink.style,
+      outPortOffset: tempLink.from,
+      inPortOffset: tempLink.to,
     );
   }
 }
@@ -195,9 +194,6 @@ class NodeEditorRenderBox extends RenderBox
     _style = value;
     markNeedsPaint();
   }
-
-  FlNodeStyle get nodeStyle => style.nodeStyle;
-  FlPortStyle get portStyle => style.nodeStyle.portStyle;
 
   Offset _offset;
   Offset get offset => _offset;
@@ -453,43 +449,27 @@ class NodeEditorRenderBox extends RenderBox
   }
 
   void _paintLinks(Canvas canvas) {
-    void paintLinksAsBeziers(Canvas canvas) {
-      for (final linkDrawData in linksData) {
-        _paintBezierLink(
-          canvas,
-          linkDrawData,
-        );
+    for (final linkDrawData in linksData) {
+      switch (linkDrawData.linkStyle.curveType) {
+        case FlLinkCurveType.straight:
+          _paintStraightLink(
+            canvas,
+            linkDrawData,
+          );
+          break;
+        case FlLinkCurveType.bezier:
+          _paintBezierLink(
+            canvas,
+            linkDrawData,
+          );
+          break;
+        case FlLinkCurveType.ninetyDegree:
+          _paintNinetyDegreesLink(
+            canvas,
+            linkDrawData,
+          );
+          break;
       }
-    }
-
-    void paintLinksAsStraights(Canvas canvas) {
-      for (final linkDrawData in linksData) {
-        _paintStraightLink(
-          canvas,
-          linkDrawData,
-        );
-      }
-    }
-
-    void paintLinksAsNinetyDegrees(Canvas canvas) {
-      for (final linkDrawData in linksData) {
-        _paintNinetyDegreesLink(
-          canvas,
-          linkDrawData,
-        );
-      }
-    }
-
-    switch (style.nodeStyle.linkStyle.curveType) {
-      case FlLinkCurveType.straight:
-        paintLinksAsStraights(canvas);
-        break;
-      case FlLinkCurveType.bezier:
-        paintLinksAsBeziers(canvas);
-        break;
-      case FlLinkCurveType.ninetyDegree:
-        paintLinksAsNinetyDegrees(canvas);
-        break;
     }
   }
 
@@ -527,23 +507,14 @@ class NodeEditorRenderBox extends RenderBox
       drawData.inPortOffset.dy,
     );
 
-    final gradient = LinearGradient(
-      colors: [
-        portStyle.color[drawData.portsType]![PortDirection.output]!,
-        portStyle.color[drawData.portsType]![PortDirection.input]!,
-      ],
-      begin: Alignment.centerLeft,
-      end: Alignment.centerRight,
-    );
-
-    final shader = gradient.createShader(
+    final shader = drawData.linkStyle.gradient.createShader(
       Rect.fromPoints(drawData.outPortOffset, drawData.inPortOffset),
     );
 
     final Paint paint = Paint()
       ..shader = shader
       ..style = PaintingStyle.stroke
-      ..strokeWidth = style.nodeStyle.linkStyle.lineWidth;
+      ..strokeWidth = drawData.linkStyle.lineWidth;
 
     canvas.drawPath(path, paint);
   }
@@ -552,23 +523,14 @@ class NodeEditorRenderBox extends RenderBox
     Canvas canvas,
     LinkDrawData drawData,
   ) {
-    final gradient = LinearGradient(
-      colors: [
-        portStyle.color[drawData.portsType]![PortDirection.output]!,
-        portStyle.color[drawData.portsType]![PortDirection.input]!,
-      ],
-      begin: Alignment.centerLeft,
-      end: Alignment.centerRight,
-    );
-
-    final shader = gradient.createShader(
+    final shader = drawData.linkStyle.gradient.createShader(
       Rect.fromPoints(drawData.outPortOffset, drawData.inPortOffset),
     );
 
     final Paint gradientPaint = Paint()
       ..shader = shader
       ..style = PaintingStyle.stroke
-      ..strokeWidth = style.nodeStyle.linkStyle.lineWidth;
+      ..strokeWidth = drawData.linkStyle.lineWidth;
 
     canvas.drawLine(
       drawData.outPortOffset,
@@ -581,23 +543,14 @@ class NodeEditorRenderBox extends RenderBox
     Canvas canvas,
     LinkDrawData drawData,
   ) {
-    final gradient = LinearGradient(
-      colors: [
-        portStyle.color[drawData.portsType]![PortDirection.output]!,
-        portStyle.color[drawData.portsType]![PortDirection.input]!,
-      ],
-      begin: Alignment.centerLeft,
-      end: Alignment.centerRight,
-    );
-
-    final shader = gradient.createShader(
+    final shader = drawData.linkStyle.gradient.createShader(
       Rect.fromPoints(drawData.outPortOffset, drawData.inPortOffset),
     );
 
     final Paint gradientPaint = Paint()
       ..shader = shader
       ..style = PaintingStyle.stroke
-      ..strokeWidth = style.nodeStyle.linkStyle.lineWidth;
+      ..strokeWidth = drawData.linkStyle.lineWidth;
 
     final midX = (drawData.outPortOffset.dx + drawData.inPortOffset.dx) / 2;
 
@@ -613,7 +566,7 @@ class NodeEditorRenderBox extends RenderBox
   void _paintTemporaryLink(Canvas canvas) {
     if (_tempLinkDrawData == null) return;
 
-    switch (style.nodeStyle.linkStyle.curveType) {
+    switch (_tempLinkDrawData!.linkStyle.curveType) {
       case FlLinkCurveType.straight:
         _paintStraightLink(canvas, tempLinkDrawData!);
         break;

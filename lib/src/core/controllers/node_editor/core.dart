@@ -81,7 +81,6 @@ class FlNodeEditorController {
   /// Set the global configuration of the node editor.
   void setConfig(FlNodeEditorConfig config) {
     this.config = config;
-    eventBus.emit(UpdateConfigEvent(id: const Uuid().v4()));
   }
 
   /// Enable or disable zooming in the node editor.
@@ -566,8 +565,8 @@ class FlNodeEditorController {
   /// Usually, this method is called when the user is dragging a link from a port to another port.
   ///
   /// Emits a [DrawTempLinkEvent] event.
-  void drawTempLink(PortType type, Offset from, Offset to) {
-    _renderTempLink = TempLink(type: type, from: from, to: to);
+  void drawTempLink(FlLinkStyle style, Offset from, Offset to) {
+    _renderTempLink = TempLink(style: style, from: from, to: to);
     eventBus.emit(DrawTempLinkEvent(id: const Uuid().v4(), from, to));
   }
 

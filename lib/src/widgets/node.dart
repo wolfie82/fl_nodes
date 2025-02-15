@@ -25,7 +25,6 @@ typedef _TempLink = ({String nodeId, String portId});
 class NodeWidget extends StatefulWidget {
   final FlNodeEditorController controller;
   final NodeInstance node;
-  final FlNodeStyle style;
 
   /// Optional custom builder for a field.
   final Widget Function(
@@ -41,11 +40,13 @@ class NodeWidget extends StatefulWidget {
     FlNodeStyle style,
     VoidCallback onToggleCollapse,
   )? headerBuilder;
+
   final Widget Function(
     BuildContext context,
     PortInstance port,
     FlNodeStyle style,
   )? portBuilder;
+
   final List<ContextMenuEntry> Function(
     BuildContext context,
     NodeInstance node,
@@ -58,7 +59,6 @@ class NodeWidget extends StatefulWidget {
     super.key,
     required this.controller,
     required this.node,
-    required this.style,
     this.fieldBuilder,
     this.headerBuilder,
     this.portBuilder,
@@ -82,6 +82,7 @@ class _NodeWidgetState extends State<NodeWidget> {
 
   double get viewportZoom => widget.controller.viewportZoom;
   Offset get viewportOffset => widget.controller.viewportOffset;
+  FlNodeStyle get style => widget.node.prototype.style;
 
   @override
   void initState() {
@@ -183,8 +184,12 @@ class _NodeWidgetState extends State<NodeWidget> {
     final node = widget.controller.nodes[_tempLink!.nodeId]!;
     final port = node.ports[_tempLink!.portId]!;
     final absolutePortOffset = node.offset + port.offset;
-    widget.controller
-        .drawTempLink(port.prototype.type, absolutePortOffset, worldPosition!);
+
+    widget.controller.drawTempLink(
+      port.prototype.style.linkStyle,
+      absolutePortOffset,
+      worldPosition!,
+    );
   }
 
   void _onLinkCancel() {
@@ -215,19 +220,12 @@ class _NodeWidgetState extends State<NodeWidget> {
 
     // Get the field content either from the custom builder or use default visualizer.
     final fieldContent = widget.fieldBuilder != null
-        ? widget.fieldBuilder!(context, field, widget.style)
+        ? widget.fieldBuilder!(context, field, style)
         : Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: Colors.grey[850],
-              borderRadius: BorderRadius.circular(8),
-            ),
+            padding: field.prototype.style.padding,
+            decoration: field.prototype.style.decoration,
             child: Row(
               children: [
-                if (field.prototype.icon != null) ...[
-                  const SizedBox(width: 4),
-                  Icon(field.prototype.icon, color: Colors.white70, size: 16),
-                ],
                 Flexible(
                   child: Text(
                     field.prototype.displayName,
@@ -270,7 +268,7 @@ class _NodeWidgetState extends State<NodeWidget> {
     }
 
     if (widget.portBuilder != null) {
-      return widget.portBuilder!(context, port, widget.style);
+      return widget.portBuilder!(context, port, style);
     }
 
     final isInput = port.prototype.direction == PortDirection.input;
@@ -280,9 +278,6 @@ class _NodeWidgetState extends State<NodeWidget> {
       mainAxisSize: MainAxisSize.min,
       key: port.key,
       children: [
-        if (!isInput && port.prototype.icon != null)
-          Icon(port.prototype.icon, color: Colors.white70, size: 16),
-        if (!isInput && port.prototype.icon != null) const SizedBox(width: 4),
         Flexible(
           child: Text(
             port.prototype.displayName,
@@ -291,9 +286,6 @@ class _NodeWidgetState extends State<NodeWidget> {
             textAlign: isInput ? TextAlign.left : TextAlign.right,
           ),
         ),
-        if (isInput && port.prototype.icon != null) const SizedBox(width: 4),
-        if (isInput && port.prototype.icon != null)
-          Icon(port.prototype.icon, color: Colors.white70, size: 16),
       ],
     );
   }
@@ -605,7 +597,7 @@ class _NodeWidgetState extends State<NodeWidget> {
 
     // If a custom nodeBuilder is provided, use it directly.
     if (widget.nodeBuilder != null) {
-      return widget.nodeBuilder!(context, widget.node, widget.style);
+      return widget.nodeBuilder!(context, widget.node, style);
     }
 
     return controlsWrapper(
@@ -617,8 +609,8 @@ class _NodeWidgetState extends State<NodeWidget> {
             children: [
               Container(
                 decoration: widget.node.state.isSelected
-                    ? widget.style.selectedDecoration
-                    : widget.style.decoration,
+                    ? style.selectedDecoration
+                    : style.decoration,
               ),
               ...widget.node.ports.entries.map(
                 (entry) => _buildPortIndicator(entry.value),
@@ -631,14 +623,13 @@ class _NodeWidgetState extends State<NodeWidget> {
                       ? widget.headerBuilder!(
                           context,
                           widget.node,
-                          widget.style,
+                          style,
                           () => widget.controller.toggleCollapseSelectedNodes(
                             !widget.node.state.isCollapsed,
                           ),
                         )
-                      : NodeHeader(
+                      : _NodeHeaderWidget(
                           node: widget.node,
-                          style: widget.style,
                           onToggleCollapse: () =>
                               widget.controller.toggleCollapseSelectedNodes(
                             !widget.node.state.isCollapsed,
@@ -695,15 +686,11 @@ class _NodeWidgetState extends State<NodeWidget> {
             relativeOffset.dy + portBox.size.height / 2,
           );
 
-          final type = port.prototype.type;
-          final direction = port.prototype.direction;
-
           return CustomPaint(
             painter: _PortSymbolPainter(
               position: port.offset,
-              style: widget.style.portStyle,
-              direction: direction,
-              type: type,
+              style: port.prototype.style,
+              direction: port.prototype.direction,
             ),
           );
         },
@@ -712,24 +699,20 @@ class _NodeWidgetState extends State<NodeWidget> {
   }
 }
 
-class NodeHeader extends StatelessWidget {
+class _NodeHeaderWidget extends StatelessWidget {
   final NodeInstance node;
-  final FlNodeStyle style;
   final VoidCallback onToggleCollapse;
 
-  const NodeHeader({
-    super.key,
+  const _NodeHeaderWidget({
     required this.node,
-    required this.style,
     required this.onToggleCollapse,
   });
 
   @override
   Widget build(BuildContext context) {
-    final headerStyle = style.headerStyle;
     return Container(
-      padding: headerStyle.padding,
-      decoration: headerStyle.decoration,
+      padding: node.prototype.style.headerStyle.padding,
+      decoration: node.prototype.style.headerStyle.decoration,
       child: Row(
         children: [
           InkWell(
@@ -746,7 +729,7 @@ class NodeHeader extends StatelessWidget {
           Flexible(
             child: Text(
               node.prototype.displayName,
-              style: const TextStyle(color: Colors.white, fontSize: 14),
+              style: node.prototype.style.headerStyle.textStyle,
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -760,7 +743,6 @@ class _PortSymbolPainter extends CustomPainter {
   final Offset position;
   final FlPortStyle style;
   final PortDirection direction;
-  final PortType type;
   static const double portSize = 4;
   static const double hitBoxSize = 16;
 
@@ -768,35 +750,47 @@ class _PortSymbolPainter extends CustomPainter {
     required this.position,
     required this.style,
     required this.direction,
-    required this.type,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = style.color[type]![direction]!
+      ..color = style.color
       ..style = PaintingStyle.fill;
 
-    if (type == PortType.control) {
-      final path = Path();
-      if (direction == PortDirection.input) {
-        path.moveTo(position.dx + portSize, position.dy - portSize);
-        path.lineTo(position.dx - portSize, position.dy);
-        path.lineTo(position.dx + portSize, position.dy + portSize);
-      } else {
-        path.moveTo(position.dx - portSize, position.dy - portSize);
-        path.lineTo(position.dx + portSize, position.dy);
-        path.lineTo(position.dx - portSize, position.dy + portSize);
-      }
-      path.close();
-      canvas.drawPath(path, paint);
-    } else {
-      canvas.drawCircle(position, portSize, paint);
+    switch (style.shape) {
+      case FlPortShape.circle:
+        _paintCircle(canvas, paint);
+        break;
+      case FlPortShape.triangle:
+        _paintTriangle(canvas, paint);
+        break;
     }
 
     if (kDebugMode) {
       _paintDebugHitBox(canvas);
     }
+  }
+
+  void _paintCircle(Canvas canvas, Paint paint) {
+    canvas.drawCircle(position, portSize, paint);
+  }
+
+  void _paintTriangle(Canvas canvas, Paint paint) {
+    final path = Path();
+
+    if (direction == PortDirection.input) {
+      path.moveTo(position.dx + portSize, position.dy - portSize);
+      path.lineTo(position.dx - portSize, position.dy);
+      path.lineTo(position.dx + portSize, position.dy + portSize);
+    } else {
+      path.moveTo(position.dx - portSize, position.dy - portSize);
+      path.lineTo(position.dx + portSize, position.dy);
+      path.lineTo(position.dx - portSize, position.dy + portSize);
+    }
+
+    path.close();
+    canvas.drawPath(path, paint);
   }
 
   void _paintDebugHitBox(Canvas canvas) {

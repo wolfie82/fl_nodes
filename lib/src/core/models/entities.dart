@@ -65,12 +65,12 @@ final class Link {
 }
 
 class TempLink {
-  final PortType type;
+  final FlLinkStyle style;
   final Offset from;
   final Offset to;
 
   TempLink({
-    required this.type,
+    required this.style,
     required this.from,
     required this.to,
   });
@@ -86,7 +86,7 @@ enum PortType { data, control }
 abstract class PortPrototype {
   final String idName;
   final String displayName;
-  final IconData? icon;
+  final FlPortStyle style;
   final Type dataType;
   final PortDirection direction;
   final PortType type;
@@ -94,7 +94,7 @@ abstract class PortPrototype {
   PortPrototype({
     required this.idName,
     required this.displayName,
-    this.icon,
+    this.style = const FlPortStyle(),
     this.dataType = dynamic,
     required this.direction,
     required this.type,
@@ -105,7 +105,7 @@ class DataInputPortPrototype extends PortPrototype {
   DataInputPortPrototype({
     required super.idName,
     required super.displayName,
-    super.icon,
+    super.style,
     super.dataType,
   }) : super(direction: PortDirection.input, type: PortType.data);
 }
@@ -114,7 +114,7 @@ class DataOutputPortPrototype extends PortPrototype {
   DataOutputPortPrototype({
     required super.idName,
     required super.displayName,
-    super.icon,
+    super.style,
     super.dataType,
   }) : super(direction: PortDirection.output, type: PortType.data);
 }
@@ -123,6 +123,7 @@ class ControlInputPortPrototype extends PortPrototype {
   ControlInputPortPrototype({
     required super.idName,
     required super.displayName,
+    super.style,
   }) : super(direction: PortDirection.input, type: PortType.control);
 }
 
@@ -130,6 +131,7 @@ class ControlOutputPortPrototype extends PortPrototype {
   ControlOutputPortPrototype({
     required super.idName,
     required super.displayName,
+    super.style,
   }) : super(direction: PortDirection.output, type: PortType.control);
 }
 
@@ -209,7 +211,7 @@ typedef EditorBuilder = Widget Function(
 class FieldPrototype {
   final String idName;
   final String displayName;
-  final IconData? icon;
+  final FlFieldStyle style;
   final Type dataType;
   final dynamic defaultData;
   final Widget Function(dynamic data) visualizerBuilder;
@@ -219,7 +221,7 @@ class FieldPrototype {
   FieldPrototype({
     required this.idName,
     this.displayName = '',
-    this.icon,
+    this.style = const FlFieldStyle(),
     this.dataType = dynamic,
     this.defaultData,
     required this.visualizerBuilder,
@@ -280,7 +282,7 @@ final class NodePrototype {
   final String idName;
   final String displayName;
   final String description;
-  final Color color;
+  final FlNodeStyle style;
   final List<PortPrototype> ports;
   final List<FieldPrototype> fields;
   final OnExecute onExecute;
@@ -289,7 +291,7 @@ final class NodePrototype {
     required this.idName,
     required this.displayName,
     this.description = '',
-    this.color = Colors.grey,
+    this.style = const FlNodeStyle(),
     this.ports = const [],
     this.fields = const [],
     required this.onExecute,

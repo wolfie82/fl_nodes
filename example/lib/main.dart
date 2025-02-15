@@ -234,6 +234,7 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
                           spacing: 8,
                           children: [
                             IconButton.filled(
+                              tooltip: 'Toggle Hierarchy Panel',
                               style: IconButton.styleFrom(
                                 backgroundColor: Colors.blue,
                               ),
@@ -251,6 +252,7 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
                             SearchWidget(controller: _nodeEditorController),
                             const Spacer(),
                             IconButton.filled(
+                              tooltip: 'Toggle Snap to Grid',
                               style: IconButton.styleFrom(
                                 backgroundColor: Colors.blue,
                               ),

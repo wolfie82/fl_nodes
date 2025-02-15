@@ -326,16 +326,12 @@ final class NodeFieldEvent extends NodeEditorEvent {
   });
 }
 
-final class SaveProjectEvent extends NodeEditorEvent {
-  const SaveProjectEvent({required super.id});
-}
-
-final class UpdateConfigEvent extends NodeEditorEvent {
-  const UpdateConfigEvent({required super.id});
-}
-
 final class UpdateStyleEvent extends NodeEditorEvent {
   const UpdateStyleEvent({required super.id});
+}
+
+final class SaveProjectEvent extends NodeEditorEvent {
+  const SaveProjectEvent({required super.id});
 }
 
 final class LoadProjectEvent extends NodeEditorEvent {
