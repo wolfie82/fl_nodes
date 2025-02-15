@@ -9,8 +9,8 @@ import 'package:flutter/services.dart';
 import 'package:example/data_handlers.dart';
 import 'package:example/nodes.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:http/http.dart' as http;
 import 'package:os_detect/os_detect.dart' as os_detect;
-import 'package:universal_html/html.dart' as universal_html;
 
 import 'package:fl_nodes/fl_nodes.dart';
 
@@ -162,11 +162,23 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
         'https://raw.githubusercontent.com/WilliamKarolDiCioccio/fl_nodes/refs/heads/main/example/assets/www/node_project.json';
 
     () async {
-      _nodeEditorController.project.load(
-        data: jsonDecode(
-          await universal_html.HttpRequest.getString(sampleProjectLink),
-        ),
-      );
+      final response = await http.get(Uri.parse(sampleProjectLink));
+      if (response.statusCode == 200) {
+        _nodeEditorController.project.load(
+          data: jsonDecode(response.body),
+        );
+      } else {
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Failed to load sample project. Please check your internet connection.',
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }();
 
     SchedulerBinding.instance.addPostFrameCallback((_) {
