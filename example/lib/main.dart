@@ -125,8 +125,6 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
         return jsonDecode(fileContent);
       },
       projectCreator: (isSaved) async {
-        if (kIsWeb) return false;
-
         if (isSaved) return true;
 
         final bool? proceed = await showDialog<bool>(
