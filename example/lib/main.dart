@@ -269,36 +269,7 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
                               ),
                             ),
                             IconButton.filled(
-                              style: IconButton.styleFrom(
-                                backgroundColor: Colors.blue,
-                              ),
-                              onPressed: () {
-                                switch (_nodeEditorController
-                                    .style.nodeStyle.linkStyle.curveType) {
-                                  case FlLinkCurveType.straight:
-                                    _nodeEditorController.setLinkCurveType(
-                                      FlLinkCurveType.bezier,
-                                    );
-                                    break;
-                                  case FlLinkCurveType.bezier:
-                                    _nodeEditorController.setLinkCurveType(
-                                      FlLinkCurveType.ninetyDegree,
-                                    );
-                                    break;
-                                  case FlLinkCurveType.ninetyDegree:
-                                    _nodeEditorController.setLinkCurveType(
-                                      FlLinkCurveType.straight,
-                                    );
-                                    break;
-                                }
-                              },
-                              icon: const Icon(
-                                Icons.timeline,
-                                size: 32,
-                                color: Colors.white,
-                              ),
-                            ),
-                            IconButton.filled(
+                              tooltip: 'Execute Graph',
                               style: IconButton.styleFrom(
                                 backgroundColor: Colors.blue,
                               ),

@@ -31,8 +31,8 @@ import 'utils.dart';
 /// different parts of the application to communicate with each other by
 /// sending and receiving events.
 class FlNodeEditorController {
-  FlNodeEditorConfig config;
-  FlNodeEditorStyle style;
+  FlNodeEditorConfig config; // Dynamic, can be changed at runtime
+  final FlNodeEditorStyle style; // Static, cannot be changed at runtime
   final eventBus = NodeEditorEventBus();
 
   late final FlNodeEditorClipboard clipboard;
@@ -113,25 +113,6 @@ class FlNodeEditorController {
   /// Enable or disable auto placement of nodes in the node editor.
   void enableAutoPlacement(bool enable) =>
       setConfig(config = config.copyWith(enableAutoPlacement: enable));
-
-  // Styles
-
-  /// Set the global style of the node editor.
-  void setStyle(FlNodeEditorStyle style) {
-    this.style = style;
-    eventBus.emit(UpdateStyleEvent(id: const Uuid().v4()));
-  }
-
-  /// Set the curve type of the links in the node editor.
-  void setLinkCurveType(FlLinkCurveType curveType) => setStyle(
-        style.copyWith(
-          nodeStyle: style.nodeStyle.copyWith(
-            linkStyle: style.nodeStyle.linkStyle.copyWith(
-              curveType: curveType,
-            ),
-          ),
-        ),
-      );
 
   // Viewport
   Offset _viewportOffset = Offset.zero;
