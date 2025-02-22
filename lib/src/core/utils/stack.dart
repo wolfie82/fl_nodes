@@ -37,6 +37,12 @@ class Stack<T> {
     return _list.last; // Look at the last element
   }
 
+  /// Evicts the first element (FIFO behavior).
+  T? evict() {
+    if (_list.isEmpty) return null;
+    return _list.removeAt(0);
+  }
+
   /// Clears the stack.
   void clear() {
     _list.clear();

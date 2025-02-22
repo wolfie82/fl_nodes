@@ -39,6 +39,9 @@ class FlNodeEditorHistory {
   void _handleUndoableEvents(NodeEditorEvent event) {
     if (!event.isUndoable || _isTraversingHistory) return;
 
+    if (_undoStack.length >= kMaxEventUndoHistory) _undoStack.evict();
+    if (_redoStack.length >= kMaxEventRedoHistory) _redoStack.evict();
+
     final previousEvent = _undoStack.peek();
     final nextEvent = _redoStack.peek();
 
