@@ -87,6 +87,7 @@ class _NodeEditorDataLayerState extends State<NodeEditorDataLayer>
 
   // Interaction kinematics
   Offset _lastPositionDelta = Offset.zero;
+  Offset _lastFocalPoint = Offset.zero;
   Offset _kineticEnergy = Offset.zero;
   Timer? _kineticTimer;
   Offset _selectionStart = Offset.zero;
@@ -187,7 +188,7 @@ class _NodeEditorDataLayerState extends State<NodeEditorDataLayer>
       _setZoomFromRawInput(
         details.scale,
         details.focalPoint,
-        trackpadInput: true,
+        isTrackpadInput: true,
       );
     } else if (widget.controller.config.panSensitivity > 0 &&
         details.focalPointDelta != const Offset(10, 10)) {
@@ -367,6 +368,7 @@ class _NodeEditorDataLayerState extends State<NodeEditorDataLayer>
 
     final Offset targetOffset = offset + offsetFactor;
 
+    // Never animate when setting offset from raw input
     _setOffset(targetOffset);
   }
 
@@ -420,7 +422,7 @@ class _NodeEditorDataLayerState extends State<NodeEditorDataLayer>
   void _setZoomFromRawInput(
     double amount,
     Offset focalPoint, {
-    bool trackpadInput = false,
+    bool isTrackpadInput = false,
   }) {
     const double zoomSpeed = 0.1; // Adjust this to fine-tune zoom sensitivity
 
@@ -431,24 +433,41 @@ class _NodeEditorDataLayerState extends State<NodeEditorDataLayer>
 
     late double delta;
 
-    if (trackpadInput) {
+    if (isTrackpadInput) {
       // Trackpad: amount is in range (0, 1] for zoom out, (1, ∞) for zoom in
       // Due to the logarithmic scale, we need to multiply by 10 to get a reasonable delta.
       // NOTE: macOS seems to have a different behavior, so we need to account for that.
-      final deltaScale = os_detect.isMacOS ? 1 : 10;
-      delta = log(amount) * sensitivity * deltaScale;
+
+      late final double bias;
+
+      if (os_detect.isMacOS) {
+        bias = 1;
+      } else if (os_detect.isWindows) {
+        bias = 10;
+      } else if (os_detect.isLinux) {
+        bias = 5;
+      } else if (os_detect.isAndroid) {
+        bias = 0.75;
+      } else {
+        bias = 1;
+      }
+
+      delta = log(amount) * sensitivity * bias;
     } else {
       // Mouse wheel or other input: positive zooms in, negative zooms out
       delta = amount * zoomSpeed * sensitivity;
     }
 
     final double targetLogZoom =
-        trackpadInput ? logZoom + delta : logZoom - delta;
+        isTrackpadInput ? logZoom + delta : logZoom - delta;
 
     final double targetZoom =
         exp(targetLogZoom); // Convert back to linear space
 
-    _setZoom(targetZoom, animate: !os_detect.isMacOS && !os_detect.isIOS);
+    _setZoom(
+      targetZoom,
+      animate: !os_detect.isMacOS && !os_detect.isIOS && !os_detect.isAndroid,
+    );
   }
 
   void _setZoom(double targetZoom, {bool animate = false}) {
@@ -663,10 +682,99 @@ class _NodeEditorDataLayerState extends State<NodeEditorDataLayer>
     Widget controlsWrapper(Widget child) {
       return os_detect.isAndroid || os_detect.isIOS
           ? GestureDetector(
-              onDoubleTap: () => widget.controller.clearSelection(),
-              onScaleStart: (details) => _onDragStart(),
-              onScaleUpdate: (details) => _onScaleUpdate(details),
-              onScaleEnd: (details) => _onDragEnd(),
+              onTap: () => widget.controller.clearSelection(),
+              onLongPressStart: (LongPressStartDetails details) {
+                final position = details.globalPosition;
+                final locator = _isNearPort(position);
+                if (locator != null &&
+                    !widget
+                        .controller.nodes[locator.nodeId]!.state.isCollapsed) {
+                  createAndShowContextMenu(
+                    context,
+                    entries: portContextMenuEntries(position, locator: locator),
+                    position: position,
+                  );
+                } else if (!isContextMenuVisible) {
+                  createAndShowContextMenu(
+                    context,
+                    entries: editorContextMenuEntries(position),
+                    position: position,
+                  );
+                }
+              },
+              onScaleStart: (ScaleStartDetails details) {
+                _lastFocalPoint = details.focalPoint;
+
+                final locator = _isNearPort(details.focalPoint);
+
+                if (locator != null && _tempLink == null) {
+                  _isLinking = true;
+                  _onLinkStart(locator);
+                } else {
+                  _isSelecting = true;
+                  _onSelectStart(details.focalPoint);
+                }
+              },
+              onScaleUpdate: (ScaleUpdateDetails details) {
+                _lastFocalPoint = details.focalPoint;
+
+                if (details.scale != 1.0) {
+                  if (!_isDragging) {
+                    if (_isLinking) {
+                      _onLinkCancel();
+                      _isLinking = false;
+                    } else if (_isSelecting) {
+                      _onSelectEnd();
+                      _isSelecting = false;
+                    } else {
+                      _isDragging = true;
+                      _onDragStart();
+                    }
+                  }
+
+                  if (widget.controller.config.enablePan && _isDragging) {
+                    _onDragUpdate(details.focalPointDelta);
+                  }
+                  if (widget.controller.config.enableZoom &&
+                          details.scale > 1.25 ||
+                      details.scale < 0.75) {
+                    _setZoomFromRawInput(
+                      details.scale < 1 ? details.scale : -details.scale,
+                      details.focalPoint,
+                    );
+                  }
+                } else {
+                  if (_isLinking) {
+                    _onLinkUpdate(details.focalPoint);
+                  } else if (_isSelecting) {
+                    _onSelectUpdate(details.focalPoint);
+                  }
+                }
+              },
+              onScaleEnd: (ScaleEndDetails details) {
+                if (_isDragging) {
+                  _onDragEnd();
+                  _isDragging = false;
+                } else if (_isLinking) {
+                  final locator = _isNearPort(_lastFocalPoint);
+
+                  if (locator != null) {
+                    _onLinkEnd(locator);
+                  } else if (!isContextMenuVisible) {
+                    createAndShowContextMenu(
+                      context,
+                      entries: createSubmenuEntries(_lastFocalPoint),
+                      position: _lastFocalPoint,
+                      onDismiss: (value) => _onLinkCancel(),
+                    );
+                  }
+
+                  _isLinking = false;
+                } else if (_isSelecting) {
+                  _onSelectEnd();
+                  _isSelecting = false;
+                }
+              },
               child: child,
             )
           : KeyboardWidget(
@@ -826,14 +934,10 @@ class _NodeEditorDataLayerState extends State<NodeEditorDataLayer>
                     if (event is PointerScrollEvent &&
                         widget.controller.config.enablePan &&
                         event.scrollDelta != const Offset(10, 10)) {
-                      if (kIsWeb) {
-                        _onDragUpdate(-event.scrollDelta);
-                      } else {
-                        _setZoomFromRawInput(
-                          event.scrollDelta.dy,
-                          event.position,
-                        );
-                      }
+                      _setZoomFromRawInput(
+                        event.scrollDelta.dy,
+                        event.position,
+                      );
                     }
                     if (event is PointerScaleEvent &&
                         widget.controller.config.enableZoom) {
@@ -841,7 +945,7 @@ class _NodeEditorDataLayerState extends State<NodeEditorDataLayer>
                         _setZoomFromRawInput(
                           event.scale,
                           event.position,
-                          trackpadInput: true,
+                          isTrackpadInput: true,
                         );
                       }
                     }
