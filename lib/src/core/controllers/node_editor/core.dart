@@ -200,10 +200,9 @@ class FlNodeEditorController {
 
     // We sort the nodes list so that selected nodes are rendered on top of others.
     nodesList.sort((a, b) {
-      if (selectedNodeIds.contains(a.id) && !selectedNodeIds.contains(b.id)) {
+      if (a.state.isSelected && !b.state.isSelected) {
         return 1;
-      } else if (!selectedNodeIds.contains(a.id) &&
-          selectedNodeIds.contains(b.id)) {
+      } else if (!a.state.isSelected && b.state.isSelected) {
         return -1;
       } else {
         return 0;

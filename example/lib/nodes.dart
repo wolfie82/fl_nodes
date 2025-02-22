@@ -10,10 +10,10 @@ enum Operator { add, subtract, multiply, divide }
 
 enum Comparator { equal, notEqual, greater, greaterEqual, less, lessEqual }
 
-const FlPortStyle outputDataPortStyle = FlPortStyle(
+final FlPortStyle outputDataPortStyle = FlPortStyle(
   color: Colors.orange,
   shape: FlPortShape.circle,
-  linkStyle: FlLinkStyle(
+  linkStyleBuilder: (state) => const FlLinkStyle(
     gradient: LinearGradient(
       colors: [Colors.orange, Colors.purple],
       begin: Alignment.centerLeft,
@@ -30,10 +30,10 @@ const FlPortStyle inputDataPortStyle = FlPortStyle(
   shape: FlPortShape.circle,
 );
 
-const FlPortStyle controlOutputPortStyle = FlPortStyle(
+final FlPortStyle controlOutputPortStyle = FlPortStyle(
   color: Colors.green,
   shape: FlPortShape.triangle,
-  linkStyle: FlLinkStyle(
+  linkStyleBuilder: (state) => const FlLinkStyle(
     gradient: LinearGradient(
       colors: [Colors.green, Colors.blue],
       begin: Alignment.centerLeft,
@@ -70,8 +70,9 @@ NodePrototype createValueNode<T>({
     idName: idName,
     displayName: displayName,
     description: 'Holds a constant $T value.',
-    style: const FlNodeStyle(
-      headerStyle: FlNodeHeaderStyle(
+    styleBuilder: (state) => FlNodeStyle(
+      decoration: defaultNodeStyle(state).decoration,
+      headerStyle: const FlNodeHeaderStyle(
         decoration: BoxDecoration(
           color: Colors.orange,
           borderRadius: BorderRadius.only(
@@ -305,8 +306,9 @@ void registerNodes(BuildContext context, FlNodeEditorController controller) {
       idName: 'operator',
       displayName: 'Operator',
       description: 'Applies a chosen operation to two numbers.',
-      style: const FlNodeStyle(
-        headerStyle: FlNodeHeaderStyle(
+      styleBuilder: (state) => FlNodeStyle(
+        decoration: defaultNodeStyle(state).decoration,
+        headerStyle: const FlNodeHeaderStyle(
           decoration: BoxDecoration(
             color: Colors.pink,
             borderRadius: BorderRadius.only(
@@ -399,8 +401,9 @@ void registerNodes(BuildContext context, FlNodeEditorController controller) {
       idName: 'random',
       displayName: 'Random',
       description: 'Outputs a random number between 0 and 1.',
-      style: const FlNodeStyle(
-        headerStyle: FlNodeHeaderStyle(
+      styleBuilder: (state) => FlNodeStyle(
+        decoration: defaultNodeStyle(state).decoration,
+        headerStyle: const FlNodeHeaderStyle(
           decoration: BoxDecoration(
             color: Colors.purple,
             borderRadius: BorderRadius.only(
@@ -436,8 +439,9 @@ void registerNodes(BuildContext context, FlNodeEditorController controller) {
       idName: 'if',
       displayName: 'If',
       description: 'Executes a branch based on a condition.',
-      style: const FlNodeStyle(
-        headerStyle: FlNodeHeaderStyle(
+      styleBuilder: (state) => FlNodeStyle(
+        decoration: defaultNodeStyle(state).decoration,
+        headerStyle: const FlNodeHeaderStyle(
           decoration: BoxDecoration(
             color: Colors.green,
             borderRadius: BorderRadius.only(
@@ -485,8 +489,9 @@ void registerNodes(BuildContext context, FlNodeEditorController controller) {
       idName: 'comparator',
       displayName: 'Comparator',
       description: 'Compares two numbers based on a chosen comparator.',
-      style: const FlNodeStyle(
-        headerStyle: FlNodeHeaderStyle(
+      styleBuilder: (state) => FlNodeStyle(
+        decoration: defaultNodeStyle(state).decoration,
+        headerStyle: const FlNodeHeaderStyle(
           decoration: BoxDecoration(
             color: Colors.cyan,
             borderRadius: BorderRadius.only(
@@ -585,8 +590,9 @@ void registerNodes(BuildContext context, FlNodeEditorController controller) {
       idName: 'print',
       displayName: 'Print',
       description: 'Prints a value to the console.',
-      style: const FlNodeStyle(
-        headerStyle: FlNodeHeaderStyle(
+      styleBuilder: (state) => FlNodeStyle(
+        decoration: defaultNodeStyle(state).decoration,
+        headerStyle: const FlNodeHeaderStyle(
           decoration: BoxDecoration(
             color: Colors.deepPurple,
             borderRadius: BorderRadius.only(
@@ -635,8 +641,9 @@ void registerNodes(BuildContext context, FlNodeEditorController controller) {
       idName: 'round',
       displayName: 'Round',
       description: 'Rounds a number to a specified number of decimals.',
-      style: const FlNodeStyle(
-        headerStyle: FlNodeHeaderStyle(
+      styleBuilder: (state) => FlNodeStyle(
+        decoration: defaultNodeStyle(state).decoration,
+        headerStyle: const FlNodeHeaderStyle(
           decoration: BoxDecoration(
             color: Colors.blue,
             borderRadius: BorderRadius.only(
@@ -719,8 +726,9 @@ void registerNodes(BuildContext context, FlNodeEditorController controller) {
       idName: 'forEachLoop',
       displayName: 'For Each Loop',
       description: 'Executes a loop for a specified number of iterations.',
-      style: const FlNodeStyle(
-        headerStyle: FlNodeHeaderStyle(
+      styleBuilder: (state) => FlNodeStyle(
+        decoration: defaultNodeStyle(state).decoration,
+        headerStyle: const FlNodeHeaderStyle(
           decoration: BoxDecoration(
             color: Colors.teal,
             borderRadius: BorderRadius.only(

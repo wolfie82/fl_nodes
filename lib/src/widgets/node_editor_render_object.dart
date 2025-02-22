@@ -131,7 +131,7 @@ class NodeEditorRenderObjectWidget extends MultiChildRenderObjectWidget {
       return LinkDrawData(
         outPortOffset: outNode.offset + outPort.offset,
         inPortOffset: inNode.offset + inPort.offset,
-        linkStyle: outPort.prototype.style.linkStyle,
+        linkStyle: outPort.prototype.style.linkStyleBuilder(link.state),
       );
     }).toList();
   }

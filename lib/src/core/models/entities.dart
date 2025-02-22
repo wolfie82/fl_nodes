@@ -8,11 +8,30 @@ import 'package:fl_nodes/src/core/controllers/node_editor/runner.dart';
 
 typedef FromTo = ({String from, String to, String fromPort, String toPort});
 
+/// A class representing the state of a link.
+class LinkState {
+  final bool isHovered; // Not saved as it is only used during rendering
+
+  LinkState({
+    this.isHovered = false,
+  });
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is LinkState &&
+          runtimeType == other.runtimeType &&
+          isHovered == other.isHovered;
+
+  @override
+  int get hashCode => isHovered.hashCode;
+}
+
 /// A link is a connection between two ports.
 final class Link {
   final String id;
   final FromTo fromTo;
-  bool isHovered = false;
+  final LinkState state = LinkState();
 
   Link({
     required this.id,
@@ -282,7 +301,7 @@ final class NodePrototype {
   final String idName;
   final String displayName;
   final String description;
-  final FlNodeStyle style;
+  final FlNodeStyleBuilder styleBuilder;
   final List<PortPrototype> ports;
   final List<FieldPrototype> fields;
   final OnExecute onExecute;
@@ -291,7 +310,7 @@ final class NodePrototype {
     required this.idName,
     required this.displayName,
     this.description = '',
-    this.style = const FlNodeStyle(),
+    this.styleBuilder = defaultNodeStyle,
     this.ports = const [],
     this.fields = const [],
     required this.onExecute,
@@ -300,8 +319,8 @@ final class NodePrototype {
 
 /// The state of a node widget.
 final class NodeState {
-  bool isSelected;
-  bool isCollapsed;
+  bool isSelected; // Not saved as it is only used during rendering
+  bool isCollapsed; // Saved
 
   NodeState({
     this.isSelected = false,

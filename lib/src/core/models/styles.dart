@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:fl_nodes/src/core/models/entities.dart';
+
 class FlGridStyle {
   final double gridSpacingX;
   final double gridSpacingY;
@@ -59,27 +61,40 @@ class FlLinkStyle {
   final FlLinkCurveType curveType;
 
   const FlLinkStyle({
-    this.gradient = const LinearGradient(
-      colors: [Colors.blue, Colors.blue],
-      begin: Alignment.centerLeft,
-      end: Alignment.centerRight,
-    ),
-    this.lineWidth = 3.0,
-    this.drawMode = FlLinkDrawMode.solid,
-    this.curveType = FlLinkCurveType.bezier,
+    required this.gradient,
+    required this.lineWidth,
+    required this.drawMode,
+    required this.curveType,
   });
 
   FlLinkStyle copyWith({
+    LinearGradient? gradient,
     double? lineWidth,
     FlLinkDrawMode? drawMode,
     FlLinkCurveType? curveType,
   }) {
     return FlLinkStyle(
+      gradient: gradient ?? this.gradient,
       lineWidth: lineWidth ?? this.lineWidth,
       drawMode: drawMode ?? this.drawMode,
       curveType: curveType ?? this.curveType,
     );
   }
+}
+
+typedef FlLinkStyleBuilder = FlLinkStyle Function(LinkState style);
+
+FlLinkStyle _defaultLinkStyle(LinkState state) {
+  return const FlLinkStyle(
+    gradient: LinearGradient(
+      colors: [Colors.blue, Colors.blue],
+      begin: Alignment.centerLeft,
+      end: Alignment.centerRight,
+    ),
+    lineWidth: 2.0,
+    drawMode: FlLinkDrawMode.solid,
+    curveType: FlLinkCurveType.bezier,
+  );
 }
 
 enum FlPortShape {
@@ -90,23 +105,23 @@ enum FlPortShape {
 class FlPortStyle {
   final FlPortShape shape;
   final Color color;
-  final FlLinkStyle linkStyle;
+  final FlLinkStyleBuilder linkStyleBuilder;
 
   const FlPortStyle({
     this.shape = FlPortShape.circle,
     this.color = Colors.blue,
-    this.linkStyle = const FlLinkStyle(),
+    this.linkStyleBuilder = _defaultLinkStyle,
   });
 
   FlPortStyle copyWith({
     FlPortShape? shape,
     Color? color,
-    FlLinkStyle? linkStyle,
+    FlLinkStyleBuilder? linkStyleBuilder,
   }) {
     return FlPortStyle(
       shape: shape ?? this.shape,
       color: color ?? this.color,
-      linkStyle: linkStyle ?? this.linkStyle,
+      linkStyleBuilder: linkStyleBuilder ?? this.linkStyleBuilder,
     );
   }
 }
@@ -139,6 +154,7 @@ class FlNodeHeaderStyle {
   final BoxDecoration decoration;
   final BoxDecoration selectedDecoration;
   final TextStyle textStyle;
+  final IconData? icon;
 
   const FlNodeHeaderStyle({
     this.padding = const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -161,6 +177,7 @@ class FlNodeHeaderStyle {
       fontSize: 16,
       fontWeight: FontWeight.bold,
     ),
+    this.icon,
   });
 
   FlNodeHeaderStyle copyWith({
@@ -178,32 +195,38 @@ class FlNodeHeaderStyle {
 
 class FlNodeStyle {
   final BoxDecoration decoration;
-  final BoxDecoration selectedDecoration;
   final FlNodeHeaderStyle headerStyle;
 
-  const FlNodeStyle({
-    this.decoration = const BoxDecoration(
-      color: Color(0xC8424242),
-      borderRadius: BorderRadius.all(Radius.circular(10)),
-    ),
-    this.selectedDecoration = const BoxDecoration(
-      color: Color(0xC7616161),
-      borderRadius: BorderRadius.all(Radius.circular(10)),
-    ),
-    this.headerStyle = const FlNodeHeaderStyle(),
-  });
+  const FlNodeStyle({required this.decoration, required this.headerStyle});
 
   FlNodeStyle copyWith({
     BoxDecoration? decoration,
-    BoxDecoration? selectedDecoration,
     FlNodeHeaderStyle? headerStyle,
   }) {
     return FlNodeStyle(
       decoration: decoration ?? this.decoration,
-      selectedDecoration: selectedDecoration ?? this.selectedDecoration,
       headerStyle: headerStyle ?? this.headerStyle,
     );
   }
+}
+
+typedef FlNodeStyleBuilder = FlNodeStyle Function(NodeState style);
+
+FlNodeStyle defaultNodeStyle(NodeState state) {
+  return FlNodeStyle(
+    decoration: state.isSelected
+        ? const BoxDecoration(
+            color: Color(0xC7616161),
+            borderRadius: BorderRadius.all(Radius.circular(10)),
+          )
+        : const BoxDecoration(
+            color: Color(0xC8424242),
+            borderRadius: BorderRadius.all(Radius.circular(10)),
+          ),
+    headerStyle: FlNodeHeaderStyle(
+      icon: state.isCollapsed ? Icons.expand_more : Icons.expand_less,
+    ),
+  );
 }
 
 class FlNodeEditorStyle {
@@ -223,7 +246,6 @@ class FlNodeEditorStyle {
     BoxDecoration? decoration,
     EdgeInsetsGeometry? padding,
     FlGridStyle? gridStyle,
-    FlNodeStyle? nodeStyle,
   }) {
     return FlNodeEditorStyle(
       decoration: decoration ?? this.decoration,
