@@ -38,6 +38,7 @@ class LinkDrawData {
 /// This extends the [ContainerBoxParentData] class from the Flutter framework
 /// for the data to be passed down to children for layout and painting.
 class _ParentData extends ContainerBoxParentData<RenderBox> {
+  bool hasBeenLaidOut = false;
   Offset nodeOffset = Offset.zero;
   NodeState state = NodeState();
 }
@@ -202,7 +203,6 @@ class NodeEditorRenderBox extends RenderBox
     if (_zoom == value) return;
     _zoom = value;
     markNeedsPaint();
-    markNeedsLayout();
   }
 
   Rect _selectionArea;
@@ -312,20 +312,48 @@ class NodeEditorRenderBox extends RenderBox
   @override
   void performLayout() {
     size = constraints.biggest;
+    final inflatedViewport = _calculateViewport().inflate(300);
 
     RenderBox? child = firstChild;
     while (child != null) {
-      final childParentData = child.parentData! as _ParentData;
+      final _ParentData childParentData = child.parentData! as _ParentData;
 
-      child.layout(
-        BoxConstraints.loose(constraints.biggest),
-        parentUsesSize: true,
-      );
+      if (!childParentData.hasBeenLaidOut) {
+        child.layout(
+          BoxConstraints.loose(constraints.biggest),
+          parentUsesSize: true,
+        );
+        childParentData.hasBeenLaidOut = true;
+      } else {
+        final Rect childRect = Rect.fromLTWH(
+          childParentData.offset.dx,
+          childParentData.offset.dy,
+          child.size.width,
+          child.size.height,
+        );
 
-      childParentData.offset = childParentData.offset;
+        if (!childRect.overlaps(inflatedViewport)) {
+          child = childParentData.nextSibling;
+          continue;
+        }
+
+        child.layout(
+          BoxConstraints.loose(constraints.biggest),
+          parentUsesSize: true,
+        );
+      }
 
       child = childParentData.nextSibling;
     }
+  }
+
+  Rect _calculateViewport() {
+    return Rect.fromLTWH(
+      -size.width / 2 / zoom - _offset.dx,
+      -size.height / 2 / zoom - _offset.dy,
+      size.width / zoom,
+      size.height / zoom,
+    );
   }
 
   @override
@@ -342,10 +370,13 @@ class NodeEditorRenderBox extends RenderBox
 
     _paintLinks(canvas);
 
+    final List<RenderBox> selectedChildren = [];
+
     RenderBox? child = firstChild;
     while (child != null) {
-      final childParentData = child.parentData! as _ParentData;
+      final _ParentData childParentData = child.parentData! as _ParentData;
 
+      // Only process children within the viewport.
       if (!Rect.fromLTWH(
         childParentData.offset.dx,
         childParentData.offset.dy,
@@ -356,24 +387,59 @@ class NodeEditorRenderBox extends RenderBox
         continue;
       }
 
-      // Drawing the shadow directly on the canvas is faster than using the shadow property
-      final Paint shadowPaint = Paint()
-        ..color = Colors.black54
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4.0);
+      if (childParentData.state.isSelected) {
+        // Save selected nodes to paint later.
+        selectedChildren.add(child);
+      } else {
+        // Draw shadow for unselected nodes.
+        canvas.drawShadow(
+          Path()
+            ..addRRect(
+              RRect.fromRectAndRadius(
+                Rect.fromLTWH(
+                  childParentData.offset.dx,
+                  childParentData.offset.dy,
+                  child.size.width,
+                  child.size.height,
+                ),
+                const Radius.circular(4),
+              ),
+            ),
+          const ui.Color(0xC8000000),
+          4,
+          true,
+        );
 
-      canvas.drawRect(
-        Rect.fromLTWH(
-          childParentData.offset.dx,
-          childParentData.offset.dy + 4,
-          child.size.width,
-          child.size.height,
-        ),
-        shadowPaint,
-      );
-
-      context.paintChild(child, childParentData.offset);
+        context.paintChild(child, childParentData.offset);
+      }
 
       child = childParentData.nextSibling;
+    }
+
+    // Now paint all selected nodes so they appear over the others.
+    for (final selectedChild in selectedChildren) {
+      final _ParentData childParentData =
+          selectedChild.parentData! as _ParentData;
+
+      canvas.drawShadow(
+        Path()
+          ..addRRect(
+            RRect.fromRectAndRadius(
+              Rect.fromLTWH(
+                childParentData.offset.dx,
+                childParentData.offset.dy,
+                selectedChild.size.width,
+                selectedChild.size.height,
+              ),
+              const Radius.circular(4),
+            ),
+          ),
+        const ui.Color(0xC8000000),
+        4,
+        true,
+      );
+
+      context.paintChild(selectedChild, childParentData.offset);
     }
 
     // We paint this after the nodes so that the temporary link is always on top
@@ -395,7 +461,7 @@ class NodeEditorRenderBox extends RenderBox
     canvas.scale(zoom);
     canvas.translate(offset.dx, offset.dy);
 
-    final viewport = _calculateViewport(canvas, size);
+    final viewport = _calculateViewport();
     final startX = _calculateStart(viewport.left, style.gridStyle.gridSpacingX);
     final startY = _calculateStart(viewport.top, style.gridStyle.gridSpacingY);
 
@@ -406,15 +472,6 @@ class NodeEditorRenderBox extends RenderBox
     );
 
     return (viewport, startX, startY);
-  }
-
-  Rect _calculateViewport(Canvas canvas, Size size) {
-    return Rect.fromLTWH(
-      -size.width / 2 / zoom - _offset.dx,
-      -size.height / 2 / zoom - _offset.dy,
-      size.width / zoom,
-      size.height / zoom,
-    );
   }
 
   double _calculateStart(double viewportEdge, double gridSpacing) {

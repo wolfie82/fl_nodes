@@ -195,23 +195,7 @@ class FlNodeEditorController {
       _nodePrototypes.values.map((e) => e).toList();
   Map<String, NodePrototype> get nodePrototypes => _nodePrototypes;
 
-  List<NodeInstance> get nodesAsList {
-    final nodesList = _nodes.values.toList();
-
-    // We sort the nodes list so that selected nodes are rendered on top of others.
-    nodesList.sort((a, b) {
-      if (a.state.isSelected && !b.state.isSelected) {
-        return 1;
-      } else if (!a.state.isSelected && b.state.isSelected) {
-        return -1;
-      } else {
-        return 0;
-      }
-    });
-
-    return nodesList;
-  }
-
+  List<NodeInstance> get nodesAsList => _nodes.values.toList();
   Map<String, NodeInstance> get nodes => _nodes;
   SpatialHashGrid get spatialHashGrid => _spatialHashGrid;
 
