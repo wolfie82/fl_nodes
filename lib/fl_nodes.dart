@@ -19,7 +19,7 @@ export 'package:fl_nodes/src/core/models/events.dart'
         NodeEditorEvent,
         SelectionEvent,
         DragSelectionEvent,
-        NodeStateEvent,
+        CollapseEvent,
         AddNodeEvent,
         RemoveNodeEvent,
         AddLinkEvent,

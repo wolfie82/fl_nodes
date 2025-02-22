@@ -613,7 +613,7 @@ class FlNodeEditorController {
     }
 
     eventBus.emit(
-      NodeStateEvent(id: const Uuid().v4(), collapse, _selectedNodeIds),
+      CollapseEvent(id: const Uuid().v4(), collapse, _selectedNodeIds),
     );
   }
 

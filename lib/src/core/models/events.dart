@@ -272,11 +272,11 @@ final class DrawTempLinkEvent extends NodeEditorEvent {
   });
 }
 
-final class NodeStateEvent extends NodeEditorEvent {
+final class CollapseEvent extends NodeEditorEvent {
   final bool collpased;
   final Set<String> nodeIds;
 
-  const NodeStateEvent(
+  const CollapseEvent(
     this.collpased,
     this.nodeIds, {
     required super.id,

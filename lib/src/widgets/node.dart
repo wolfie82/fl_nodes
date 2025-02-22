@@ -68,6 +68,7 @@ class _NodeWidgetState extends State<NodeWidget> {
   void initState() {
     super.initState();
     widget.controller.eventBus.events.listen(_handleControllerEvents);
+    builtStyle = widget.node.prototype.styleBuilder(widget.node.state);
   }
 
   @override
@@ -80,9 +81,17 @@ class _NodeWidgetState extends State<NodeWidget> {
     if (!mounted || event.isHandled) return;
 
     if (event is SelectionEvent) {
-      setState(() {
-        widget.node.state.isSelected = event.nodeIds.contains(widget.node.id);
-      });
+      if (event.nodeIds.contains(widget.node.id)) {
+        setState(() {
+          builtStyle = widget.node.prototype.styleBuilder(widget.node.state);
+        });
+      }
+    } else if (event is CollapseEvent) {
+      if (event.nodeIds.contains(widget.node.id)) {
+        setState(() {
+          builtStyle = widget.node.prototype.styleBuilder(widget.node.state);
+        });
+      }
     } else if (event is DragSelectionEvent) {
       if (event.nodeIds.contains(widget.node.id)) {
         setState(() {});
@@ -586,8 +595,6 @@ class _NodeWidgetState extends State<NodeWidget> {
     if (widget.nodeBuilder != null) {
       return widget.nodeBuilder!(context, widget.node);
     }
-
-    builtStyle = widget.node.prototype.styleBuilder(widget.node.state);
 
     return controlsWrapper(
       IntrinsicHeight(
