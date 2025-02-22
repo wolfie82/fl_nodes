@@ -84,7 +84,7 @@ class FlLinkStyle {
 
 typedef FlLinkStyleBuilder = FlLinkStyle Function(LinkState style);
 
-FlLinkStyle _defaultLinkStyle(LinkState state) {
+FlLinkStyle defaultLinkStyle(LinkState state) {
   return const FlLinkStyle(
     gradient: LinearGradient(
       colors: [Colors.blue, Colors.blue],
@@ -110,7 +110,7 @@ class FlPortStyle {
   const FlPortStyle({
     this.shape = FlPortShape.circle,
     this.color = Colors.blue,
-    this.linkStyleBuilder = _defaultLinkStyle,
+    this.linkStyleBuilder = defaultLinkStyle,
   });
 
   FlPortStyle copyWith({
@@ -152,60 +152,68 @@ class FlFieldStyle {
 class FlNodeHeaderStyle {
   final EdgeInsets padding;
   final BoxDecoration decoration;
-  final BoxDecoration selectedDecoration;
   final TextStyle textStyle;
   final IconData? icon;
 
   const FlNodeHeaderStyle({
-    this.padding = const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-    this.decoration = const BoxDecoration(
-      color: Colors.blue,
-      borderRadius: BorderRadius.only(
-        topLeft: Radius.circular(7),
-        topRight: Radius.circular(7),
-      ),
-    ),
-    this.selectedDecoration = const BoxDecoration(
-      color: Color(0xFF1976D2),
-      borderRadius: BorderRadius.only(
-        topLeft: Radius.circular(7),
-        topRight: Radius.circular(7),
-      ),
-    ),
-    this.textStyle = const TextStyle(
-      color: Colors.white,
-      fontSize: 16,
-      fontWeight: FontWeight.bold,
-    ),
-    this.icon,
+    required this.padding,
+    required this.decoration,
+    required this.textStyle,
+    required this.icon,
   });
 
   FlNodeHeaderStyle copyWith({
     EdgeInsets? padding,
     BoxDecoration? decoration,
     TextStyle? textStyle,
+    IconData? icon,
   }) {
     return FlNodeHeaderStyle(
       padding: padding ?? this.padding,
       decoration: decoration ?? this.decoration,
       textStyle: textStyle ?? this.textStyle,
+      icon: icon ?? this.icon,
     );
   }
 }
 
+typedef FlNodeHeaderStyleBuilder = FlNodeHeaderStyle Function(NodeState style);
+
+FlNodeHeaderStyle defaultNodeHeaderStyle(NodeState state) {
+  return FlNodeHeaderStyle(
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    decoration: const BoxDecoration(
+      color: Colors.blue,
+      borderRadius: BorderRadius.only(
+        topLeft: Radius.circular(7),
+        topRight: Radius.circular(7),
+      ),
+    ),
+    textStyle: const TextStyle(
+      color: Colors.white,
+      fontSize: 16,
+      fontWeight: FontWeight.bold,
+    ),
+    icon: state.isCollapsed ? Icons.expand_more : Icons.expand_less,
+  );
+}
+
 class FlNodeStyle {
   final BoxDecoration decoration;
-  final FlNodeHeaderStyle headerStyle;
+  final FlNodeHeaderStyleBuilder headerStyleBuilder;
 
-  const FlNodeStyle({required this.decoration, required this.headerStyle});
+  const FlNodeStyle({
+    required this.decoration,
+    required this.headerStyleBuilder,
+  });
 
   FlNodeStyle copyWith({
     BoxDecoration? decoration,
-    FlNodeHeaderStyle? headerStyle,
+    FlNodeHeaderStyleBuilder? headerStyleBuilder,
   }) {
     return FlNodeStyle(
       decoration: decoration ?? this.decoration,
-      headerStyle: headerStyle ?? this.headerStyle,
+      headerStyleBuilder: headerStyleBuilder ?? this.headerStyleBuilder,
     );
   }
 }
@@ -223,9 +231,7 @@ FlNodeStyle defaultNodeStyle(NodeState state) {
             color: Color(0xC8424242),
             borderRadius: BorderRadius.all(Radius.circular(10)),
           ),
-    headerStyle: FlNodeHeaderStyle(
-      icon: state.isCollapsed ? Icons.expand_more : Icons.expand_less,
-    ),
+    headerStyleBuilder: defaultNodeHeaderStyle,
   );
 }
 

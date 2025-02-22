@@ -622,7 +622,9 @@ class _NodeWidgetState extends State<NodeWidget> {
                         )
                       : _NodeHeaderWidget(
                           nodeDisplayName: widget.node.prototype.displayName,
-                          style: builtStyle.headerStyle,
+                          style: builtStyle.headerStyleBuilder(
+                            widget.node.state,
+                          ),
                           onToggleCollapse: () =>
                               widget.controller.toggleCollapseSelectedNodes(
                             !widget.node.state.isCollapsed,
