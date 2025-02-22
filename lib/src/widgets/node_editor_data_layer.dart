@@ -184,19 +184,20 @@ class _NodeEditorDataLayerState extends State<NodeEditorDataLayer>
   }
 
   void _onScaleUpdate(ScaleUpdateDetails details) {
-    if (widget.controller.config.zoomSensitivity > 0 && details.scale != 1.0) {
+    if (details.scale != 1.0) {
       _setZoomFromRawInput(
         details.scale,
         details.focalPoint,
         isTrackpadInput: true,
       );
-    } else if (widget.controller.config.panSensitivity > 0 &&
-        details.focalPointDelta != const Offset(10, 10)) {
+    } else if (details.focalPointDelta != const Offset(10, 10)) {
       _onDragUpdate(details.focalPointDelta);
     }
   }
 
   void _onSelectStart(Offset position) {
+    if (!widget.controller.config.enableAreaSelection) return;
+
     setState(() {
       _isSelecting = true;
       _selectionStart = screenToWorld(
@@ -363,6 +364,8 @@ class _NodeEditorDataLayerState extends State<NodeEditorDataLayer>
   }
 
   void _setOffsetFromRawInput(Offset delta) {
+    if (!widget.controller.config.enablePan) return;
+
     final Offset offsetFactor =
         delta * widget.controller.config.panSensitivity / zoom;
 
@@ -424,6 +427,8 @@ class _NodeEditorDataLayerState extends State<NodeEditorDataLayer>
     Offset focalPoint, {
     bool isTrackpadInput = false,
   }) {
+    if (!widget.controller.config.enableZoom) return;
+
     const double zoomSpeed = 0.1; // Adjust this to fine-tune zoom sensitivity
 
     final double sensitivity = widget.controller.config.zoomSensitivity;
@@ -939,8 +944,7 @@ class _NodeEditorDataLayerState extends State<NodeEditorDataLayer>
                         event.position,
                       );
                     }
-                    if (event is PointerScaleEvent &&
-                        widget.controller.config.enableZoom) {
+                    if (event is PointerScaleEvent) {
                       if (kIsWeb) {
                         _setZoomFromRawInput(
                           event.scale,

@@ -93,6 +93,8 @@ class _NodeWidgetState extends State<NodeWidget> {
   }
 
   void _startEdgeTimer(Offset position) {
+    if (!widget.controller.config.enableAutoScrolling) return;
+
     const edgeThreshold = 50.0;
     final moveAmount = 5.0 / widget.controller.viewportZoom;
     final editorBounds = getEditorBoundsInScreen(kNodeEditorWidgetKey);

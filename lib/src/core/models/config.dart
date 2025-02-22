@@ -14,6 +14,7 @@ class FlNodeEditorConfig {
   final double maxPanY;
   final bool enableKineticScrolling;
   final bool enableAutoScrolling;
+  final bool enableAreaSelection;
   final bool enableSnapToGrid;
   final double snapToGridSize;
   final bool enableAutoPlacement;
@@ -29,6 +30,7 @@ class FlNodeEditorConfig {
     this.maxPanY = 100000.0,
     this.enableKineticScrolling = true,
     this.enableAutoScrolling = true,
+    this.enableAreaSelection = true,
     this.enableSnapToGrid = true,
     this.snapToGridSize = 64.0,
     this.enableAutoPlacement = false,
@@ -45,6 +47,7 @@ class FlNodeEditorConfig {
     double? maxPanY,
     bool? enableKineticScrolling,
     bool? enableAutoScrolling,
+    bool? enableAreaSelection,
     bool? enableSnapToGrid,
     double? snapToGridSize,
     bool? enableAutoPlacement,
@@ -61,6 +64,7 @@ class FlNodeEditorConfig {
       enableKineticScrolling:
           enableKineticScrolling ?? this.enableKineticScrolling,
       enableAutoScrolling: enableAutoScrolling ?? this.enableAutoScrolling,
+      enableAreaSelection: enableAreaSelection ?? this.enableAreaSelection,
       enableSnapToGrid: enableSnapToGrid ?? this.enableSnapToGrid,
       snapToGridSize: snapToGridSize ?? this.snapToGridSize,
       enableAutoPlacement: enableAutoPlacement ?? this.enableAutoPlacement,
