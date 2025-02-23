@@ -38,9 +38,14 @@ class LinkDrawData {
 /// This extends the [ContainerBoxParentData] class from the Flutter framework
 /// for the data to be passed down to children for layout and painting.
 class _ParentData extends ContainerBoxParentData<RenderBox> {
-  bool hasBeenLaidOut = false;
   Offset nodeOffset = Offset.zero;
   NodeState state = NodeState();
+
+  // This is used to prevent unnecessary layout and painting of children
+  bool hasBeenLaidOut = false;
+
+  // This is used to avoid unnecessary recomputations of the renderbox rect
+  Rect rect = Rect.zero;
 }
 
 class NodeEditorRenderObjectWidget extends MultiChildRenderObjectWidget {
@@ -246,12 +251,20 @@ class NodeEditorRenderBox extends RenderBox
 
     while (child != null && index < nodesData.length) {
       final childParentData = child.parentData! as _ParentData;
-      childParentData.offset = nodesData[index].offset;
-      childParentData.state = NodeState(
-        isSelected: nodesData[index].state.isSelected,
-        isCollapsed: nodesData[index].state.isCollapsed,
-      );
+
+      if (childParentData.offset != nodesData[index].offset ||
+          childParentData.state != nodesData[index].state) {
+        childParentData.offset = nodesData[index].offset;
+        childParentData.state = NodeState(
+          isSelected: nodesData[index].state.isSelected,
+          isCollapsed: nodesData[index].state.isCollapsed,
+        );
+        childParentData.hasBeenLaidOut = false;
+        childParentData.rect = Rect.zero;
+      }
+
       child = childParentData.nextSibling;
+
       index++;
     }
   }
@@ -318,21 +331,26 @@ class NodeEditorRenderBox extends RenderBox
     while (child != null) {
       final _ParentData childParentData = child.parentData! as _ParentData;
 
+      // If the child has not been laid out yet, we need to layout it.
+      // Otherwise, we only need to layout it if it's within the viewport.
       if (!childParentData.hasBeenLaidOut) {
         child.layout(
           BoxConstraints.loose(constraints.biggest),
           parentUsesSize: true,
         );
+
+        // We keep track of the layout operation manually beacuse the hasSize getter
+        // calls the size method which implementation causes assertions to be thrown.
+        // See: https://api.flutter.dev/flutter/rendering/RenderBox/size.html
         childParentData.hasBeenLaidOut = true;
-      } else {
-        final Rect childRect = Rect.fromLTWH(
+        childParentData.rect = Rect.fromLTWH(
           childParentData.offset.dx,
           childParentData.offset.dy,
           child.size.width,
           child.size.height,
         );
-
-        if (!childRect.overlaps(inflatedViewport)) {
+      } else {
+        if (!childParentData.rect.overlaps(inflatedViewport)) {
           child = childParentData.nextSibling;
           continue;
         }
@@ -377,12 +395,7 @@ class NodeEditorRenderBox extends RenderBox
       final _ParentData childParentData = child.parentData! as _ParentData;
 
       // Only process children within the viewport.
-      if (!Rect.fromLTWH(
-        childParentData.offset.dx,
-        childParentData.offset.dy,
-        child.size.width,
-        child.size.height,
-      ).overlaps(viewport)) {
+      if (!childParentData.rect.overlaps(viewport)) {
         child = childParentData.nextSibling;
         continue;
       }
@@ -396,12 +409,7 @@ class NodeEditorRenderBox extends RenderBox
           Path()
             ..addRRect(
               RRect.fromRectAndRadius(
-                Rect.fromLTWH(
-                  childParentData.offset.dx,
-                  childParentData.offset.dy,
-                  child.size.width,
-                  child.size.height,
-                ),
+                childParentData.rect.inflate(4),
                 const Radius.circular(4),
               ),
             ),
@@ -425,12 +433,7 @@ class NodeEditorRenderBox extends RenderBox
         Path()
           ..addRRect(
             RRect.fromRectAndRadius(
-              Rect.fromLTWH(
-                childParentData.offset.dx,
-                childParentData.offset.dy,
-                selectedChild.size.width,
-                selectedChild.size.height,
-              ),
+              childParentData.rect.inflate(4),
               const Radius.circular(4),
             ),
           ),
