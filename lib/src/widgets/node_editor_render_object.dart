@@ -38,6 +38,7 @@ class LinkDrawData {
 /// This extends the [ContainerBoxParentData] class from the Flutter framework
 /// for the data to be passed down to children for layout and painting.
 class _ParentData extends ContainerBoxParentData<RenderBox> {
+  String id = '';
   Offset nodeOffset = Offset.zero;
   NodeState state = NodeState();
 
@@ -87,6 +88,7 @@ class NodeEditorRenderObjectWidget extends MultiChildRenderObjectWidget {
   @override
   NodeEditorRenderBox createRenderObject(BuildContext context) {
     return NodeEditorRenderBox(
+      controller: controller,
       style: style,
       gridShader: gridShader,
       offset: controller.viewportOffset,
@@ -160,6 +162,7 @@ class NodeEditorRenderBox extends RenderBox
         ContainerRenderObjectMixin<RenderBox, _ParentData>,
         RenderBoxContainerDefaultsMixin<RenderBox, _ParentData> {
   NodeEditorRenderBox({
+    required FlNodeEditorController controller,
     required FlNodeEditorStyle style,
     required FragmentShader gridShader,
     required Offset offset,
@@ -168,7 +171,8 @@ class NodeEditorRenderBox extends RenderBox
     required Rect selectionArea,
     required List<NodeDrawData> nodesData,
     required List<LinkDrawData> linksData,
-  })  : _style = style,
+  })  : _controller = controller,
+        _style = style,
         _gridShader = gridShader,
         _offset = offset,
         _zoom = zoom,
@@ -177,6 +181,9 @@ class NodeEditorRenderBox extends RenderBox
         _linksData = linksData {
     shouldUpdateNodes(nodesData);
   }
+
+  final FlNodeEditorController _controller;
+  FlNodeEditorController get controller => _controller;
 
   FlNodeEditorStyle _style;
   FlNodeEditorStyle get style => _style;
@@ -250,15 +257,20 @@ class NodeEditorRenderBox extends RenderBox
     RenderBox? child = firstChild;
     int index = 0;
 
+    final nodesAsList = controller.nodesAsList;
+
     while (child != null && index < nodesData.length) {
       final childParentData = child.parentData! as _ParentData;
+      final nodeData = nodesData[index];
 
-      if (childParentData.offset != nodesData[index].offset ||
-          childParentData.state != nodesData[index].state) {
-        childParentData.offset = nodesData[index].offset;
+      if (childParentData.id != nodesAsList[index].id ||
+          childParentData.offset != nodeData.offset ||
+          childParentData.state != nodeData.state) {
+        childParentData.id = nodesAsList[index].id;
+        childParentData.offset = nodeData.offset;
         childParentData.state = NodeState(
-          isSelected: nodesData[index].state.isSelected,
-          isCollapsed: nodesData[index].state.isCollapsed,
+          isSelected: nodeData.state.isSelected,
+          isCollapsed: nodeData.state.isCollapsed,
         );
         childParentData.hasBeenLaidOut = false;
         childParentData.rect = Rect.zero;
@@ -278,11 +290,15 @@ class NodeEditorRenderBox extends RenderBox
     RenderBox? child = firstChild;
     int index = 0;
 
+    final nodesAsList = controller.nodesAsList;
+
     while (child != null && index < nodesData.length) {
       final childParentData = child.parentData! as _ParentData;
+      final nodeData = nodesData[index];
 
-      if (childParentData.offset != nodesData[index].offset ||
-          childParentData.state != nodesData[index].state) {
+      if (childParentData.id != nodesAsList[index].id ||
+          childParentData.offset != nodeData.offset ||
+          childParentData.state != nodeData.state) {
         return false;
       }
       child = childParentData.nextSibling;
@@ -328,6 +344,10 @@ class NodeEditorRenderBox extends RenderBox
     size = constraints.biggest;
     final inflatedViewport = _calculateViewport().inflate(300);
 
+    final visibleNodes = controller.spatialHashGrid.queryNodeIdsInArea(
+      inflatedViewport,
+    );
+
     RenderBox? child = firstChild;
     while (child != null) {
       final _ParentData childParentData = child.parentData! as _ParentData;
@@ -351,7 +371,7 @@ class NodeEditorRenderBox extends RenderBox
           child.size.height,
         );
       } else {
-        if (!childParentData.rect.overlaps(inflatedViewport)) {
+        if (!visibleNodes.contains(childParentData.id)) {
           child = childParentData.nextSibling;
           continue;
         }
@@ -389,6 +409,10 @@ class NodeEditorRenderBox extends RenderBox
 
     _paintLinks(canvas);
 
+    final visibleNodes = controller.spatialHashGrid.queryNodeIdsInArea(
+      viewport.inflate(300),
+    );
+
     final List<RenderBox> selectedChildren = [];
 
     RenderBox? child = firstChild;
@@ -396,7 +420,7 @@ class NodeEditorRenderBox extends RenderBox
       final _ParentData childParentData = child.parentData! as _ParentData;
 
       // Only process children within the viewport.
-      if (!childParentData.rect.overlaps(viewport)) {
+      if (!visibleNodes.contains(childParentData.id)) {
         child = childParentData.nextSibling;
         continue;
       }

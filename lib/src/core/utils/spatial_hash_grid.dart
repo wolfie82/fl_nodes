@@ -82,6 +82,24 @@ class SpatialHashGrid {
     }
   }
 
+  void update(({String id, Rect rect}) node) {
+    if (!nodeToCells.containsKey(node.id)) {
+      insert(node);
+      return;
+    }
+
+    final currentRect = grid[nodeToCells[node.id]!.first]!
+        .firstWhere((node) => node.id == node.id);
+
+    if (currentRect.rect.topLeft == node.rect.topLeft &&
+        currentRect.rect.bottomLeft == node.rect.bottomLeft) {
+      return;
+    }
+
+    remove(node.id);
+    insert(node);
+  }
+
   /// Clears all data from the spatial hash grid.
   void clear() {
     grid.clear();

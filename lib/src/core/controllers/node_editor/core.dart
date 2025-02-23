@@ -782,8 +782,7 @@ class FlNodeEditorController {
   ///
   /// See [SpatialHashGrid] and [getNodeBoundsInWorld] for more information.
   void onRenderedCallback(NodeInstance node) {
-    _spatialHashGrid.remove(node.id);
-    _spatialHashGrid.insert(
+    _spatialHashGrid.update(
       (id: node.id, rect: getNodeBoundsInWorld(node)!),
     );
   }
