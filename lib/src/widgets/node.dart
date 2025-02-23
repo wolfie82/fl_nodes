@@ -55,6 +55,9 @@ class _NodeWidgetState extends State<NodeWidget> {
   // Timer for auto-scrolling when dragging near the edge.
   Timer? _edgeTimer;
 
+  // The last known position of the pointer (GestureDetector).
+  Offset? _lastPanPosition;
+
   // Temporary link locator used during linking.
   _TempLink? _tempLink;
 
@@ -357,7 +360,87 @@ class _NodeWidgetState extends State<NodeWidget> {
 
   Widget controlsWrapper(Widget child) {
     return os_detect.isAndroid || os_detect.isIOS
-        ? child
+        ? GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onTap: () {
+              if (!widget.controller.selectedNodeIds.contains(widget.node.id)) {
+                widget.controller.selectNodesById({widget.node.id});
+              }
+            },
+            onLongPressStart: (details) {
+              final position = details.globalPosition;
+              final locator = _isNearPort(position);
+
+              if (!widget.node.state.isSelected) {
+                widget.controller.clearSelection();
+                widget.controller.selectNodesById({widget.node.id});
+              }
+
+              if (locator != null && !widget.node.state.isCollapsed) {
+                createAndShowContextMenu(
+                  context,
+                  entries: _portContextMenuEntries(position, locator: locator),
+                  position: position,
+                );
+              } else if (!isContextMenuVisible) {
+                final entries = widget.contextMenuBuilder != null
+                    ? widget.contextMenuBuilder!(context, widget.node)
+                    : _defaultNodeContextMenuEntries();
+                createAndShowContextMenu(
+                  context,
+                  entries: entries,
+                  position: position,
+                );
+              }
+            },
+            onPanDown: (details) {
+              _lastPanPosition = details.globalPosition;
+            },
+            onPanStart: (details) {
+              final position = details.globalPosition;
+              _isLinking = false;
+              _tempLink = null;
+
+              final locator = _isNearPort(position);
+              if (locator != null) {
+                _isLinking = true;
+                _onLinkStart(locator);
+              } else {
+                if (!widget.controller.selectedNodeIds
+                    .contains(widget.node.id)) {
+                  widget.controller.selectNodesById({widget.node.id});
+                }
+              }
+            },
+            onPanUpdate: (details) {
+              _lastPanPosition = details.globalPosition;
+              if (_isLinking) {
+                _onLinkUpdate(details.globalPosition);
+              } else {
+                _startEdgeTimer(details.globalPosition);
+                widget.controller.dragSelection(details.delta);
+              }
+            },
+            onPanEnd: (details) {
+              if (_isLinking) {
+                final locator = _isNearPort(_lastPanPosition!);
+                if (locator != null) {
+                  _onLinkEnd(locator);
+                } else {
+                  createAndShowContextMenu(
+                    context,
+                    entries: _createSubmenuEntries(_lastPanPosition!),
+                    position: _lastPanPosition!,
+                    onDismiss: (value) => _onLinkCancel(),
+                  );
+                }
+                _isLinking = false;
+              } else {
+                _resetEdgeTimer();
+              }
+            },
+            child: child,
+          )
         : ImprovedListener(
             behavior: HitTestBehavior.translucent,
             onPointerPressed: (event) async {
