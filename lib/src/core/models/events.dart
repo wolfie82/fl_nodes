@@ -58,10 +58,10 @@ final class ViewportZoomEvent extends NodeEditorEvent {
   });
 }
 
-final class SelectionAreaEvent extends NodeEditorEvent {
+final class AreaSelectionEvent extends NodeEditorEvent {
   final Rect area;
 
-  const SelectionAreaEvent(this.area, {required super.id, super.isHandled});
+  const AreaSelectionEvent(this.area, {required super.id, super.isHandled});
 }
 
 final class DragSelectionStartEvent extends NodeEditorEvent {

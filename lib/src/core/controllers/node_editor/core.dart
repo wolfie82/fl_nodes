@@ -667,7 +667,7 @@ class FlNodeEditorController {
   /// Emits a [SelectionAreaEvent] event.
   void setSelectionArea(Rect area) {
     _selectionArea = area;
-    eventBus.emit(SelectionAreaEvent(id: const Uuid().v4(), area));
+    eventBus.emit(AreaSelectionEvent(id: const Uuid().v4(), area));
   }
 
   /// This method is used to select nodes by their IDs.
@@ -679,17 +679,9 @@ class FlNodeEditorController {
     bool isHandled = false,
   }) async {
     if (ids.isEmpty) {
+      return clearSelection();
+    } else if (!holdSelection) {
       clearSelection();
-      return;
-    }
-
-    if (!holdSelection) {
-      for (final id in _selectedNodeIds) {
-        final node = _nodes[id];
-        node?.state.isSelected = false;
-      }
-
-      _selectedNodeIds.clear();
     }
 
     _selectedNodeIds.addAll(ids);
@@ -724,8 +716,6 @@ class FlNodeEditorController {
       node?.state.isSelected = false;
     }
 
-    _selectedNodeIds.clear();
-
     eventBus.emit(
       SelectionEvent(
         id: const Uuid().v4(),
@@ -733,6 +723,8 @@ class FlNodeEditorController {
         isHandled: isHandled,
       ),
     );
+
+    _selectedNodeIds.clear();
   }
 
   /// This method is used to focus the viweport on a set of nodes by their IDs.

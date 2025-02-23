@@ -363,7 +363,7 @@ class _NodeWidgetState extends State<NodeWidget> {
         ? GestureDetector(
             behavior: HitTestBehavior.translucent,
             onTap: () {
-              if (!widget.controller.selectedNodeIds.contains(widget.node.id)) {
+              if (!widget.node.state.isSelected) {
                 widget.controller.selectNodesById({widget.node.id});
               }
             },
@@ -372,7 +372,6 @@ class _NodeWidgetState extends State<NodeWidget> {
               final locator = _isNearPort(position);
 
               if (!widget.node.state.isSelected) {
-                widget.controller.clearSelection();
                 widget.controller.selectNodesById({widget.node.id});
               }
 
@@ -406,8 +405,7 @@ class _NodeWidgetState extends State<NodeWidget> {
                 _isLinking = true;
                 _onLinkStart(locator);
               } else {
-                if (!widget.controller.selectedNodeIds
-                    .contains(widget.node.id)) {
+                if (!widget.node.state.isSelected) {
                   widget.controller.selectNodesById({widget.node.id});
                 }
               }
@@ -450,9 +448,9 @@ class _NodeWidgetState extends State<NodeWidget> {
               final locator = _isNearPort(event.position);
               if (event.buttons == kSecondaryMouseButton) {
                 if (!widget.node.state.isSelected) {
-                  widget.controller.clearSelection();
                   widget.controller.selectNodesById({widget.node.id});
                 }
+
                 if (locator != null && !widget.node.state.isCollapsed) {
                   createAndShowContextMenu(
                     context,
@@ -475,8 +473,7 @@ class _NodeWidgetState extends State<NodeWidget> {
               } else if (event.buttons == kPrimaryMouseButton) {
                 if (locator != null && !_isLinking && _tempLink == null) {
                   _onLinkStart(locator);
-                } else if (!widget.controller.selectedNodeIds
-                    .contains(widget.node.id)) {
+                } else if (!widget.node.state.isSelected) {
                   widget.controller.selectNodesById(
                     {widget.node.id},
                     holdSelection: HardwareKeyboard.instance.isControlPressed,
@@ -896,6 +893,7 @@ class _PortSymbolPainter extends CustomPainter {
       width: hitBoxSize,
       height: hitBoxSize,
     );
+
     return hitBoxRect.contains(position);
   }
 }
