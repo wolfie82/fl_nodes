@@ -64,20 +64,46 @@ class _NodeWidgetState extends State<NodeWidget> {
   // The resolved style for the node.
   late FlNodeStyle builtStyle;
 
+  Offset _lastOffset = Offset.zero;
+  NodeState _lastState = NodeState();
+
   double get viewportZoom => widget.controller.viewportZoom;
   Offset get viewportOffset => widget.controller.viewportOffset;
 
   @override
   void initState() {
     super.initState();
+
     widget.controller.eventBus.events.listen(_handleControllerEvents);
+
     builtStyle = widget.node.prototype.styleBuilder(widget.node.state);
+    _lastOffset = widget.node.offset;
+    _lastState = widget.node.state;
+
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      if (mounted) widget.node.onRendered(widget.node);
+    });
   }
 
   @override
   void dispose() {
     _edgeTimer?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(NodeWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (widget.node.offset != _lastOffset ||
+        widget.node.state.isCollapsed != _lastState.isCollapsed) {
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (mounted) widget.node.onRendered(widget.node);
+      });
+
+      _lastOffset = widget.node.offset;
+      _lastState = widget.node.state;
+    }
   }
 
   void _handleControllerEvents(NodeEditorEvent event) {
@@ -658,19 +684,7 @@ class _NodeWidgetState extends State<NodeWidget> {
   }
 
   @override
-  void didUpdateWidget(NodeWidget oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.node != oldWidget.node) {
-      widget.node.state.isSelected = oldWidget.node.state.isSelected;
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
-    SchedulerBinding.instance.addPostFrameCallback((_) {
-      if (mounted) widget.node.onRendered(widget.node);
-    });
-
     // If a custom nodeBuilder is provided, use it directly.
     if (widget.nodeBuilder != null) {
       return widget.nodeBuilder!(context, widget.node);
