@@ -242,6 +242,7 @@ class NodeEditorRenderBox extends RenderBox
     markNeedsPaint();
   }
 
+  Set<String> visibleNodes = {};
   List<NodeDrawData> _nodesData = [];
 
   void shouldUpdateNodes(List<NodeDrawData> nodesData) {
@@ -342,11 +343,6 @@ class NodeEditorRenderBox extends RenderBox
   @override
   void performLayout() {
     size = constraints.biggest;
-    final inflatedViewport = _calculateViewport().inflate(300);
-
-    final visibleNodes = controller.spatialHashGrid.queryNodeIdsInArea(
-      inflatedViewport,
-    );
 
     RenderBox? child = firstChild;
     while (child != null) {
@@ -384,6 +380,9 @@ class NodeEditorRenderBox extends RenderBox
 
       child = childParentData.nextSibling;
     }
+
+    // Here we should be updating the visibleNodes set with the nodes that are within the viewport.
+    // This action is delayed until the paint method to ensure all layout operations are done.
   }
 
   Rect _calculateViewport() {
@@ -409,8 +408,9 @@ class NodeEditorRenderBox extends RenderBox
 
     _paintLinks(canvas);
 
-    final visibleNodes = controller.spatialHashGrid.queryNodeIdsInArea(
-      viewport.inflate(300),
+    // Performing the update here ensures all layout operations are done.
+    visibleNodes = controller.spatialHashGrid.queryNodeIdsInArea(
+      _calculateViewport().inflate(300),
     );
 
     final List<RenderBox> selectedChildren = [];
