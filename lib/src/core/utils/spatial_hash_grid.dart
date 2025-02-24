@@ -83,21 +83,46 @@ class SpatialHashGrid {
   }
 
   void update(({String id, Rect rect}) node) {
-    if (!nodeToCells.containsKey(node.id)) {
+    final newCells = _getCoveredCells(node.rect);
+    final oldCells = nodeToCells[node.id];
+    if (oldCells == null) {
+      // Not present: perform an insert.
       insert(node);
       return;
     }
 
-    final currentRect = grid[nodeToCells[node.id]!.first]!
-        .firstWhere((node) => node.id == node.id);
-
-    if (currentRect.rect.topLeft == node.rect.topLeft &&
-        currentRect.rect.bottomLeft == node.rect.bottomLeft) {
+    // If the sets of cells are identical, we only need to update the node record.
+    if (oldCells.length == newCells.length &&
+        oldCells.every((cell) => newCells.contains(cell))) {
+      // Update the node in every cell without removing/reinserting.
+      for (final cell in newCells) {
+        if (grid[cell]?.any((n) => n.id == node.id) ?? false) {
+          grid[cell]!.removeWhere((n) => n.id == node.id);
+          grid[cell]!.add(node);
+        }
+      }
       return;
     }
 
-    remove(node.id);
-    insert(node);
+    // Otherwise, determine which cells to remove from, update in common cells,
+    // and add to new cells.
+    final cellsToRemove = oldCells.difference(newCells);
+    final cellsToAdd = newCells.difference(oldCells);
+    final commonCells = oldCells.intersection(newCells);
+
+    for (final cell in cellsToRemove) {
+      grid[cell]?.removeWhere((n) => n.id == node.id);
+    }
+    for (final cell in commonCells) {
+      grid[cell]?.removeWhere((n) => n.id == node.id);
+      grid[cell]!.add(node);
+    }
+    for (final cell in cellsToAdd) {
+      grid.putIfAbsent(cell, () => {});
+      grid[cell]!.add(node);
+    }
+
+    nodeToCells[node.id] = newCells;
   }
 
   /// Clears all data from the spatial hash grid.
