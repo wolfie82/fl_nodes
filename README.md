@@ -77,7 +77,7 @@ detailed and updated TODO list for the project.
 ## 📸 **Screenshots**
 
 <p align="center">
-  <img src="https://github.com/WilliamKarolDiCioccio/fl_nodes/blob/main/.github/images/node_editor_example.webp" alt="FlNodes Example" />
+  <img src="https://raw.githubusercontent.com/WilliamKarolDiCioccio/fl_nodes/refs/heads/main/.github/images/node_editor_example.webp" alt="FlNodes Example" />
 </p>
 
 ---
