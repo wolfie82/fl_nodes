@@ -1,26 +1,7 @@
 <!DOCTYPE html>
 <html>
-<style>
-  html,
-  body {
-    overscroll-behavior: none;
-  }
-</style>
 
 <head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
   <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
@@ -38,10 +19,47 @@
 
   <title>example</title>
   <link rel="manifest" href="manifest.json">
+
+  <style>
+    /* Disable touch gestures */
+    html, body {
+      touch-action: none;
+      overscroll-behavior: none;
+    }
+  </style>
 </head>
 
 <body>
+  <canvas></canvas>
   <script src="flutter_bootstrap.js" async></script>
+
+  <script>
+    // Prevent pinch-to-zoom
+    document.addEventListener('gesturestart', function (e) {
+      e.preventDefault();
+    });
+    document.addEventListener('gesturechange', function (e) {
+      e.preventDefault();
+    });
+    document.addEventListener('gestureend', function (e) {
+      e.preventDefault();
+    });
+
+    // Disable right-click
+    document.addEventListener("contextmenu", function (e) {
+      e.preventDefault();
+    });
+
+    // Block certain keyboard shortcuts
+    document.addEventListener("keydown", function (e) {
+      if (e.ctrlKey && (e.key === "r" || e.key === "R")) {
+        e.preventDefault();
+      }
+      if (e.key === "F12" || (e.ctrlKey && e.shiftKey && e.key === "I")) {
+        e.preventDefault(); // Prevent DevTools opening
+      }
+    });
+  </script>
 </body>
 
 </html>
