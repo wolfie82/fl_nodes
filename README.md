@@ -2,10 +2,10 @@
 
 ![Coverage](https://github.com/WilliamKarolDiCioccio/fl_nodes/blob/main/coverage_badge.svg?sanitize=true)
 
-🚧 **Note:** This is **version 0.1.0** of **FlNodes**, a newborn product in its
-early stages. While the core functionality is in place, we're actively improving
-performance, adding features, and refining the experience. Your feedback and
-contributions are invaluable in shaping its future! 🚀
+🚧 **Note:** T**FlNodes** is in its early stages. While the core functionality
+is in place, we're actively improving performance, adding features, and refining
+the experience. Your feedback and contributions are invaluable in shaping its
+future! 🚀
 
 ---
 
@@ -77,7 +77,7 @@ detailed and updated TODO list for the project.
 ## 📸 **Screenshots**
 
 <p align="center">
-  <img src="https://github.com/WilliamKarolDiCioccio/fl_nodes/blob/main/.github/images/node_editor_example.png" alt="FlNodes Example" />
+  <img src="https://github.com/WilliamKarolDiCioccio/fl_nodes/blob/main/.github/images/node_editor_example.webp" alt="FlNodes Example" />
 </p>
 
 ---
