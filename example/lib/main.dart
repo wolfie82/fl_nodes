@@ -4,7 +4,6 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:flutter/services.dart';
 
 import 'package:example/data_handlers.dart';
 import 'package:example/nodes.dart';
@@ -19,10 +18,6 @@ import './widgets/search.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-
-  if (kIsWeb) {
-    BrowserContextMenu.disableContextMenu();
-  }
 
   runApp(const NodeEditorExampleApp());
 }
