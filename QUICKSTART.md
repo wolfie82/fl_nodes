@@ -398,98 +398,117 @@ This is the prototpye registration process for an hypotetical `For Each Loop`:
 NOTE: This is a purposefully advanced example to showcase all possibilities.
 
 ```dart
+// Define a custom style for the output data port
 final FlPortStyle outputDataPortStyle = FlPortStyle(
-  color: Colors.orange,
-  shape: FlPortShape.circle,
+  color: Colors.orange, // Set port color to orange
+  shape: FlPortShape.circle, // Use a circular port shape
   linkStyleBuilder: (state) => const FlLinkStyle(
     gradient: LinearGradient(
-      colors: [Colors.orange, Colors.purple],
+      colors: [Colors.orange, Colors.purple], // Gradient color for links
       begin: Alignment.centerLeft,
       end: Alignment.centerRight,
     ),
-    lineWidth: 3.0,
-    drawMode: FlLinkDrawMode.solid,
-    curveType: FlLinkCurveType.bezier,
+    lineWidth: 3.0, // Set the link width
+    drawMode: FlLinkDrawMode.solid, // Use solid line style
+    curveType: FlLinkCurveType.bezier, // Use a smooth bezier curve
   ),
 );
 
 ...
 
+// Register a new node prototype in the node editor
 controller.registerNodePrototype(
   NodePrototype(
-    idName: 'forEachLoop',
-    displayName: 'For Each Loop',
-    description: 'Executes a loop for a specified number of iterations.',
+    idName: 'forEachLoop', // Unique identifier for this node type
+    displayName: 'For Each Loop', // User-friendly name
+    description: 'Executes a loop for a specified number of iterations.', // Description for UI
+
+    // Define node style (partially overriding the default)
     styleBuilder: (state) => FlNodeStyle(
-      decoration: defaultNodeStyle(state).decoration,
+      decoration: defaultNodeStyle(state).decoration, // Keep default decoration
       headerStyleBuilder: (state) => defaultNodeHeaderStyle(state).copyWith(
         decoration: BoxDecoration(
-          color: Colors.teal,
+          color: Colors.teal, // Set header background color to teal
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(7),
             topRight: const Radius.circular(7),
+            // Adjust bottom radius based on collapse state
             bottomLeft: Radius.circular(state.isCollapsed ? 7 : 0),
             bottomRight: Radius.circular(state.isCollapsed ? 7 : 0),
           ),
         ),
       ),
     ),
+
+    // Define the input and output ports for this node
     ports: [
       ControlInputPortPrototype(
-        idName: 'exec',
+        idName: 'exec', // Control input to trigger execution
         displayName: 'Exec',
         style: controlInputPortStyle,
       ),
       DataInputPortPrototype(
-        idName: 'list',
+        idName: 'list', // Data input port for the list to iterate over
         displayName: 'List',
-        dataType: dynamic,
+        dataType: dynamic, // Accepts any type
         style: inputDataPortStyle,
       ),
       ControlOutputPortPrototype(
-        idName: 'loopBody',
+        idName: 'loopBody', // Control output for the loop body execution
         displayName: 'Loop Body',
         style: controlOutputPortStyle,
       ),
       ControlOutputPortPrototype(
-        idName: 'completed',
+        idName: 'completed', // Control output for when the loop finishes
         displayName: 'Completed',
         style: controlOutputPortStyle,
       ),
       DataOutputPortPrototype(
-        idName: 'listElem',
+        idName: 'listElem', // Data output for the current list element
         displayName: 'List Element',
         dataType: dynamic,
         style: outputDataPortStyle,
       ),
       DataOutputPortPrototype(
-        idName: 'listIdx',
+        idName: 'listIdx', // Data output for the current index in the list
         displayName: 'List Index',
         dataType: int,
         style: outputDataPortStyle,
       ),
     ],
+
+    // Define execution behavior of the node
     onExecute: (ports, fields, state, f, p) async {
+      // Retrieve the list from the input port
       final List<dynamic> list = ports['list']! as List<dynamic>;
 
       late int i;
 
+      // Check if this node has a stored iteration state, otherwise initialize it
       if (!state.containsKey('iteration')) {
         i = state['iteration'] = 0;
       } else {
         i = state['iteration'] as int;
       }
 
+      // If there are still elements to iterate over
       if (i < list.length) {
+        // Send the current element and index to the output ports
         p({('listElem', list[i]), ('listIdx', i)});
+
+        // Increment iteration counter and store it in node state
         state['iteration'] = ++i;
+
+        // Trigger the loop body control output
         await f({'loopBody'});
       } else {
+        // If iteration is complete, trigger the "completed" output
         unawaited(f({('completed')}));
       }
     },
   ),
 );
+
 ```
 
 This is the data handler registration process for an hypothetical `Operator`
