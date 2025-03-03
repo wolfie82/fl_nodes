@@ -182,6 +182,7 @@ class NodeEditorRenderBox extends RenderBox
         _tempLinkDrawData = tempLink,
         _selectionArea = selectionArea,
         _linksData = linksData {
+    _loadGridShader();
     shouldUpdateNodes(nodesData);
   }
 
@@ -243,6 +244,29 @@ class NodeEditorRenderBox extends RenderBox
     if (_linksData == value) return;
     _linksData = value;
     markNeedsPaint();
+  }
+
+  void _loadGridShader() {
+    final style = this.style.gridStyle;
+
+    gridShader.setFloat(0, style.gridSpacingX);
+    gridShader.setFloat(1, style.gridSpacingY);
+
+    final lineColor = style.lineColor;
+
+    gridShader.setFloat(4, style.lineWidth);
+    gridShader.setFloat(5, lineColor.r * lineColor.a);
+    gridShader.setFloat(6, lineColor.g * lineColor.a);
+    gridShader.setFloat(7, lineColor.b * lineColor.a);
+    gridShader.setFloat(8, lineColor.a);
+
+    final intersectionColor = style.intersectionColor;
+
+    gridShader.setFloat(9, style.intersectionRadius);
+    gridShader.setFloat(10, intersectionColor.r * intersectionColor.a);
+    gridShader.setFloat(11, intersectionColor.g * intersectionColor.a);
+    gridShader.setFloat(12, intersectionColor.b * intersectionColor.a);
+    gridShader.setFloat(13, intersectionColor.a);
   }
 
   Set<String> visibleNodes = {};
@@ -515,31 +539,6 @@ class NodeEditorRenderBox extends RenderBox
     gridShader.setFloat(15, viewport.top);
     gridShader.setFloat(16, viewport.right);
     gridShader.setFloat(17, viewport.bottom);
-
-    if (!gridShaderStyleLoaded) {
-      final style = this.style.gridStyle;
-
-      gridShader.setFloat(0, style.gridSpacingX);
-      gridShader.setFloat(1, style.gridSpacingY);
-
-      final lineColor = style.lineColor;
-
-      gridShader.setFloat(4, style.lineWidth);
-      gridShader.setFloat(5, lineColor.r * lineColor.a);
-      gridShader.setFloat(6, lineColor.g * lineColor.a);
-      gridShader.setFloat(7, lineColor.b * lineColor.a);
-      gridShader.setFloat(8, lineColor.a);
-
-      final intersectionColor = style.intersectionColor;
-
-      gridShader.setFloat(9, style.intersectionRadius);
-      gridShader.setFloat(10, intersectionColor.r * intersectionColor.a);
-      gridShader.setFloat(11, intersectionColor.g * intersectionColor.a);
-      gridShader.setFloat(12, intersectionColor.b * intersectionColor.a);
-      gridShader.setFloat(13, intersectionColor.a);
-    }
-
-    gridShaderStyleLoaded = true;
 
     canvas.drawRect(
       viewport,
