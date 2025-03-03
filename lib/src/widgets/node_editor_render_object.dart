@@ -390,8 +390,6 @@ class NodeEditorRenderBox extends RenderBox
   void paint(PaintingContext context, Offset offset) {
     final Canvas canvas = context.canvas;
 
-    canvas.save();
-
     final (viewport, startX, startY) = _prepareCanvas(canvas, size);
 
     if (style.gridStyle.showGrid) {
@@ -465,8 +463,6 @@ class NodeEditorRenderBox extends RenderBox
       paintDebugViewport(canvas, viewport);
       paintDebugOffset(canvas, size);
     }
-
-    context.canvas.restore();
   }
 
   (Rect, double, double) _prepareCanvas(Canvas canvas, Size size) {
