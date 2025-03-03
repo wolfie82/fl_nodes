@@ -708,28 +708,26 @@ class NodeEditorRenderBox extends RenderBox
 
   @override
   bool hitTestChildren(BoxHitTestResult result, {required Offset position}) {
-    final transformedPosition =
-        (position - Offset(size.width / 2, size.height / 2))
-                .scale(1 / zoom, 1 / zoom) -
-            _offset;
+    final Offset centeredPosition =
+        position - Offset(size.width / 2, size.height / 2);
+    final Offset scaledPosition = centeredPosition.scale(1 / zoom, 1 / zoom);
+    final Offset transformedPosition = scaledPosition - _offset;
 
-    RenderBox? child = lastChild;
-    while (child != null) {
-      final childParentData = child.parentData! as _ParentData;
+    for (final nodeId in visibleNodes) {
+      final child = _childrenById[nodeId]!;
+      final childParentData = child.parentData as _ParentData;
 
       final bool isHit = result.addWithPaintOffset(
         offset: childParentData.offset,
         position: transformedPosition,
         hitTest: (BoxHitTestResult result, Offset transformed) {
-          return child!.hitTest(result, position: transformed);
+          return child.hitTest(result, position: transformed);
         },
       );
 
       if (isHit) {
         return true;
       }
-
-      child = childParentData.previousSibling;
     }
 
     return false;
