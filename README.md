@@ -2,8 +2,8 @@
 
 ![Coverage](https://github.com/WilliamKarolDiCioccio/fl_nodes/blob/main/coverage_badge.svg?sanitize=true)
 
-🚧 **Note:** T**FlNodes** is in its early stages. While the core functionality
-is in place, we're actively improving performance, adding features, and refining
+🚧 **Note:** **FlNodes** is in its early stages. While the core functionality is
+in place, we're actively improving performance, adding features, and refining
 the experience. Your feedback and contributions are invaluable in shaping its
 future! 🚀
 

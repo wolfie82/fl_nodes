@@ -135,13 +135,13 @@ class _NodeEditorDataLayerState extends State<NodeEditorDataLayer>
       setState(() {
         _suppressEvents();
       });
-    } else if (event is AddNodeEvent ||
-        event is RemoveNodeEvent ||
-        event is RemoveLinkEvent ||
+    } else if (event is RemoveLinkEvent ||
         event is DrawTempLinkEvent ||
         event is CutSelectionEvent) {
       setState(() {});
-    } else if (event is UpdateStyleEvent ||
+    } else if (event is AddNodeEvent ||
+        event is RemoveNodeEvent ||
+        event is UpdateStyleEvent ||
         event is AddLinkEvent ||
         event is PasteSelectionEvent ||
         event is LoadProjectEvent ||

@@ -17,3 +17,7 @@
   alignment.
 - **Performance Improvements**: Significantly optimized performance, especially
   when handling large numbers of nodes.
+
+## 0.2.0+1 (Hotfix)
+
+- Fixed node rendering after creation and deletion
