@@ -359,6 +359,10 @@ final class NodeState {
 final class NodeInstance {
   final String id; // Stored to acceleate lookups
 
+  // The resolved style for the node.
+  late FlNodeStyle builtStyle;
+  late FlNodeHeaderStyle builtHeaderStyle;
+
   final NodePrototype prototype;
   final Map<String, PortInstance> ports;
   final Map<String, FieldInstance> fields;

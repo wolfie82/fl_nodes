@@ -14,10 +14,12 @@ import '../core/models/styles.dart';
 import 'builders.dart';
 
 class NodeDrawData {
+  String id;
   Offset offset;
   NodeState state;
 
   NodeDrawData({
+    required this.id,
     required this.offset,
     required this.state,
   });
@@ -119,6 +121,7 @@ class NodeEditorRenderObjectWidget extends MultiChildRenderObjectWidget {
     return controller.nodesAsList
         .map(
           (node) => NodeDrawData(
+            id: node.id,
             offset: node.offset,
             state: node.state,
           ),
@@ -182,8 +185,8 @@ class NodeEditorRenderBox extends RenderBox
     shouldUpdateNodes(nodesData);
   }
 
+  final Map<String, RenderBox> _childrenById = {};
   final FlNodeEditorController _controller;
-  FlNodeEditorController get controller => _controller;
 
   FlNodeEditorStyle _style;
   FlNodeEditorStyle get style => _style;
@@ -243,7 +246,6 @@ class NodeEditorRenderBox extends RenderBox
   }
 
   Set<String> visibleNodes = {};
-  List<NodeDrawData> _nodesData = [];
 
   void shouldUpdateNodes(List<NodeDrawData> nodesData) {
     if (!_didNodesUpdate(nodesData)) {
@@ -253,12 +255,12 @@ class NodeEditorRenderBox extends RenderBox
   }
 
   void _updateNodes(List<NodeDrawData> nodesData) {
-    _nodesData = nodesData;
+    _childrenById.clear();
 
     RenderBox? child = firstChild;
     int index = 0;
 
-    final nodesAsList = controller.nodesAsList;
+    final nodesAsList = _controller.nodesAsList;
 
     while (child != null && index < nodesData.length) {
       final childParentData = child.parentData! as _ParentData;
@@ -277,8 +279,9 @@ class NodeEditorRenderBox extends RenderBox
         childParentData.rect = Rect.zero;
       }
 
-      child = childParentData.nextSibling;
+      _childrenById[childParentData.id] = child;
 
+      child = childParentData.nextSibling;
       index++;
     }
   }
@@ -291,7 +294,7 @@ class NodeEditorRenderBox extends RenderBox
     RenderBox? child = firstChild;
     int index = 0;
 
-    final nodesAsList = controller.nodesAsList;
+    final nodesAsList = _controller.nodesAsList;
 
     while (child != null && index < nodesData.length) {
       final childParentData = child.parentData! as _ParentData;
@@ -313,17 +316,6 @@ class NodeEditorRenderBox extends RenderBox
   void setupParentData(RenderBox child) {
     if (child.parentData is! NodeDrawData) {
       child.parentData = _ParentData();
-    }
-  }
-
-  @override
-  void insert(RenderBox child, {RenderBox? after}) {
-    setupParentData(child);
-    super.insert(child, after: after);
-    final index = indexOf(child);
-    if (index >= 0 && index < _nodesData.length) {
-      (child.parentData as _ParentData).offset = _nodesData[index].offset;
-      (child.parentData as _ParentData).state = _nodesData[index].state;
     }
   }
 
@@ -409,21 +401,17 @@ class NodeEditorRenderBox extends RenderBox
     _paintLinks(canvas);
 
     // Performing the update here ensures all layout operations are done.
-    visibleNodes = controller.spatialHashGrid.queryNodeIdsInArea(
+    visibleNodes = _controller.spatialHashGrid.queryNodeIdsInArea(
       _calculateViewport().inflate(300),
     );
 
     final List<RenderBox> selectedChildren = [];
 
-    RenderBox? child = firstChild;
-    while (child != null) {
-      final _ParentData childParentData = child.parentData! as _ParentData;
+    // Only process children within the viewport.
+    for (final nodeId in visibleNodes) {
+      final child = _childrenById[nodeId];
 
-      // Only process children within the viewport.
-      if (!visibleNodes.contains(childParentData.id)) {
-        child = childParentData.nextSibling;
-        continue;
-      }
+      final childParentData = child!.parentData as _ParentData;
 
       if (childParentData.state.isSelected) {
         // Save selected nodes to paint later.
@@ -445,14 +433,11 @@ class NodeEditorRenderBox extends RenderBox
 
         context.paintChild(child, childParentData.offset);
       }
-
-      child = childParentData.nextSibling;
     }
 
     // Now paint all selected nodes so they appear over the others.
     for (final selectedChild in selectedChildren) {
-      final _ParentData childParentData =
-          selectedChild.parentData! as _ParentData;
+      final childParentData = selectedChild.parentData! as _ParentData;
 
       canvas.drawShadow(
         Path()

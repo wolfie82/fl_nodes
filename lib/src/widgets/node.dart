@@ -61,9 +61,6 @@ class _NodeWidgetState extends State<NodeWidget> {
   // Temporary link locator used during linking.
   _TempLink? _tempLink;
 
-  // The resolved style for the node.
-  late FlNodeStyle builtStyle;
-
   Offset _lastOffset = Offset.zero;
   NodeState _lastState = NodeState();
 
@@ -76,7 +73,10 @@ class _NodeWidgetState extends State<NodeWidget> {
 
     widget.controller.eventBus.events.listen(_handleControllerEvents);
 
-    builtStyle = widget.node.prototype.styleBuilder(widget.node.state);
+    widget.node.builtStyle =
+        widget.node.prototype.styleBuilder(widget.node.state);
+    widget.node.builtHeaderStyle =
+        widget.node.builtStyle.headerStyleBuilder(widget.node.state);
     _lastOffset = widget.node.offset;
     _lastState = widget.node.state;
 
@@ -112,13 +112,19 @@ class _NodeWidgetState extends State<NodeWidget> {
     if (event is SelectionEvent) {
       if (event.nodeIds.contains(widget.node.id)) {
         setState(() {
-          builtStyle = widget.node.prototype.styleBuilder(widget.node.state);
+          widget.node.builtStyle =
+              widget.node.prototype.styleBuilder(widget.node.state);
+          widget.node.builtHeaderStyle =
+              widget.node.builtStyle.headerStyleBuilder(widget.node.state);
         });
       }
     } else if (event is CollapseEvent) {
       if (event.nodeIds.contains(widget.node.id)) {
         setState(() {
-          builtStyle = widget.node.prototype.styleBuilder(widget.node.state);
+          widget.node.builtStyle =
+              widget.node.prototype.styleBuilder(widget.node.state);
+          widget.node.builtHeaderStyle =
+              widget.node.builtStyle.headerStyleBuilder(widget.node.state);
         });
       }
     } else if (event is DragSelectionEvent) {
@@ -238,7 +244,7 @@ class _NodeWidgetState extends State<NodeWidget> {
 
     // Get the field content either from the custom builder or use default visualizer.
     final fieldContent = widget.fieldBuilder != null
-        ? widget.fieldBuilder!(context, field, builtStyle)
+        ? widget.fieldBuilder!(context, field, widget.node.builtStyle)
         : Container(
             padding: field.prototype.style.padding,
             decoration: field.prototype.style.decoration,
@@ -286,7 +292,7 @@ class _NodeWidgetState extends State<NodeWidget> {
     }
 
     if (widget.portBuilder != null) {
-      return widget.portBuilder!(context, port, builtStyle);
+      return widget.portBuilder!(context, port, widget.node.builtStyle);
     }
 
     final isInput = port.prototype.direction == PortDirection.input;
@@ -697,7 +703,7 @@ class _NodeWidgetState extends State<NodeWidget> {
             key: widget.node.key,
             clipBehavior: Clip.none,
             children: [
-              Container(decoration: builtStyle.decoration),
+              Container(decoration: widget.node.builtStyle.decoration),
               ...widget.node.ports.entries.map(
                 (entry) => _buildPortIndicator(entry.value),
               ),
@@ -709,16 +715,14 @@ class _NodeWidgetState extends State<NodeWidget> {
                       ? widget.headerBuilder!(
                           context,
                           widget.node,
-                          builtStyle,
+                          widget.node.builtStyle,
                           () => widget.controller.toggleCollapseSelectedNodes(
                             !widget.node.state.isCollapsed,
                           ),
                         )
                       : _NodeHeaderWidget(
                           nodeDisplayName: widget.node.prototype.displayName,
-                          style: builtStyle.headerStyleBuilder(
-                            widget.node.state,
-                          ),
+                          style: widget.node.builtHeaderStyle,
                           onToggleCollapse: () =>
                               widget.controller.toggleCollapseSelectedNodes(
                             !widget.node.state.isCollapsed,
