@@ -870,15 +870,9 @@ class _PortSymbolPainter extends CustomPainter {
   void _paintTriangle(Canvas canvas, Paint paint) {
     final path = Path();
 
-    if (direction == PortDirection.input) {
-      path.moveTo(position.dx + portSize, position.dy - portSize);
-      path.lineTo(position.dx - portSize, position.dy);
-      path.lineTo(position.dx + portSize, position.dy + portSize);
-    } else {
-      path.moveTo(position.dx - portSize, position.dy - portSize);
-      path.lineTo(position.dx + portSize, position.dy);
-      path.lineTo(position.dx - portSize, position.dy + portSize);
-    }
+    path.moveTo(position.dx - portSize, position.dy - portSize);
+    path.lineTo(position.dx + portSize, position.dy);
+    path.lineTo(position.dx - portSize, position.dy + portSize);
 
     path.close();
     canvas.drawPath(path, paint);
