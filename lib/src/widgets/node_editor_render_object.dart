@@ -44,8 +44,8 @@ class _ParentData extends ContainerBoxParentData<RenderBox> {
   Offset nodeOffset = Offset.zero;
   NodeState state = NodeState();
 
-  // This is used to prevent unnecessary layout and painting of children
-  bool hasBeenLaidOut = false;
+  // // // This is used to prevent unnecessary layout and painting of children
+  // // bool hasBeenLaidOut = false;
 
   // This is used to avoid unnecessary recomputations of the renderbox rect
   Rect rect = Rect.zero;
@@ -186,8 +186,13 @@ class NodeEditorRenderBox extends RenderBox
     shouldUpdateNodes(nodesData);
   }
 
-  final Map<String, RenderBox> _childrenById = {};
   final FlNodeEditorController _controller;
+  final Map<String, RenderBox> _childrenById = {};
+
+  // We keep track of the layout operation manually beacuse the hasSize getter
+  // calls the size method which implementation causes assertions to be thrown.
+  // See: https://api.flutter.dev/flutter/rendering/RenderBox/size.html
+  final Map<String, RenderBox> _childrenNotLaidOut = {};
 
   FlNodeEditorStyle _style;
   FlNodeEditorStyle get style => _style;
@@ -246,6 +251,14 @@ class NodeEditorRenderBox extends RenderBox
     markNeedsPaint();
   }
 
+  List<NodeDrawData> _nodesData = [];
+  List<NodeDrawData> get nodesData => _nodesData;
+  set nodesData(List<NodeDrawData> value) {
+    if (_nodesData == value) return;
+    _nodesData = value;
+    markNeedsLayout();
+  }
+
   void _loadGridShader() {
     final style = this.style.gridStyle;
 
@@ -279,6 +292,8 @@ class NodeEditorRenderBox extends RenderBox
   }
 
   void _updateNodes(List<NodeDrawData> nodesData) {
+    _nodesData = nodesData;
+
     _childrenById.clear();
 
     RenderBox? child = firstChild;
@@ -299,7 +314,7 @@ class NodeEditorRenderBox extends RenderBox
           isSelected: nodeData.state.isSelected,
           isCollapsed: nodeData.state.isCollapsed,
         );
-        childParentData.hasBeenLaidOut = false;
+        _childrenNotLaidOut[childParentData.id] = child;
         childParentData.rect = Rect.zero;
       }
 
@@ -343,6 +358,25 @@ class NodeEditorRenderBox extends RenderBox
     }
   }
 
+  @override
+  @override
+  void insert(RenderBox child, {RenderBox? after}) {
+    setupParentData(child);
+    super.insert(child, after: after);
+
+    final index = indexOf(child);
+    final parentData = child.parentData as _ParentData;
+
+    if (index >= 0 && index < _nodesData.length) {
+      parentData.id = _nodesData[index].id;
+      parentData.offset = _nodesData[index].offset;
+      parentData.state = _nodesData[index].state;
+
+      _childrenById[parentData.id] = child;
+      _childrenNotLaidOut[parentData.id] = child;
+    }
+  }
+
   int indexOf(RenderBox child) {
     int index = 0;
     RenderBox? current = firstChild;
@@ -360,41 +394,52 @@ class NodeEditorRenderBox extends RenderBox
   void performLayout() {
     size = constraints.biggest;
 
-    RenderBox? child = firstChild;
-    while (child != null) {
+    // If the child has not been laid out yet, we need to layout it.
+    // Otherwise, we only need to layout it if it's within the viewport.
+
+    final Set<String> childrenLaidOut = {};
+
+    for (final nodeId in _childrenNotLaidOut.keys) {
+      final child = _childrenNotLaidOut[nodeId]!;
       final _ParentData childParentData = child.parentData! as _ParentData;
 
-      // If the child has not been laid out yet, we need to layout it.
-      // Otherwise, we only need to layout it if it's within the viewport.
-      if (!childParentData.hasBeenLaidOut) {
-        child.layout(
-          BoxConstraints.loose(constraints.biggest),
-          parentUsesSize: true,
-        );
+      child.layout(
+        BoxConstraints.loose(constraints.biggest),
+        parentUsesSize: true,
+      );
 
-        // We keep track of the layout operation manually beacuse the hasSize getter
-        // calls the size method which implementation causes assertions to be thrown.
-        // See: https://api.flutter.dev/flutter/rendering/RenderBox/size.html
-        childParentData.hasBeenLaidOut = true;
-        childParentData.rect = Rect.fromLTWH(
-          childParentData.offset.dx,
-          childParentData.offset.dy,
-          child.size.width,
-          child.size.height,
-        );
-      } else {
-        if (!visibleNodes.contains(childParentData.id)) {
-          child = childParentData.nextSibling;
-          continue;
-        }
+      childParentData.rect = Rect.fromLTWH(
+        childParentData.offset.dx,
+        childParentData.offset.dy,
+        child.size.width,
+        child.size.height,
+      );
 
-        child.layout(
-          BoxConstraints.loose(constraints.biggest),
-          parentUsesSize: true,
-        );
-      }
+      childrenLaidOut.add(childParentData.id);
+    }
 
-      child = childParentData.nextSibling;
+    for (final nodeId in childrenLaidOut) {
+      _childrenNotLaidOut.remove(nodeId);
+    }
+
+    for (final nodeId in visibleNodes) {
+      final child = _childrenById[nodeId];
+
+      if (child == null) continue;
+
+      final childParentData = child.parentData as _ParentData;
+
+      child.layout(
+        BoxConstraints.loose(constraints.biggest),
+        parentUsesSize: true,
+      );
+
+      childParentData.rect = Rect.fromLTWH(
+        childParentData.offset.dx,
+        childParentData.offset.dy,
+        child.size.width,
+        child.size.height,
+      );
     }
 
     // Here we should be updating the visibleNodes set with the nodes that are within the viewport.
@@ -433,7 +478,9 @@ class NodeEditorRenderBox extends RenderBox
     for (final nodeId in visibleNodes) {
       final child = _childrenById[nodeId];
 
-      final childParentData = child!.parentData as _ParentData;
+      if (child == null) continue;
+
+      final childParentData = child.parentData as _ParentData;
 
       if (childParentData.state.isSelected) {
         // Save selected nodes to paint later.
