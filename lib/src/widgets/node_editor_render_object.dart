@@ -212,17 +212,21 @@ class NodeEditorRenderBox extends RenderBox
   }
 
   Offset _offset;
+  Offset _lastOffset = Offset.zero;
   Offset get offset => _offset;
   set offset(Offset value) {
     if (_offset == value) return;
+    _lastOffset = _offset;
     _offset = value;
     markNeedsPaint();
   }
 
   double _zoom;
+  double _lastZoom = 1.0;
   double get zoom => _zoom;
   set zoom(double value) {
     if (_zoom == value) return;
+    _lastZoom = _zoom;
     _zoom = value;
     markNeedsPaint();
   }
@@ -461,7 +465,8 @@ class NodeEditorRenderBox extends RenderBox
 
     final (viewport, startX, startY) = _prepareCanvas(canvas, size);
 
-    if (style.gridStyle.showGrid) {
+    if (style.gridStyle.showGrid && _offset != _lastOffset ||
+        _zoom != _lastZoom) {
       _paintGrid(canvas, viewport, startX, startY);
     }
 

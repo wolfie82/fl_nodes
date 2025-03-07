@@ -81,7 +81,9 @@ class _NodeWidgetState extends State<NodeWidget> {
     _lastState = widget.node.state;
 
     SchedulerBinding.instance.addPostFrameCallback((_) {
-      if (mounted) widget.node.onRendered(widget.node);
+      if (!mounted) return;
+      widget.node.onRendered(widget.node);
+      _updatePortsPosition();
     });
   }
 
@@ -98,7 +100,9 @@ class _NodeWidgetState extends State<NodeWidget> {
     if (widget.node.offset != _lastOffset ||
         widget.node.state.isCollapsed != _lastState.isCollapsed) {
       SchedulerBinding.instance.addPostFrameCallback((_) {
-        if (mounted) widget.node.onRendered(widget.node);
+        if (!mounted) return;
+        widget.node.onRendered(widget.node);
+        _updatePortsPosition();
       });
 
       _lastOffset = widget.node.offset;
@@ -750,45 +754,63 @@ class _NodeWidgetState extends State<NodeWidget> {
 
   Widget _buildPortIndicator(PortInstance port) {
     return Positioned.fill(
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final portKey = port.key;
-          final RenderBox? portBox =
-              portKey.currentContext?.findRenderObject() as RenderBox?;
-          if (portBox == null) return const SizedBox();
-
-          final nodeBox =
-              widget.node.key.currentContext?.findRenderObject() as RenderBox?;
-          if (nodeBox == null) return const SizedBox();
-
-          final portOffset = portBox.localToGlobal(Offset.zero);
-          final nodeOffset = nodeBox.localToGlobal(Offset.zero);
-          var relativeOffset = portOffset - nodeOffset;
-
-          if (widget.node.state.isCollapsed) {
-            relativeOffset = Offset(
-              relativeOffset.dx,
-              relativeOffset.dy - constraints.maxHeight + 8,
-            );
-          }
-
-          port.offset = Offset(
-            port.prototype.direction == PortDirection.input
-                ? 0
-                : constraints.maxWidth,
-            relativeOffset.dy + portBox.size.height / 2,
-          );
-
-          return CustomPaint(
-            painter: _PortSymbolPainter(
-              position: port.offset,
-              style: port.prototype.style,
-              direction: port.prototype.direction,
-            ),
-          );
-        },
+      child: CustomPaint(
+        painter: _PortSymbolPainter(
+          position: port.offset,
+          style: port.prototype.style,
+          direction: port.prototype.direction,
+        ),
       ),
     );
+  }
+
+  void _updatePortsPosition() {
+    if (!mounted) return;
+
+    final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
+    if (renderBox == null) return;
+
+    final renderBoxSize = renderBox.size;
+    final nodeBox =
+        widget.node.key.currentContext?.findRenderObject() as RenderBox?;
+    if (nodeBox == null) return;
+
+    final nodeOffset = nodeBox.localToGlobal(Offset.zero);
+    final updatedPorts = <PortInstance>[];
+
+    for (final port in widget.node.ports.values) {
+      final portKey = port.key;
+      final RenderBox? portBox =
+          portKey.currentContext?.findRenderObject() as RenderBox?;
+
+      if (portBox == null) {
+        continue;
+      }
+
+      final portOffset = portBox.localToGlobal(Offset.zero);
+      var relativeOffset = portOffset - nodeOffset;
+
+      if (widget.node.state.isCollapsed) {
+        relativeOffset = Offset(
+          relativeOffset.dx,
+          relativeOffset.dy - renderBoxSize.height + 8,
+        );
+      }
+
+      final newOffset = Offset(
+        port.prototype.direction == PortDirection.input
+            ? 0
+            : renderBoxSize.width,
+        relativeOffset.dy + portBox.size.height / 2,
+      );
+
+      port.offset = newOffset;
+      updatedPorts.add(port);
+    }
+
+    if (updatedPorts.isNotEmpty) {
+      setState(() {}); // Just triggers a rebuild
+    }
   }
 }
 
