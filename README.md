@@ -143,6 +143,7 @@ We’d love your help in making **FlNodes** even better! You can contribute by:
 - 💡 Suggesting new features
 - 🐛 Reporting bugs
 - 🔧 Submitting pull requests
+- 👏 [Sharing what you've built](https://github.com/WilliamKarolDiCioccio/fl_nodes/discussions/49) 
 
 Feel free to file an issue or contribute directly on
 [GitHub](https://github.com/WilliamKarolDiCioccio/fl_nodes).
