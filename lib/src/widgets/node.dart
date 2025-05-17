@@ -61,9 +61,6 @@ class _NodeWidgetState extends State<NodeWidget> {
   // Temporary link locator used during linking.
   _TempLink? _tempLink;
 
-  Offset _lastOffset = Offset.zero;
-  NodeState _lastState = NodeState();
-
   double get viewportZoom => widget.controller.viewportZoom;
   Offset get viewportOffset => widget.controller.viewportOffset;
 
@@ -72,13 +69,6 @@ class _NodeWidgetState extends State<NodeWidget> {
     super.initState();
 
     widget.controller.eventBus.events.listen(_handleControllerEvents);
-
-    widget.node.builtStyle =
-        widget.node.prototype.styleBuilder(widget.node.state);
-    widget.node.builtHeaderStyle =
-        widget.node.builtStyle.headerStyleBuilder(widget.node.state);
-    _lastOffset = widget.node.offset;
-    _lastState = widget.node.state;
 
     SchedulerBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -94,20 +84,14 @@ class _NodeWidgetState extends State<NodeWidget> {
   }
 
   @override
-  void didUpdateWidget(NodeWidget oldWidget) {
-    super.didUpdateWidget(oldWidget);
+  void didChangeDependencies() {
+    super.didChangeDependencies();
 
-    if (widget.node.offset != _lastOffset ||
-        widget.node.state.isCollapsed != _lastState.isCollapsed) {
-      SchedulerBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        widget.node.onRendered(widget.node);
-        _updatePortsPosition();
-      });
-
-      _lastOffset = widget.node.offset;
-      _lastState = widget.node.state;
-    }
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      widget.node.onRendered(widget.node);
+      _updatePortsPosition();
+    });
   }
 
   void _handleControllerEvents(NodeEditorEvent event) {
@@ -119,16 +103,22 @@ class _NodeWidgetState extends State<NodeWidget> {
           widget.node.builtStyle =
               widget.node.prototype.styleBuilder(widget.node.state);
           widget.node.builtHeaderStyle =
-              widget.node.builtStyle.headerStyleBuilder(widget.node.state);
+              widget.node.prototype.headerStyleBuilder(widget.node.state);
         });
       }
     } else if (event is CollapseEvent) {
       if (event.nodeIds.contains(widget.node.id)) {
         setState(() {
+          SchedulerBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            widget.node.onRendered(widget.node);
+            _updatePortsPosition();
+          });
+
           widget.node.builtStyle =
               widget.node.prototype.styleBuilder(widget.node.state);
           widget.node.builtHeaderStyle =
-              widget.node.builtStyle.headerStyleBuilder(widget.node.state);
+              widget.node.prototype.headerStyleBuilder(widget.node.state);
         });
       }
     } else if (event is DragSelectionEvent) {
@@ -698,6 +688,23 @@ class _NodeWidgetState extends State<NodeWidget> {
     // If a custom nodeBuilder is provided, use it directly.
     if (widget.nodeBuilder != null) {
       return widget.nodeBuilder!(context, widget.node);
+    }
+
+    if (widget.node.forceRecompute) {
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        widget.node.onRendered(widget.node);
+        _updatePortsPosition();
+      });
+
+      widget.node.builtStyle = widget.node.prototype.styleBuilder(
+        widget.node.state,
+      );
+      widget.node.builtHeaderStyle = widget.node.prototype.headerStyleBuilder(
+        widget.node.state,
+      );
+
+      widget.node.forceRecompute = false;
     }
 
     return controlsWrapper(

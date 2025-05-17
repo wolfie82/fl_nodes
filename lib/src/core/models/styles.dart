@@ -200,20 +200,16 @@ FlNodeHeaderStyle defaultNodeHeaderStyle(NodeState state) {
 
 class FlNodeStyle {
   final BoxDecoration decoration;
-  final FlNodeHeaderStyleBuilder headerStyleBuilder;
 
   const FlNodeStyle({
     required this.decoration,
-    required this.headerStyleBuilder,
   });
 
   FlNodeStyle copyWith({
     BoxDecoration? decoration,
-    FlNodeHeaderStyleBuilder? headerStyleBuilder,
   }) {
     return FlNodeStyle(
       decoration: decoration ?? this.decoration,
-      headerStyleBuilder: headerStyleBuilder ?? this.headerStyleBuilder,
     );
   }
 }
@@ -231,7 +227,6 @@ FlNodeStyle defaultNodeStyle(NodeState state) {
             color: Color(0xC8424242),
             borderRadius: BorderRadius.all(Radius.circular(10)),
           ),
-    headerStyleBuilder: defaultNodeHeaderStyle,
   );
 }
 

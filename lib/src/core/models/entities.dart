@@ -302,6 +302,7 @@ final class NodePrototype {
   final String displayName;
   final String description;
   final FlNodeStyleBuilder styleBuilder;
+  final FlNodeHeaderStyleBuilder headerStyleBuilder;
   final List<PortPrototype> ports;
   final List<FieldPrototype> fields;
   final OnExecute onExecute;
@@ -311,6 +312,7 @@ final class NodePrototype {
     required this.displayName,
     this.description = '',
     this.styleBuilder = defaultNodeStyle,
+    this.headerStyleBuilder = defaultNodeHeaderStyle,
     this.ports = const [],
     this.fields = const [],
     required this.onExecute,
@@ -359,6 +361,11 @@ final class NodeState {
 final class NodeInstance {
   final String id; // Stored to acceleate lookups
 
+  /// This vairable is crucial to ensure that nodes are rendered correctly after a project load.
+  ///
+  /// For a clear explanation, please refer to the GitHub issue: https://github.com/WilliamKarolDiCioccio/fl_nodes/issues/57#issuecomment-2888250780
+  bool forceRecompute = true;
+
   // The resolved style for the node.
   late FlNodeStyle builtStyle;
   late FlNodeHeaderStyle builtHeaderStyle;
@@ -377,6 +384,7 @@ final class NodeInstance {
     required this.ports,
     required this.fields,
     required this.onRendered,
+    this.forceRecompute = true,
     this.offset = Offset.zero,
   });
 

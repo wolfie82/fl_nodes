@@ -72,15 +72,15 @@ NodePrototype createValueNode<T>({
     description: 'Holds a constant $T value.',
     styleBuilder: (state) => FlNodeStyle(
       decoration: defaultNodeStyle(state).decoration,
-      headerStyleBuilder: (state) => defaultNodeHeaderStyle(state).copyWith(
-        decoration: BoxDecoration(
-          color: Colors.orange,
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(7),
-            topRight: const Radius.circular(7),
-            bottomLeft: Radius.circular(state.isCollapsed ? 7 : 0),
-            bottomRight: Radius.circular(state.isCollapsed ? 7 : 0),
-          ),
+    ),
+    headerStyleBuilder: (state) => defaultNodeHeaderStyle(state).copyWith(
+      decoration: BoxDecoration(
+        color: Colors.orange,
+        borderRadius: BorderRadius.only(
+          topLeft: const Radius.circular(7),
+          topRight: const Radius.circular(7),
+          bottomLeft: Radius.circular(state.isCollapsed ? 7 : 0),
+          bottomRight: Radius.circular(state.isCollapsed ? 7 : 0),
         ),
       ),
     ),
@@ -310,15 +310,15 @@ void registerNodes(BuildContext context, FlNodeEditorController controller) {
       description: 'Applies a chosen operation to two numbers.',
       styleBuilder: (state) => FlNodeStyle(
         decoration: defaultNodeStyle(state).decoration,
-        headerStyleBuilder: (state) => defaultNodeHeaderStyle(state).copyWith(
-          decoration: BoxDecoration(
-            color: Colors.pink,
-            borderRadius: BorderRadius.only(
-              topLeft: const Radius.circular(7),
-              topRight: const Radius.circular(7),
-              bottomLeft: Radius.circular(state.isCollapsed ? 7 : 0),
-              bottomRight: Radius.circular(state.isCollapsed ? 7 : 0),
-            ),
+      ),
+      headerStyleBuilder: (state) => defaultNodeHeaderStyle(state).copyWith(
+        decoration: BoxDecoration(
+          color: Colors.pink,
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(7),
+            topRight: const Radius.circular(7),
+            bottomLeft: Radius.circular(state.isCollapsed ? 7 : 0),
+            bottomRight: Radius.circular(state.isCollapsed ? 7 : 0),
           ),
         ),
       ),
@@ -407,15 +407,15 @@ void registerNodes(BuildContext context, FlNodeEditorController controller) {
       description: 'Outputs a random number between 0 and 1.',
       styleBuilder: (state) => FlNodeStyle(
         decoration: defaultNodeStyle(state).decoration,
-        headerStyleBuilder: (state) => defaultNodeHeaderStyle(state).copyWith(
-          decoration: BoxDecoration(
-            color: Colors.purple,
-            borderRadius: BorderRadius.only(
-              topLeft: const Radius.circular(7),
-              topRight: const Radius.circular(7),
-              bottomLeft: Radius.circular(state.isCollapsed ? 7 : 0),
-              bottomRight: Radius.circular(state.isCollapsed ? 7 : 0),
-            ),
+      ),
+      headerStyleBuilder: (state) => defaultNodeHeaderStyle(state).copyWith(
+        decoration: BoxDecoration(
+          color: Colors.purple,
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(7),
+            topRight: const Radius.circular(7),
+            bottomLeft: Radius.circular(state.isCollapsed ? 7 : 0),
+            bottomRight: Radius.circular(state.isCollapsed ? 7 : 0),
           ),
         ),
       ),
@@ -447,15 +447,15 @@ void registerNodes(BuildContext context, FlNodeEditorController controller) {
       description: 'Executes a branch based on a condition.',
       styleBuilder: (state) => FlNodeStyle(
         decoration: defaultNodeStyle(state).decoration,
-        headerStyleBuilder: (state) => defaultNodeHeaderStyle(state).copyWith(
-          decoration: BoxDecoration(
-            color: Colors.green,
-            borderRadius: BorderRadius.only(
-              topLeft: const Radius.circular(7),
-              topRight: const Radius.circular(7),
-              bottomLeft: Radius.circular(state.isCollapsed ? 7 : 0),
-              bottomRight: Radius.circular(state.isCollapsed ? 7 : 0),
-            ),
+      ),
+      headerStyleBuilder: (state) => defaultNodeHeaderStyle(state).copyWith(
+        decoration: BoxDecoration(
+          color: Colors.green,
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(7),
+            topRight: const Radius.circular(7),
+            bottomLeft: Radius.circular(state.isCollapsed ? 7 : 0),
+            bottomRight: Radius.circular(state.isCollapsed ? 7 : 0),
           ),
         ),
       ),
@@ -499,15 +499,15 @@ void registerNodes(BuildContext context, FlNodeEditorController controller) {
       description: 'Compares two numbers based on a chosen comparator.',
       styleBuilder: (state) => FlNodeStyle(
         decoration: defaultNodeStyle(state).decoration,
-        headerStyleBuilder: (state) => defaultNodeHeaderStyle(state).copyWith(
-          decoration: BoxDecoration(
-            color: Colors.cyan,
-            borderRadius: BorderRadius.only(
-              topLeft: const Radius.circular(7),
-              topRight: const Radius.circular(7),
-              bottomLeft: Radius.circular(state.isCollapsed ? 7 : 0),
-              bottomRight: Radius.circular(state.isCollapsed ? 7 : 0),
-            ),
+      ),
+      headerStyleBuilder: (state) => defaultNodeHeaderStyle(state).copyWith(
+        decoration: BoxDecoration(
+          color: Colors.cyan,
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(7),
+            topRight: const Radius.circular(7),
+            bottomLeft: Radius.circular(state.isCollapsed ? 7 : 0),
+            bottomRight: Radius.circular(state.isCollapsed ? 7 : 0),
           ),
         ),
       ),
@@ -602,15 +602,15 @@ void registerNodes(BuildContext context, FlNodeEditorController controller) {
       description: 'Prints a value to the console.',
       styleBuilder: (state) => FlNodeStyle(
         decoration: defaultNodeStyle(state).decoration,
-        headerStyleBuilder: (state) => defaultNodeHeaderStyle(state).copyWith(
-          decoration: BoxDecoration(
-            color: Colors.deepPurple,
-            borderRadius: BorderRadius.only(
-              topLeft: const Radius.circular(7),
-              topRight: const Radius.circular(7),
-              bottomLeft: Radius.circular(state.isCollapsed ? 7 : 0),
-              bottomRight: Radius.circular(state.isCollapsed ? 7 : 0),
-            ),
+      ),
+      headerStyleBuilder: (state) => defaultNodeHeaderStyle(state).copyWith(
+        decoration: BoxDecoration(
+          color: Colors.deepPurple,
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(7),
+            topRight: const Radius.circular(7),
+            bottomLeft: Radius.circular(state.isCollapsed ? 7 : 0),
+            bottomRight: Radius.circular(state.isCollapsed ? 7 : 0),
           ),
         ),
       ),
@@ -655,15 +655,15 @@ void registerNodes(BuildContext context, FlNodeEditorController controller) {
       description: 'Rounds a number to a specified number of decimals.',
       styleBuilder: (state) => FlNodeStyle(
         decoration: defaultNodeStyle(state).decoration,
-        headerStyleBuilder: (state) => defaultNodeHeaderStyle(state).copyWith(
-          decoration: BoxDecoration(
-            color: Colors.blue,
-            borderRadius: BorderRadius.only(
-              topLeft: const Radius.circular(7),
-              topRight: const Radius.circular(7),
-              bottomLeft: Radius.circular(state.isCollapsed ? 7 : 0),
-              bottomRight: Radius.circular(state.isCollapsed ? 7 : 0),
-            ),
+      ),
+      headerStyleBuilder: (state) => defaultNodeHeaderStyle(state).copyWith(
+        decoration: BoxDecoration(
+          color: Colors.blue,
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(7),
+            topRight: const Radius.circular(7),
+            bottomLeft: Radius.circular(state.isCollapsed ? 7 : 0),
+            bottomRight: Radius.circular(state.isCollapsed ? 7 : 0),
           ),
         ),
       ),
@@ -742,15 +742,15 @@ void registerNodes(BuildContext context, FlNodeEditorController controller) {
       description: 'Executes a loop for a specified number of iterations.',
       styleBuilder: (state) => FlNodeStyle(
         decoration: defaultNodeStyle(state).decoration,
-        headerStyleBuilder: (state) => defaultNodeHeaderStyle(state).copyWith(
-          decoration: BoxDecoration(
-            color: Colors.teal,
-            borderRadius: BorderRadius.only(
-              topLeft: const Radius.circular(7),
-              topRight: const Radius.circular(7),
-              bottomLeft: Radius.circular(state.isCollapsed ? 7 : 0),
-              bottomRight: Radius.circular(state.isCollapsed ? 7 : 0),
-            ),
+      ),
+      headerStyleBuilder: (state) => defaultNodeHeaderStyle(state).copyWith(
+        decoration: BoxDecoration(
+          color: Colors.teal,
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(7),
+            topRight: const Radius.circular(7),
+            bottomLeft: Radius.circular(state.isCollapsed ? 7 : 0),
+            bottomRight: Radius.circular(state.isCollapsed ? 7 : 0),
           ),
         ),
       ),

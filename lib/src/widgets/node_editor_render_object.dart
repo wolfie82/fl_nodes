@@ -264,22 +264,22 @@ class NodeEditorRenderBox extends RenderBox
   }
 
   void _loadGridShader() {
-    final style = this.style.gridStyle;
+    final gridStyle = style.gridStyle;
 
-    gridShader.setFloat(0, style.gridSpacingX);
-    gridShader.setFloat(1, style.gridSpacingY);
+    gridShader.setFloat(0, gridStyle.gridSpacingX);
+    gridShader.setFloat(1, gridStyle.gridSpacingY);
 
-    final lineColor = style.lineColor;
+    final lineColor = gridStyle.lineColor;
 
-    gridShader.setFloat(4, style.lineWidth);
+    gridShader.setFloat(4, gridStyle.lineWidth);
     gridShader.setFloat(5, lineColor.r * lineColor.a);
     gridShader.setFloat(6, lineColor.g * lineColor.a);
     gridShader.setFloat(7, lineColor.b * lineColor.a);
     gridShader.setFloat(8, lineColor.a);
 
-    final intersectionColor = style.intersectionColor;
+    final intersectionColor = gridStyle.intersectionColor;
 
-    gridShader.setFloat(9, style.intersectionRadius);
+    gridShader.setFloat(9, gridStyle.intersectionRadius);
     gridShader.setFloat(10, intersectionColor.r * intersectionColor.a);
     gridShader.setFloat(11, intersectionColor.g * intersectionColor.a);
     gridShader.setFloat(12, intersectionColor.b * intersectionColor.a);
@@ -289,10 +289,37 @@ class NodeEditorRenderBox extends RenderBox
   Set<String> visibleNodes = {};
 
   void shouldUpdateNodes(List<NodeDrawData> nodesData) {
-    if (!_didNodesUpdate(nodesData)) {
+    if (_didNodesUpdate(nodesData)) {
       _updateNodes(nodesData);
       markNeedsLayout();
     }
+  }
+
+  bool _didNodesUpdate(List<NodeDrawData> nodesData) {
+    if (childCount != nodesData.length) {
+      return true;
+    }
+
+    RenderBox? child = firstChild;
+    int index = 0;
+
+    final nodesAsList = _controller.nodesAsList;
+
+    while (child != null && index < nodesData.length) {
+      final childParentData = child.parentData! as _ParentData;
+      final nodeData = nodesData[index];
+
+      if (childParentData.id != nodesAsList[index].id ||
+          childParentData.offset != nodeData.offset ||
+          childParentData.state != nodeData.state) {
+        return true;
+      }
+
+      child = childParentData.nextSibling;
+      index++;
+    }
+
+    return false;
   }
 
   void _updateNodes(List<NodeDrawData> nodesData) {
@@ -327,32 +354,6 @@ class NodeEditorRenderBox extends RenderBox
       child = childParentData.nextSibling;
       index++;
     }
-  }
-
-  bool _didNodesUpdate(List<NodeDrawData> nodesData) {
-    if (childCount != nodesData.length) {
-      return false;
-    }
-
-    RenderBox? child = firstChild;
-    int index = 0;
-
-    final nodesAsList = _controller.nodesAsList;
-
-    while (child != null && index < nodesData.length) {
-      final childParentData = child.parentData! as _ParentData;
-      final nodeData = nodesData[index];
-
-      if (childParentData.id != nodesAsList[index].id ||
-          childParentData.offset != nodeData.offset ||
-          childParentData.state != nodeData.state) {
-        return false;
-      }
-      child = childParentData.nextSibling;
-      index++;
-    }
-
-    return true;
   }
 
   @override
