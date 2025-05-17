@@ -9,6 +9,8 @@ updates:
     directory: "/example"
     schedule:
       interval: "weekly"
+    ignore:
+      - dependency-name: "fl_nodes"
 
   - package-ecosystem: "github-actions"
     directory: "/"
