@@ -73,7 +73,7 @@ class FlNodeEditorController {
     _nodes.clear();
     _spatialHashGrid.clear();
     _selectedNodeIds.clear();
-    _renderLinks.clear();
+    _linksById.clear();
   }
 
   // Configuration
@@ -450,7 +450,7 @@ class FlNodeEditorController {
     port1.links.add(link);
     port2.links.add(link);
 
-    _renderLinks.putIfAbsent(
+    linksById.putIfAbsent(
       link.id,
       () => link,
     );
@@ -492,7 +492,7 @@ class FlNodeEditorController {
     fromPort.links.add(link);
     toPort.links.add(link);
 
-    _renderLinks.putIfAbsent(
+    linksById.putIfAbsent(
       link.id,
       () => link,
     );
@@ -506,6 +506,9 @@ class FlNodeEditorController {
     );
   }
 
+  final Map<String, Link> _linksById = {};
+  Map<String, Link> get linksById => _linksById;
+
   /// This method is used to remove a link by its ID.
   ///
   /// Emits a [RemoveLinkEvent] event.
@@ -514,9 +517,9 @@ class FlNodeEditorController {
     String? eventId,
     bool isHandled = false,
   }) {
-    if (!_renderLinks.containsKey(id)) return;
+    if (!linksById.containsKey(id)) return;
 
-    final link = _renderLinks[id]!;
+    final link = linksById[id]!;
 
     // Remove the link from its associated ports
     final fromPort = _nodes[link.fromTo.from]?.ports[link.fromTo.to];
@@ -525,7 +528,7 @@ class FlNodeEditorController {
     fromPort?.links.remove(link);
     toPort?.links.remove(link);
 
-    _renderLinks.remove(id);
+    linksById.remove(id);
 
     eventBus.emit(
       RemoveLinkEvent(
@@ -536,12 +539,9 @@ class FlNodeEditorController {
     );
   }
 
-  // This is used for rendering purposes only. For computation, use the links list in the Port class.
-  final Map<String, Link> _renderLinks = {};
-  TempLink? _renderTempLink;
-
-  List<Link> get renderLinksAsList => _renderLinks.values.toList();
-  TempLink? get renderTempLink => _renderTempLink;
+  /// Represents a link in the process of being drawn.
+  TempLink? _tempLink;
+  TempLink? get tempLink => _tempLink;
 
   /// This method is used to draw a temporary link between two points in the node editor.
   ///
@@ -549,7 +549,7 @@ class FlNodeEditorController {
   ///
   /// Emits a [DrawTempLinkEvent] event.
   void drawTempLink(FlLinkStyle style, Offset from, Offset to) {
-    _renderTempLink = TempLink(style: style, from: from, to: to);
+    _tempLink = TempLink(style: style, from: from, to: to);
     eventBus.emit(DrawTempLinkEvent(id: const Uuid().v4(), from, to));
   }
 
@@ -557,7 +557,7 @@ class FlNodeEditorController {
   ///
   /// Emits a [DrawTempLinkEvent] event.
   void clearTempLink() {
-    _renderTempLink = null;
+    _tempLink = null;
     eventBus.emit(
       DrawTempLinkEvent(id: const Uuid().v4(), Offset.zero, Offset.zero),
     );

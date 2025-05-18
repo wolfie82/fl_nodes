@@ -13,12 +13,12 @@ import '../core/models/styles.dart';
 
 import 'builders.dart';
 
-class NodeDrawData {
+class NodeDiffCheckData {
   String id;
   Offset offset;
   NodeState state;
 
-  NodeDrawData({
+  NodeDiffCheckData({
     required this.id,
     required this.offset,
     required this.state,
@@ -95,10 +95,9 @@ class NodeEditorRenderObjectWidget extends MultiChildRenderObjectWidget {
       gridShader: gridShader,
       offset: controller.viewportOffset,
       zoom: controller.viewportZoom,
-      tempLink: _getTempLinkData(),
+      tmpLinkDrawData: _getTmpLinkDrawData(),
       selectionArea: controller.selectionArea,
-      nodesData: _getNodesData(),
-      linksData: _getLinksData(),
+      nodesData: _getNodeDrawData(),
     );
   }
 
@@ -111,16 +110,15 @@ class NodeEditorRenderObjectWidget extends MultiChildRenderObjectWidget {
       ..style = style
       ..offset = controller.viewportOffset
       ..zoom = controller.viewportZoom
-      ..tempLinkDrawData = _getTempLinkData()
+      ..tmpLinkDrawData = _getTmpLinkDrawData()
       ..selectionArea = controller.selectionArea
-      ..updateNodes(_getNodesData())
-      ..linksData = _getLinksData();
+      ..updateNodes(_getNodeDrawData());
   }
 
-  List<NodeDrawData> _getNodesData() {
+  List<NodeDiffCheckData> _getNodeDrawData() {
     return controller.nodesAsList
         .map(
-          (node) => NodeDrawData(
+          (node) => NodeDiffCheckData(
             id: node.id,
             offset: node.offset,
             state: node.state,
@@ -129,33 +127,15 @@ class NodeEditorRenderObjectWidget extends MultiChildRenderObjectWidget {
         .toList();
   }
 
-  List<LinkDrawData> _getLinksData() {
-    return controller.renderLinksAsList.map((link) {
-      final nodes = controller.nodes;
+  LinkDrawData? _getTmpLinkDrawData() {
+    if (controller.tempLink == null) return null;
 
-      final outNode = nodes[link.fromTo.from]!;
-      final inNode = nodes[link.fromTo.fromPort]!;
-      final outPort = outNode.ports[link.fromTo.to]!;
-      final inPort = inNode.ports[link.fromTo.toPort]!;
+    final link = controller.tempLink!;
 
-      // NOTE: The port offset is relative to the node
-      return LinkDrawData(
-        outPortOffset: outNode.offset + outPort.offset,
-        inPortOffset: inNode.offset + inPort.offset,
-        linkStyle: outPort.prototype.style.linkStyleBuilder(link.state),
-      );
-    }).toList();
-  }
-
-  LinkDrawData? _getTempLinkData() {
-    final tempLink = controller.renderTempLink;
-    if (tempLink == null) return null;
-
-    // NOTE: The port offset its fake, it's just the position of the mouse
     return LinkDrawData(
-      linkStyle: tempLink.style,
-      outPortOffset: tempLink.from,
-      inPortOffset: tempLink.to,
+      outPortOffset: link.from,
+      inPortOffset: link.to,
+      linkStyle: link.style,
     );
   }
 }
@@ -170,18 +150,16 @@ class NodeEditorRenderBox extends RenderBox
     required FragmentShader gridShader,
     required Offset offset,
     required double zoom,
-    required LinkDrawData? tempLink,
+    required LinkDrawData? tmpLinkDrawData,
     required Rect selectionArea,
-    required List<NodeDrawData> nodesData,
-    required List<LinkDrawData> linksData,
+    required List<NodeDiffCheckData> nodesData,
   })  : _controller = controller,
         _style = style,
         _gridShader = gridShader,
         _offset = offset,
         _zoom = zoom,
-        _tempLinkDrawData = tempLink,
-        _selectionArea = selectionArea,
-        _linksData = linksData {
+        _tmpLinkDrawData = tmpLinkDrawData,
+        _selectionArea = selectionArea {
     _loadGridShader();
     updateNodes(nodesData);
   }
@@ -236,6 +214,14 @@ class NodeEditorRenderBox extends RenderBox
   Matrix4? _transformMatrix;
   bool _transformMatrixDirty = true;
 
+  LinkDrawData? _tmpLinkDrawData;
+  LinkDrawData? get tmpLinkDrawData => _tmpLinkDrawData;
+  set tmpLinkDrawData(LinkDrawData? value) {
+    if (_tmpLinkDrawData == value) return;
+    _tmpLinkDrawData = value;
+    markNeedsPaint();
+  }
+
   Rect _selectionArea;
   Rect get selectionArea => _selectionArea;
   set selectionArea(Rect value) {
@@ -244,27 +230,11 @@ class NodeEditorRenderBox extends RenderBox
     markNeedsPaint();
   }
 
-  LinkDrawData? _tempLinkDrawData;
-  LinkDrawData? get tempLinkDrawData => _tempLinkDrawData;
-  set tempLinkDrawData(LinkDrawData? value) {
-    if (_tempLinkDrawData == value) return;
-    _tempLinkDrawData = value;
-    markNeedsPaint();
-  }
-
-  List<LinkDrawData> _linksData;
-  List<LinkDrawData> get linksData => _linksData;
-  set linksData(List<LinkDrawData> value) {
-    if (_linksData == value) return;
-    _linksData = value;
-    markNeedsPaint();
-  }
-
-  List<NodeDrawData> _nodesData = [];
-  List<NodeDrawData> get nodesData => _nodesData;
-  set nodesData(List<NodeDrawData> value) {
-    if (_nodesData == value) return;
-    _nodesData = value;
+  List<NodeDiffCheckData> _nodesDiffCheckData = [];
+  List<NodeDiffCheckData> get nodesData => _nodesDiffCheckData;
+  set nodesData(List<NodeDiffCheckData> value) {
+    if (_nodesDiffCheckData == value) return;
+    _nodesDiffCheckData = value;
     markNeedsLayout();
   }
 
@@ -293,8 +263,8 @@ class NodeEditorRenderBox extends RenderBox
 
   Set<String> visibleNodes = {};
 
-  void updateNodes(List<NodeDrawData> nodesData) {
-    _nodesData = nodesData;
+  void updateNodes(List<NodeDiffCheckData> nodesData) {
+    _nodesDiffCheckData = nodesData;
 
     _childrenById.clear();
 
@@ -336,12 +306,11 @@ class NodeEditorRenderBox extends RenderBox
 
   @override
   void setupParentData(RenderBox child) {
-    if (child.parentData is! NodeDrawData) {
+    if (child.parentData is! NodeDiffCheckData) {
       child.parentData = _ParentData();
     }
   }
 
-  @override
   @override
   void insert(RenderBox child, {RenderBox? after}) {
     setupParentData(child);
@@ -350,10 +319,10 @@ class NodeEditorRenderBox extends RenderBox
     final index = indexOf(child);
     final parentData = child.parentData as _ParentData;
 
-    if (index >= 0 && index < _nodesData.length) {
-      parentData.id = _nodesData[index].id;
-      parentData.offset = _nodesData[index].offset;
-      parentData.state = _nodesData[index].state;
+    if (index >= 0 && index < _nodesDiffCheckData.length) {
+      parentData.id = _nodesDiffCheckData[index].id;
+      parentData.offset = _nodesDiffCheckData[index].offset;
+      parentData.state = _nodesDiffCheckData[index].state;
 
       _childrenById[parentData.id] = child;
       _childrenNotLaidOut[parentData.id] = child;
@@ -419,6 +388,9 @@ class NodeEditorRenderBox extends RenderBox
     );
   }
 
+  /// We need to manually mark the transform matrix as dirty when the window too.
+  Size _lastViewportSize = Size.zero;
+
   @override
   void paint(PaintingContext context, Offset offset) {
     if (_lastViewportSize != size) {
@@ -430,18 +402,17 @@ class NodeEditorRenderBox extends RenderBox
 
     final (viewport, startX, startY) = _prepareCanvas(canvas, size);
 
-    if (_offset != _lastOffset || _zoom != _lastZoom) {
+    // Performing the visibility update here ensures all layout operations are done.
+    if (_lastOffset != offset || _lastZoom != zoom) {
+      visibleNodes = _controller.spatialHashGrid.queryNodeIdsInArea(
+        // Inflate the viewport to include nodes that are close to the edges
+        _calculateViewport().inflate(300),
+      );
+
       _paintGrid(canvas, viewport, startX, startY);
     }
 
     _paintLinks(canvas);
-
-    // Performing the update here ensures all layout operations are done.
-    if (_lastOffset != offset || _lastZoom != zoom) {
-      visibleNodes = _controller.spatialHashGrid.queryNodeIdsInArea(
-        _calculateViewport().inflate(300),
-      );
-    }
 
     final List<RenderBox> selectedChildren = [];
     final List<RenderBox> unselectedChildren = [];
@@ -594,27 +565,67 @@ class NodeEditorRenderBox extends RenderBox
   }
 
   void _paintLinks(Canvas canvas) {
-    for (final linkDrawData in linksData) {
-      switch (linkDrawData.linkStyle.curveType) {
+    final Set<LinkDrawData> linkDrawData = {};
+
+    for (final nodeId in visibleNodes) {
+      for (final port in _controller.nodes[nodeId]!.ports.values) {
+        for (final link in port.links) {
+          final outNode = _controller.nodes[link.fromTo.from]!;
+          final inNode = _controller.nodes[link.fromTo.fromPort]!;
+          final outPort = outNode.ports[link.fromTo.to]!;
+          final inPort = inNode.ports[link.fromTo.toPort]!;
+
+          // NOTE: The port offset is relative to the node
+          linkDrawData.add(
+            LinkDrawData(
+              outPortOffset: outNode.offset + outPort.offset,
+              inPortOffset: inNode.offset + inPort.offset,
+              linkStyle: outPort.prototype.style.linkStyleBuilder(link.state),
+            ),
+          );
+        }
+      }
+    }
+
+    // We don't draw the temporary link here because it should be on top of the nodes
+
+    for (final drawData in linkDrawData) {
+      switch (drawData.linkStyle.curveType) {
         case FlLinkCurveType.straight:
           _paintStraightLink(
             canvas,
-            linkDrawData,
+            drawData,
           );
           break;
         case FlLinkCurveType.bezier:
           _paintBezierLink(
             canvas,
-            linkDrawData,
+            drawData,
           );
           break;
         case FlLinkCurveType.ninetyDegree:
           _paintNinetyDegreesLink(
             canvas,
-            linkDrawData,
+            drawData,
           );
           break;
       }
+    }
+  }
+
+  void _paintTemporaryLink(Canvas canvas) {
+    if (_tmpLinkDrawData == null) return;
+
+    switch (_tmpLinkDrawData!.linkStyle.curveType) {
+      case FlLinkCurveType.straight:
+        _paintStraightLink(canvas, _tmpLinkDrawData!);
+        break;
+      case FlLinkCurveType.bezier:
+        _paintBezierLink(canvas, _tmpLinkDrawData!);
+        break;
+      case FlLinkCurveType.ninetyDegree:
+        _paintNinetyDegreesLink(canvas, _tmpLinkDrawData!);
+        break;
     }
   }
 
@@ -706,22 +717,6 @@ class NodeEditorRenderBox extends RenderBox
       ..lineTo(drawData.inPortOffset.dx, drawData.inPortOffset.dy);
 
     canvas.drawPath(path, gradientPaint);
-  }
-
-  void _paintTemporaryLink(Canvas canvas) {
-    if (_tempLinkDrawData == null) return;
-
-    switch (_tempLinkDrawData!.linkStyle.curveType) {
-      case FlLinkCurveType.straight:
-        _paintStraightLink(canvas, tempLinkDrawData!);
-        break;
-      case FlLinkCurveType.bezier:
-        _paintBezierLink(canvas, tempLinkDrawData!);
-        break;
-      case FlLinkCurveType.ninetyDegree:
-        _paintNinetyDegreesLink(canvas, tempLinkDrawData!);
-        break;
-    }
   }
 
   void _paintSelectionArea(Canvas canvas, Rect viewport) {
