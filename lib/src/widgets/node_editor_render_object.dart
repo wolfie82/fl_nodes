@@ -218,6 +218,7 @@ class NodeEditorRenderBox extends RenderBox
     if (_offset == value) return;
     _lastOffset = _offset;
     _offset = value;
+    _transformMatrixDirty = true;
     markNeedsPaint();
   }
 
@@ -228,8 +229,12 @@ class NodeEditorRenderBox extends RenderBox
     if (_zoom == value) return;
     _lastZoom = _zoom;
     _zoom = value;
+    _transformMatrixDirty = true;
     markNeedsPaint();
   }
+
+  Matrix4? _transformMatrix;
+  bool _transformMatrixDirty = true;
 
   Rect _selectionArea;
   Rect get selectionArea => _selectionArea;
@@ -474,9 +479,11 @@ class NodeEditorRenderBox extends RenderBox
     _paintLinks(canvas);
 
     // Performing the update here ensures all layout operations are done.
-    visibleNodes = _controller.spatialHashGrid.queryNodeIdsInArea(
-      _calculateViewport().inflate(300),
-    );
+    if (_lastOffset != offset || _lastZoom != zoom) {
+      visibleNodes = _controller.spatialHashGrid.queryNodeIdsInArea(
+        _calculateViewport().inflate(300),
+      );
+    }
 
     final List<RenderBox> selectedChildren = [];
 
@@ -542,10 +549,22 @@ class NodeEditorRenderBox extends RenderBox
     }
   }
 
+  Matrix4 _getTransformMatrix() {
+    if (_transformMatrix != null && !_transformMatrixDirty) {
+      return _transformMatrix!;
+    }
+
+    _transformMatrix = Matrix4.identity()
+      ..translate(size.width / 2, size.height / 2)
+      ..scale(zoom, zoom, 1.0)
+      ..translate(offset.dx, offset.dy);
+
+    _transformMatrixDirty = false;
+    return _transformMatrix!;
+  }
+
   (Rect, double, double) _prepareCanvas(Canvas canvas, Size size) {
-    canvas.translate(size.width / 2, size.height / 2);
-    canvas.scale(zoom);
-    canvas.translate(offset.dx, offset.dy);
+    canvas.transform(_getTransformMatrix().storage);
 
     final viewport = _calculateViewport();
     final startX = _calculateStart(viewport.left, style.gridStyle.gridSpacingX);
