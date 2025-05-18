@@ -452,8 +452,7 @@ class NodeEditorRenderBox extends RenderBox
 
     final (viewport, startX, startY) = _prepareCanvas(canvas, size);
 
-    if (style.gridStyle.showGrid && _offset != _lastOffset ||
-        _zoom != _lastZoom) {
+    if (_offset != _lastOffset || _zoom != _lastZoom) {
       _paintGrid(canvas, viewport, startX, startY);
     }
 
@@ -467,54 +466,67 @@ class NodeEditorRenderBox extends RenderBox
     }
 
     final List<RenderBox> selectedChildren = [];
+    final List<RenderBox> unselectedChildren = [];
+
+    final Path selectedShadowPath = Path();
+    final Path unselectedShadowPath = Path();
 
     // Only process children within the viewport.
     for (final nodeId in visibleNodes) {
       final child = _childrenById[nodeId];
 
-      if (child == null) continue;
-
-      final childParentData = child.parentData as _ParentData;
+      final childParentData = child!.parentData as _ParentData;
 
       if (childParentData.state.isSelected) {
-        // Save selected nodes to paint later.
         selectedChildren.add(child);
-      } else {
-        // Draw shadow for unselected nodes.
-        canvas.drawShadow(
-          Path()
-            ..addRRect(
-              RRect.fromRectAndRadius(
-                childParentData.rect.inflate(4),
-                const Radius.circular(4),
-              ),
-            ),
-          const ui.Color(0xC8000000),
-          4,
-          true,
-        );
 
-        context.paintChild(child, childParentData.offset);
+        selectedShadowPath.addRRect(
+          RRect.fromRectAndRadius(
+            childParentData.rect.inflate(4),
+            const Radius.circular(4),
+          ),
+        );
+      } else {
+        unselectedChildren.add(child);
+
+        unselectedShadowPath.addRRect(
+          RRect.fromRectAndRadius(
+            childParentData.rect.inflate(4),
+            const Radius.circular(4),
+          ),
+        );
       }
+    }
+
+    // Batch paint shadows for unselected nodes
+    if (unselectedShadowPath.computeMetrics().isNotEmpty) {
+      canvas.drawShadow(
+        unselectedShadowPath,
+        const ui.Color(0xC8000000),
+        4,
+        true,
+      );
+    }
+
+    // Paint all unselected nodes first so they appear below the selected ones.
+    for (final unselectedChild in unselectedChildren) {
+      final childParentData = unselectedChild.parentData! as _ParentData;
+      context.paintChild(unselectedChild, childParentData.offset);
+    }
+
+    // Batch paint shadows for selected nodes
+    if (selectedShadowPath.computeMetrics().isNotEmpty) {
+      canvas.drawShadow(
+        selectedShadowPath,
+        const ui.Color(0xC8000000),
+        4,
+        true,
+      );
     }
 
     // Now paint all selected nodes so they appear over the others.
     for (final selectedChild in selectedChildren) {
       final childParentData = selectedChild.parentData! as _ParentData;
-
-      canvas.drawShadow(
-        Path()
-          ..addRRect(
-            RRect.fromRectAndRadius(
-              childParentData.rect.inflate(4),
-              const Radius.circular(4),
-            ),
-          ),
-        const ui.Color(0xC8000000),
-        4,
-        true,
-      );
-
       context.paintChild(selectedChild, childParentData.offset);
     }
 
@@ -585,6 +597,8 @@ class NodeEditorRenderBox extends RenderBox
   }
 
   void _paintGrid(Canvas canvas, Rect viewport, double startX, double startY) {
+    if (!style.gridStyle.showGrid) return;
+
     gridShader.setFloat(2, startX);
     gridShader.setFloat(3, startY);
 
