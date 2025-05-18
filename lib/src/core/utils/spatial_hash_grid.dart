@@ -153,6 +153,20 @@ class SpatialHashGrid {
     return nodeIds;
   }
 
+  /// Queries the spatial hash grid for all nodes contained within the cell corresponding
+  /// to the given point.
+  ///
+  /// Returns a set of nodes that overlap with the point.
+  Set<String> queryNodesAtCoords(Offset point) {
+    final ({int x, int y}) cell = _getGridIndex(point);
+
+    if (grid.containsKey(cell)) {
+      return grid[cell]!.map((node) => node.id).toSet();
+    }
+
+    return {};
+  }
+
   /// Computes the total number of node references stored in the grid.
   ///
   /// Useful for debugging or performance analysis.

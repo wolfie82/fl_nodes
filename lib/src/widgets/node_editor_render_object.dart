@@ -747,7 +747,9 @@ class NodeEditorRenderBox extends RenderBox
     final Offset scaledPosition = centeredPosition.scale(1 / zoom, 1 / zoom);
     final Offset transformedPosition = scaledPosition - _offset;
 
-    for (final nodeId in visibleNodes) {
+    for (final nodeId in _controller.spatialHashGrid.queryNodesAtCoords(
+      transformedPosition,
+    )) {
       final child = _childrenById[nodeId]!;
       final childParentData = child.parentData as _ParentData;
 
