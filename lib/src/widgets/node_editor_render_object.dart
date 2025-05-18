@@ -300,7 +300,7 @@ class NodeEditorRenderBox extends RenderBox
 
     RenderBox? child = firstChild;
     int index = 0;
-    bool needLayout = false;
+    bool needsLayout = false;
 
     final nodesAsList = _controller.nodesAsList;
 
@@ -310,18 +310,15 @@ class NodeEditorRenderBox extends RenderBox
 
       if (childParentData.id != nodesAsList[index].id ||
           childParentData.offset != nodeData.offset ||
-          childParentData.state != nodeData.state) {
+          childParentData.state.isCollapsed != nodeData.state.isCollapsed) {
         childParentData.id = nodesAsList[index].id;
         childParentData.offset = nodeData.offset;
-        childParentData.state = NodeState(
-          isSelected: nodeData.state.isSelected,
-          isCollapsed: nodeData.state.isCollapsed,
-        );
+        childParentData.state = nodeData.state;
         childParentData.rect = Rect.zero;
 
         _childrenNotLaidOut[childParentData.id] = child;
 
-        needLayout = true;
+        needsLayout = true;
       }
 
       _childrenById[childParentData.id] = child;
@@ -330,7 +327,11 @@ class NodeEditorRenderBox extends RenderBox
       index++;
     }
 
-    if (needLayout) markNeedsLayout();
+    if (needsLayout) {
+      markNeedsLayout();
+    } else {
+      markNeedsPaint();
+    }
   }
 
   @override
@@ -420,6 +421,11 @@ class NodeEditorRenderBox extends RenderBox
 
   @override
   void paint(PaintingContext context, Offset offset) {
+    if (_lastViewportSize != size) {
+      _lastViewportSize = size;
+      _transformMatrixDirty = true;
+    }
+
     final Canvas canvas = context.canvas;
 
     final (viewport, startX, startY) = _prepareCanvas(canvas, size);
