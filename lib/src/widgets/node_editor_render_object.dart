@@ -407,32 +407,11 @@ class NodeEditorRenderBox extends RenderBox
     // If the child has not been laid out yet, we need to layout it.
     // Otherwise, we only need to layout it if it's within the viewport.
 
-    final Set<String> childrenLaidOut = {};
+    final Set<String> nodesToLayout = Set<String>.from(
+      _childrenNotLaidOut.keys,
+    ).union(visibleNodes);
 
-    for (final nodeId in _childrenNotLaidOut.keys) {
-      final child = _childrenNotLaidOut[nodeId]!;
-      final _ParentData childParentData = child.parentData! as _ParentData;
-
-      child.layout(
-        BoxConstraints.loose(constraints.biggest),
-        parentUsesSize: true,
-      );
-
-      childParentData.rect = Rect.fromLTWH(
-        childParentData.offset.dx,
-        childParentData.offset.dy,
-        child.size.width,
-        child.size.height,
-      );
-
-      childrenLaidOut.add(childParentData.id);
-    }
-
-    for (final nodeId in childrenLaidOut) {
-      _childrenNotLaidOut.remove(nodeId);
-    }
-
-    for (final nodeId in visibleNodes) {
+    for (final nodeId in nodesToLayout) {
       final child = _childrenById[nodeId];
 
       if (child == null) continue;
@@ -451,6 +430,8 @@ class NodeEditorRenderBox extends RenderBox
         child.size.height,
       );
     }
+
+    _childrenNotLaidOut.clear();
 
     // Here we should be updating the visibleNodes set with the nodes that are within the viewport.
     // This action is delayed until the paint method to ensure all layout operations are done.
