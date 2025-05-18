@@ -113,7 +113,7 @@ class NodeEditorRenderObjectWidget extends MultiChildRenderObjectWidget {
       ..zoom = controller.viewportZoom
       ..tempLinkDrawData = _getTempLinkData()
       ..selectionArea = controller.selectionArea
-      ..shouldUpdateNodes(_getNodesData())
+      ..updateNodes(_getNodesData())
       ..linksData = _getLinksData();
   }
 
@@ -183,7 +183,7 @@ class NodeEditorRenderBox extends RenderBox
         _selectionArea = selectionArea,
         _linksData = linksData {
     _loadGridShader();
-    shouldUpdateNodes(nodesData);
+    updateNodes(nodesData);
   }
 
   final FlNodeEditorController _controller;
@@ -293,47 +293,14 @@ class NodeEditorRenderBox extends RenderBox
 
   Set<String> visibleNodes = {};
 
-  void shouldUpdateNodes(List<NodeDrawData> nodesData) {
-    if (_didNodesUpdate(nodesData)) {
-      _updateNodes(nodesData);
-      markNeedsLayout();
-    }
-  }
-
-  bool _didNodesUpdate(List<NodeDrawData> nodesData) {
-    if (childCount != nodesData.length) {
-      return true;
-    }
-
-    RenderBox? child = firstChild;
-    int index = 0;
-
-    final nodesAsList = _controller.nodesAsList;
-
-    while (child != null && index < nodesData.length) {
-      final childParentData = child.parentData! as _ParentData;
-      final nodeData = nodesData[index];
-
-      if (childParentData.id != nodesAsList[index].id ||
-          childParentData.offset != nodeData.offset ||
-          childParentData.state != nodeData.state) {
-        return true;
-      }
-
-      child = childParentData.nextSibling;
-      index++;
-    }
-
-    return false;
-  }
-
-  void _updateNodes(List<NodeDrawData> nodesData) {
+  void updateNodes(List<NodeDrawData> nodesData) {
     _nodesData = nodesData;
 
     _childrenById.clear();
 
     RenderBox? child = firstChild;
     int index = 0;
+    bool needLayout = false;
 
     final nodesAsList = _controller.nodesAsList;
 
@@ -350,8 +317,11 @@ class NodeEditorRenderBox extends RenderBox
           isSelected: nodeData.state.isSelected,
           isCollapsed: nodeData.state.isCollapsed,
         );
-        _childrenNotLaidOut[childParentData.id] = child;
         childParentData.rect = Rect.zero;
+
+        _childrenNotLaidOut[childParentData.id] = child;
+
+        needLayout = true;
       }
 
       _childrenById[childParentData.id] = child;
@@ -359,6 +329,8 @@ class NodeEditorRenderBox extends RenderBox
       child = childParentData.nextSibling;
       index++;
     }
+
+    if (needLayout) markNeedsLayout();
   }
 
   @override
