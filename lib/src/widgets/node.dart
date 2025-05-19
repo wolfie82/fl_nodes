@@ -103,13 +103,11 @@ class _NodeWidgetState extends State<NodeWidget> {
       widget.node.builtHeaderStyle =
           widget.node.prototype.headerStyleBuilder(widget.node.state);
 
-      if (widget.node.state.isCollapsed != oldWidget.node.state.isCollapsed) {
-        SchedulerBinding.instance.addPostFrameCallback((_) async {
-          if (!mounted) return;
-          widget.node.onRendered(widget.node);
-          _updatePortsPosition();
-        });
-      }
+      SchedulerBinding.instance.addPostFrameCallback((_) async {
+        if (!mounted) return;
+        widget.node.onRendered(widget.node);
+        _updatePortsPosition();
+      });
     }
   }
 
