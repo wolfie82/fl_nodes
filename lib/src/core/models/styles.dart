@@ -55,17 +55,24 @@ enum FlLinkDrawMode {
 }
 
 class FlLinkStyle {
-  final LinearGradient gradient;
+  final Color? color;
+  final bool useGradient;
+  final LinearGradient? gradient;
   final double lineWidth;
   final FlLinkDrawMode drawMode;
   final FlLinkCurveType curveType;
 
   const FlLinkStyle({
-    required this.gradient,
+    this.color,
+    this.useGradient = false,
+    this.gradient,
     required this.lineWidth,
     required this.drawMode,
     required this.curveType,
-  });
+  }) : assert(
+          useGradient == false || gradient != null,
+          'Gradient must be provided if useGradient is true',
+        );
 
   FlLinkStyle copyWith({
     LinearGradient? gradient,

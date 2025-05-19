@@ -14,6 +14,8 @@ final FlPortStyle outputDataPortStyle = FlPortStyle(
   color: Colors.orange,
   shape: FlPortShape.circle,
   linkStyleBuilder: (state) => const FlLinkStyle(
+    useGradient: false, // <-- Try setting this to true
+    color: Colors.orange,
     gradient: LinearGradient(
       colors: [Colors.orange, Colors.purple],
       begin: Alignment.centerLeft,
@@ -34,6 +36,8 @@ final FlPortStyle controlOutputPortStyle = FlPortStyle(
   color: Colors.green,
   shape: FlPortShape.triangle,
   linkStyleBuilder: (state) => const FlLinkStyle(
+    useGradient: false, // <-- Try setting this to true
+    color: Colors.green,
     gradient: LinearGradient(
       colors: [Colors.green, Colors.blue],
       begin: Alignment.centerLeft,
