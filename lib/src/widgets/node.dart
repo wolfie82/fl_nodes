@@ -70,6 +70,13 @@ class _NodeWidgetState extends State<NodeWidget> {
 
     widget.controller.eventBus.events.listen(_handleControllerEvents);
 
+    // First initialization of the node's style and insertion in the spatial hash grid.
+
+    widget.node.builtStyle =
+        widget.node.prototype.styleBuilder(widget.node.state);
+    widget.node.builtHeaderStyle =
+        widget.node.prototype.headerStyleBuilder(widget.node.state);
+
     SchedulerBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       widget.node.onRendered(widget.node);
@@ -84,14 +91,24 @@ class _NodeWidgetState extends State<NodeWidget> {
   }
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
+  void didUpdateWidget(NodeWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
 
-    SchedulerBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      widget.node.onRendered(widget.node);
-      _updatePortsPosition();
-    });
+    // Subsequent style and spatial hash grid updates are triggered by changes in the node's state or offset.
+    if (widget.node.state != oldWidget.node.state ||
+        widget.node.offset != oldWidget.node.offset ||
+        widget.node.forceRecompute) {
+      widget.node.builtStyle =
+          widget.node.prototype.styleBuilder(widget.node.state);
+      widget.node.builtHeaderStyle =
+          widget.node.prototype.headerStyleBuilder(widget.node.state);
+
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        widget.node.onRendered(widget.node);
+        _updatePortsPosition();
+      });
+    }
   }
 
   void _handleControllerEvents(NodeEditorEvent event) {
@@ -688,23 +705,6 @@ class _NodeWidgetState extends State<NodeWidget> {
     // If a custom nodeBuilder is provided, use it directly.
     if (widget.nodeBuilder != null) {
       return widget.nodeBuilder!(context, widget.node);
-    }
-
-    if (widget.node.forceRecompute) {
-      SchedulerBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        widget.node.onRendered(widget.node);
-        _updatePortsPosition();
-      });
-
-      widget.node.builtStyle = widget.node.prototype.styleBuilder(
-        widget.node.state,
-      );
-      widget.node.builtHeaderStyle = widget.node.prototype.headerStyleBuilder(
-        widget.node.state,
-      );
-
-      widget.node.forceRecompute = false;
     }
 
     return controlsWrapper(
