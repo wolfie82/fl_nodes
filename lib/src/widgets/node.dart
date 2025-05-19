@@ -10,8 +10,8 @@ import 'package:flutter_context_menu/flutter_context_menu.dart';
 import 'package:os_detect/os_detect.dart' as os_detect;
 
 import 'package:fl_nodes/fl_nodes.dart';
-import 'package:fl_nodes/src/utils/context_menu.dart';
-import 'package:fl_nodes/src/utils/improved_listener.dart';
+import 'package:fl_nodes/src/widgets/context_menu.dart';
+import 'package:fl_nodes/src/widgets/improved_listener.dart';
 
 import '../constants.dart';
 import '../core/models/entities.dart';
