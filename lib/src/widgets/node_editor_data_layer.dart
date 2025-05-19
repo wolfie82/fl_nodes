@@ -76,8 +76,6 @@ class _NodeEditorDataLayerState extends State<NodeEditorDataLayer>
   // Wrapper state
   Offset get offset => widget.controller.viewportOffset;
   double get zoom => widget.controller.viewportZoom;
-  set offset(Offset value) => widget.controller.viewportOffset = value;
-  set zoom(double value) => widget.controller.viewportZoom = value;
   FlNodeEditorStyle get style => widget.controller.style;
 
   // Interaction state
@@ -410,14 +408,18 @@ class _NodeEditorDataLayerState extends State<NodeEditorDataLayer>
         ),
       )..addListener(() {
           setState(() {
-            offset = _offsetAnimation.value;
+            widget.controller.updateViewportOffsetFromUI(
+              _offsetAnimation.value,
+            );
           });
         });
 
       _offsetAnimationController.forward();
     } else {
       setState(() {
-        offset = endOffset;
+        widget.controller.updateViewportOffsetFromUI(
+          endOffset,
+        );
       });
     }
   }
@@ -500,14 +502,18 @@ class _NodeEditorDataLayerState extends State<NodeEditorDataLayer>
         ),
       )..addListener(() {
           setState(() {
-            zoom = _zoomAnimation.value;
+            widget.controller.updateViewportZoomFromUI(
+              _zoomAnimation.value,
+            );
           });
         });
 
       _zoomAnimationController.forward();
     } else {
       setState(() {
-        zoom = endZoom;
+        widget.controller.updateViewportZoomFromUI(
+          endZoom,
+        );
       });
     }
   }

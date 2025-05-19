@@ -31,15 +31,6 @@ import 'utils.dart';
 /// different parts of the application to communicate with each other by
 /// sending and receiving events.
 class FlNodeEditorController {
-  FlNodeEditorConfig config; // Dynamic, can be changed at runtime
-  final FlNodeEditorStyle style; // Static, cannot be changed at runtime
-  final eventBus = NodeEditorEventBus();
-
-  late final FlNodeEditorClipboard clipboard;
-  late final FlNodeEditorRunner runner;
-  late final FlNodeEditorHistory history;
-  late final FlNodeEditorProject project;
-
   FlNodeEditorController({
     this.config = const FlNodeEditorConfig(),
     this.style = const FlNodeEditorStyle(),
@@ -68,31 +59,156 @@ class FlNodeEditorController {
     clear();
   }
 
-  /// This method is used to clear all members of the node editor controller.
+  /// This method is used to clear the core controller and all of its subsystems.
   void clear() {
-    _nodes.clear();
-    _spatialHashGrid.clear();
-    _selectedNodeIds.clear();
+    nodes.clear();
+    spatialHashGrid.clear();
+    selectedNodeIds.clear();
     _linksById.clear();
   }
 
-  // Configuration
+  ////////////////////////////////////////////////////////////////////////////////
+  /// Controller subsystems are used to manage the state of the node editor.
+  ////////////////////////////////////////////////////////////////////////////////
+
+  /// The event bus is used to communicate between different susbsystems and with the UI.
+  final eventBus = NodeEditorEventBus();
+
+  late final FlNodeEditorClipboard clipboard;
+  late final FlNodeEditorRunner runner;
+  late final FlNodeEditorHistory history;
+  late final FlNodeEditorProject project;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// Viewport properties are used to manage the viewport of the node editor.
+  ////////////////////////////////////////////////////////////////////////////////
+
+  Offset _viewportOffset = Offset.zero;
+  double _viewportZoom = 1.0;
+
+  Offset get viewportOffset => _viewportOffset;
+  double get viewportZoom => _viewportZoom;
+
+  void updateViewportOffsetFromUI(Offset offset) {
+    _viewportOffset = offset;
+
+    eventBus.emit(
+      ViewportOffsetEvent(
+        id: const Uuid().v4(),
+        _viewportOffset,
+        animate: false,
+        isHandled: true,
+      ),
+    );
+  }
+
+  /// The update...FromUI methods are helpers used to update the viewport properties from the UI
+  /// defaulting event parameters to the correct values.
+
+  void updateViewportZoomFromUI(double zoom) {
+    _viewportZoom = zoom;
+
+    eventBus.emit(
+      ViewportZoomEvent(
+        id: const Uuid().v4(),
+        _viewportZoom,
+        animate: false,
+        isHandled: true,
+      ),
+    );
+
+    lodLevel = _computeLODLevel(_viewportZoom);
+  }
+
+  /// This method is used to set the offset of the viewport.
+  ///
+  /// The 'animate' parameter is used to animate the transition to the new offset.
+  /// The 'absolute' parameter is used to choose whether the offset is added to the the current
+  /// offset or set as an absolute value. The 'isHandled' parameter is used to indicate whether
+  void setViewportOffset(
+    Offset offset, {
+    bool animate = true,
+    bool absolute = false,
+    bool isHandled = false,
+  }) {
+    eventBus.emit(
+      ViewportOffsetEvent(
+        id: const Uuid().v4(),
+        absolute ? offset : _viewportOffset + offset,
+        animate: animate,
+        isHandled: isHandled,
+      ),
+    );
+  }
+
+  /// This method is used to set the zoom level of the viewport.
+  ///
+  /// The 'animate' parameter is used to animate the zoom transition.
+  ///
+  /// NOTE: The focal point deafults to the current viewport offset if not provided and uses cursor position from mouse events.
+  void setViewportZoom(
+    double zoom, {
+    bool animate = true,
+    bool isHandled = false,
+  }) {
+    eventBus.emit(
+      ViewportZoomEvent(
+        id: const Uuid().v4(),
+        zoom,
+        animate: animate,
+        isHandled: isHandled,
+      ),
+    );
+
+    lodLevel = _computeLODLevel(_viewportZoom);
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// Rendering accellerators are data stored in the controller to speed up rendering.
+  ////////////////////////////////////////////////////////////////////////////////
+
+  int lodLevel = 0;
+
+  /// This method is used to compute the level of detail (LOD) based on the zoom level and
+  /// it's called automatically by the controller when the zoom level is changed.
+  int _computeLODLevel(double zoom) {
+    if (zoom > 0.5) {
+      return 4;
+    } else if (zoom > 0.25) {
+      return 3;
+    } else if (zoom > 0.125) {
+      return 2;
+    } else if (zoom > 0.0625) {
+      return 1;
+    } else {
+      return 0;
+    }
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// Node editor configuration and style.
+  //////////////////////////////////////////////////////////////////////////////////
+
+  FlNodeEditorConfig config; // Dynamic, can be changed at runtime
+  final FlNodeEditorStyle style; // Static, cannot be changed at runtime
 
   /// Set the global configuration of the node editor.
   void setConfig(FlNodeEditorConfig config) {
     this.config = config;
   }
 
+  /// Quick access to frequently used configuration properties.
+
   /// Enable or disable zooming in the node editor.
   void enableSnapToGrid(bool enable) async {
     setConfig(config.copyWith(enableSnapToGrid: enable));
 
     if (!enable) {
-      for (final node in _nodes.values) {
+      for (final node in nodes.values) {
         node.offset = _unboundNodeOffsets[node.id]!;
       }
     } else {
-      for (final node in _nodes.values) {
+      for (final node in nodes.values) {
         if (enable) {
           node.offset = Offset(
             (node.offset.dx / config.snapToGridSize).round() *
@@ -113,118 +229,40 @@ class FlNodeEditorController {
   void enableAutoPlacement(bool enable) =>
       setConfig(config = config.copyWith(enableAutoPlacement: enable));
 
-  // Viewport
-  Offset _viewportOffset = Offset.zero;
-  double _viewportZoom = 1.0;
+  ////////////////////////////////////////////////////////////////////////
+  /// Nodes and links management.
+  ////////////////////////////////////////////////////////////////////////
 
-  Offset get viewportOffset => _viewportOffset;
-  double get viewportZoom => _viewportZoom;
-
-  set viewportOffset(Offset offset) {
-    _viewportOffset = offset;
-
-    eventBus.emit(
-      ViewportOffsetEvent(
-        id: const Uuid().v4(),
-        _viewportOffset,
-        animate: false,
-        isHandled: true,
-      ),
-    );
-  }
-
-  set viewportZoom(double zoom) {
-    _viewportZoom = zoom;
-
-    eventBus.emit(
-      ViewportZoomEvent(
-        id: const Uuid().v4(),
-        _viewportZoom,
-        animate: false,
-        isHandled: true,
-      ),
-    );
-
-    _lodLevel = _computeLODLevel(_viewportZoom);
-  }
-
-  int _lodLevel = 0;
-  int get lodLevel => _lodLevel;
-
-  int _computeLODLevel(double zoom) {
-    if (zoom > 0.5) {
-      return 4;
-    } else if (zoom > 0.25) {
-      return 3;
-    } else if (zoom > 0.125) {
-      return 2;
-    } else if (zoom > 0.0625) {
-      return 1;
-    } else {
-      return 0;
-    }
-  }
-
-  /// This method is used to set the offset of the viewport.
-  ///
-  /// The 'animate' parameter is used to animate the transition to the new offset.
-  /// The 'absolute' parameter is used to choose whether the offset is added to the the current
-  /// offset or set as an absolute value. The 'isHandled' parameter is used to indicate whether
-  void setViewportOffset(
-    Offset coords, {
-    bool animate = true,
-    bool absolute = false,
-    bool isHandled = false,
-  }) {
-    eventBus.emit(
-      ViewportOffsetEvent(
-        id: const Uuid().v4(),
-        absolute ? coords : _viewportOffset + coords,
-        animate: animate,
-        isHandled: isHandled,
-      ),
-    );
-  }
-
-  /// This method is used to set the zoom level of the viewport.
-  ///
-  /// The 'animate' parameter is used to animate the zoom transition.
-  ///
-  /// NOTE: The focal point deafults to the current viewport offset if not provided and uses cursor position from mouse events.
-  void setViewportZoom(
-    double amount, {
-    bool animate = true,
-    bool isHandled = false,
-  }) {
-    eventBus.emit(
-      ViewportZoomEvent(
-        id: const Uuid().v4(),
-        amount,
-        animate: animate,
-        isHandled: isHandled,
-      ),
-    );
-  }
-
-  // Nodes, links and groups
-  final Map<String, NodePrototype> _nodePrototypes = {};
-  final SpatialHashGrid _spatialHashGrid = SpatialHashGrid();
-  final Map<String, NodeInstance> _nodes = {};
-  final Map<String, Offset> _unboundNodeOffsets = {};
+  final Map<String, NodePrototype> nodePrototypes = {};
+  final Map<String, NodeInstance> nodes = {};
 
   List<NodePrototype> get nodePrototypesAsList =>
-      _nodePrototypes.values.map((e) => e).toList();
-  Map<String, NodePrototype> get nodePrototypes => _nodePrototypes;
+      nodePrototypes.values.map((e) => e).toList();
+  List<NodeInstance> get nodesAsList => nodes.values.toList();
 
-  List<NodeInstance> get nodesAsList => _nodes.values.toList();
-  Map<String, NodeInstance> get nodes => _nodes;
-  SpatialHashGrid get spatialHashGrid => _spatialHashGrid;
+  final SpatialHashGrid spatialHashGrid = SpatialHashGrid();
+
+  /// This map holds the raw nodes offsets before they are snapped to the grid.
+  final Map<String, Offset> _unboundNodeOffsets = {};
+
+  /// Callback function that is called when a node is rendered.
+  ///
+  /// This function is used to update the spatial hash grid with the new bounds
+  /// of the node after it has been rendered. This is necessary to keep the grid
+  /// up to date with the latest positions of the nodes.
+  ///
+  /// See [SpatialHashGrid] and [getNodeBoundsInWorld] for more information.
+  void onRenderedCallback(NodeInstance node) {
+    spatialHashGrid.update(
+      (id: node.id, rect: getNodeBoundsInWorld(node)!),
+    );
+  }
 
   /// This method is used to register a node prototype with the node editor.
   ///
   /// NOTE: node prototypes are identified by human-readable strings instead of UUIDs.
   void registerNodePrototype(NodePrototype prototype) {
-    _nodePrototypes.putIfAbsent(
+    nodePrototypes.putIfAbsent(
       prototype.idName,
       () => prototype,
     );
@@ -234,10 +272,10 @@ class FlNodeEditorController {
   ///
   /// NOTE: node prototypes are identified by human-readable strings instead of UUIDs.
   void unregisterNodePrototype(String name) {
-    if (!_nodePrototypes.containsKey(name)) {
+    if (!nodePrototypes.containsKey(name)) {
       throw Exception('Node prototype $name does not exist.');
     } else {
-      _nodePrototypes.remove(name);
+      nodePrototypes.remove(name);
     }
   }
 
@@ -252,7 +290,7 @@ class FlNodeEditorController {
   ///
   /// Emits an [AddNodeEvent] event.
   NodeInstance addNode(String name, {Offset offset = Offset.zero}) {
-    if (!_nodePrototypes.containsKey(name)) {
+    if (!nodePrototypes.containsKey(name)) {
       throw Exception('Node prototype $name does not exist.');
     }
 
@@ -264,12 +302,12 @@ class FlNodeEditorController {
     }
 
     final instance = createNode(
-      _nodePrototypes[name]!,
+      nodePrototypes[name]!,
       controller: this,
       offset: offset,
     );
 
-    _nodes.putIfAbsent(instance.id, () => instance);
+    nodes.putIfAbsent(instance.id, () => instance);
     _unboundNodeOffsets.putIfAbsent(instance.id, () => instance.offset);
 
     eventBus.emit(
@@ -290,7 +328,7 @@ class FlNodeEditorController {
     bool isHandled = false,
     String? eventId,
   }) {
-    if (_nodes.containsKey(node.id)) return;
+    if (nodes.containsKey(node.id)) return;
 
     Offset offset = node.offset;
 
@@ -301,7 +339,7 @@ class FlNodeEditorController {
       );
     }
 
-    _nodes.putIfAbsent(node.id, () => node.copyWith(offset: offset));
+    nodes.putIfAbsent(node.id, () => node.copyWith(offset: offset));
     _unboundNodeOffsets.putIfAbsent(node.id, () => node.offset);
 
     eventBus.emit(
@@ -327,9 +365,9 @@ class FlNodeEditorController {
     String? eventId,
     bool isHandled = false,
   }) async {
-    if (!_nodes.containsKey(id)) return;
+    if (!nodes.containsKey(id)) return;
 
-    final node = _nodes[id]!;
+    final node = nodes[id]!;
 
     for (final port in node.ports.values) {
       final linksToRemove = port.links.map((link) => link.id).toList();
@@ -339,8 +377,8 @@ class FlNodeEditorController {
       }
     }
 
-    _spatialHashGrid.remove(id);
-    _nodes.remove(id);
+    spatialHashGrid.remove(id);
+    nodes.remove(id);
 
     eventBus.emit(
       RemoveNodeEvent(
@@ -381,9 +419,9 @@ class FlNodeEditorController {
     // Check for self-links
     if (node1Id == node2Id) return null;
 
-    final node1 = _nodes[node1Id]!;
+    final node1 = nodes[node1Id]!;
     final port1 = node1.ports[port1IdName]!;
-    final node2 = _nodes[node2Id]!;
+    final node2 = nodes[node2Id]!;
     final port2 = node2.ports[port2IdName]!;
 
     if (!areTypesCompatible(
@@ -438,9 +476,9 @@ class FlNodeEditorController {
     }
 
     bool canConnect(FromTo fromTo) {
-      final fromNode = _nodes[fromTo.from]!;
+      final fromNode = nodes[fromTo.from]!;
       final fromPort = fromNode.ports[fromTo.to]!;
-      final toNode = _nodes[fromTo.fromPort]!;
+      final toNode = nodes[fromTo.fromPort]!;
       final toPort = toNode.ports[fromTo.toPort]!;
 
       // Check if the ports are compatible
@@ -494,21 +532,21 @@ class FlNodeEditorController {
     String? eventId,
     bool isHandled = false,
   }) {
-    if (!_nodes.containsKey(link.fromTo.from) ||
-        !_nodes.containsKey(link.fromTo.fromPort)) {
+    if (!nodes.containsKey(link.fromTo.from) ||
+        !nodes.containsKey(link.fromTo.fromPort)) {
       return;
     }
 
-    final fromNode = _nodes[link.fromTo.from]!;
-    final toNode = _nodes[link.fromTo.fromPort]!;
+    final fromNode = nodes[link.fromTo.from]!;
+    final toNode = nodes[link.fromTo.fromPort]!;
 
     if (!fromNode.ports.containsKey(link.fromTo.to) ||
         !toNode.ports.containsKey(link.fromTo.toPort)) {
       return;
     }
 
-    final fromPort = _nodes[link.fromTo.from]!.ports[link.fromTo.to]!;
-    final toPort = _nodes[link.fromTo.fromPort]!.ports[link.fromTo.toPort]!;
+    final fromPort = nodes[link.fromTo.from]!.ports[link.fromTo.to]!;
+    final toPort = nodes[link.fromTo.fromPort]!.ports[link.fromTo.toPort]!;
 
     fromPort.links.add(link);
     toPort.links.add(link);
@@ -543,8 +581,8 @@ class FlNodeEditorController {
     final link = linksById[id]!;
 
     // Remove the link from its associated ports
-    final fromPort = _nodes[link.fromTo.from]?.ports[link.fromTo.to];
-    final toPort = _nodes[link.fromTo.fromPort]?.ports[link.fromTo.toPort];
+    final fromPort = nodes[link.fromTo.from]?.ports[link.fromTo.to];
+    final toPort = nodes[link.fromTo.fromPort]?.ports[link.fromTo.toPort];
 
     fromPort?.links.remove(link);
     toPort?.links.remove(link);
@@ -588,10 +626,10 @@ class FlNodeEditorController {
   ///
   /// Emits a [RemoveLinkEvent] event for each link that is removed.
   void breakPortLinks(String nodeId, String portId, {bool isHandled = false}) {
-    if (!_nodes.containsKey(nodeId)) return;
-    if (!_nodes[nodeId]!.ports.containsKey(portId)) return;
+    if (!nodes.containsKey(nodeId)) return;
+    if (!nodes[nodeId]!.ports.containsKey(portId)) return;
 
-    final port = _nodes[nodeId]!.ports[portId]!;
+    final port = nodes[nodeId]!.ports[portId]!;
     final linksToRemove = port.links.map((link) => link.id).toList();
 
     for (final linkId in linksToRemove) {
@@ -610,7 +648,7 @@ class FlNodeEditorController {
   }) {
     if (eventType == FieldEventType.change) return;
 
-    final node = _nodes[nodeId]!;
+    final node = nodes[nodeId]!;
     final field = node.fields[fieldId]!;
     field.data = data;
 
@@ -628,31 +666,31 @@ class FlNodeEditorController {
   ///
   /// Emit a [NodeRenderModeEvent] event.
   void toggleCollapseSelectedNodes(bool collapse) {
-    for (final id in _selectedNodeIds) {
-      final node = _nodes[id];
+    for (final id in selectedNodeIds) {
+      final node = nodes[id];
       node?.state.isCollapsed = collapse;
     }
 
     eventBus.emit(
-      CollapseEvent(id: const Uuid().v4(), collapse, _selectedNodeIds),
+      CollapseEvent(id: const Uuid().v4(), collapse, selectedNodeIds),
     );
   }
 
-  // Selection
-  final Set<String> _selectedNodeIds = {};
-  Rect _selectionArea = Rect.zero;
+  ////////////////////////////////////////////////////////////////////////////
+  /// Selection management.
+  ///////////////////////////////////////////////////////////////////////////
 
-  Set<String> get selectedNodeIds => _selectedNodeIds;
-  Rect get selectionArea => _selectionArea;
+  final Set<String> selectedNodeIds = {};
+  Rect selectionArea = Rect.zero;
 
   /// This method is used to drag the selected nodes by a given delta affecting their offsets.
   ///
   /// Emits a [DragSelectionEvent] event.
   void dragSelection(Offset delta, {String? eventId}) async {
-    if (_selectedNodeIds.isEmpty) return;
+    if (selectedNodeIds.isEmpty) return;
 
-    for (final id in _selectedNodeIds) {
-      final node = _nodes[id]!;
+    for (final id in selectedNodeIds) {
+      final node = nodes[id]!;
 
       _unboundNodeOffsets.putIfAbsent(id, () => node.offset);
       _unboundNodeOffsets[id] =
@@ -675,7 +713,7 @@ class FlNodeEditorController {
     eventBus.emit(
       DragSelectionEvent(
         id: eventId ?? const Uuid().v4(),
-        _selectedNodeIds.toSet(),
+        selectedNodeIds.toSet(),
         delta / _viewportZoom,
       ),
     );
@@ -687,7 +725,7 @@ class FlNodeEditorController {
   ///
   /// Emits a [SelectionAreaEvent] event.
   void setSelectionArea(Rect area) {
-    _selectionArea = area;
+    selectionArea = area;
     eventBus.emit(AreaSelectionEvent(id: const Uuid().v4(), area));
   }
 
@@ -705,15 +743,15 @@ class FlNodeEditorController {
       clearSelection();
     }
 
-    _selectedNodeIds.addAll(ids);
+    selectedNodeIds.addAll(ids);
 
-    for (final id in _selectedNodeIds) {
-      final node = _nodes[id];
+    for (final id in selectedNodeIds) {
+      final node = nodes[id];
       node?.state.isSelected = true;
     }
 
     eventBus.emit(
-      SelectionEvent(id: const Uuid().v4(), _selectedNodeIds.toSet()),
+      SelectionEvent(id: const Uuid().v4(), selectedNodeIds.toSet()),
     );
   }
 
@@ -725,28 +763,32 @@ class FlNodeEditorController {
   ///
   /// See [selectNodesById] for more information.
   void selectNodesByArea({bool holdSelection = false}) async {
-    final containedNodes = _spatialHashGrid.queryNodeIdsInArea(_selectionArea);
+    final containedNodes = spatialHashGrid.queryNodeIdsInArea(selectionArea);
     selectNodesById(containedNodes, holdSelection: holdSelection);
-    _selectionArea = Rect.zero;
+    selectionArea = Rect.zero;
   }
 
   /// This method is used to deselect all selected nodes.
   void clearSelection({bool isHandled = false}) {
-    for (final id in _selectedNodeIds) {
-      final node = _nodes[id];
+    for (final id in selectedNodeIds) {
+      final node = nodes[id];
       node?.state.isSelected = false;
     }
 
     eventBus.emit(
       SelectionEvent(
         id: const Uuid().v4(),
-        _selectedNodeIds.toSet(),
+        selectedNodeIds.toSet(),
         isHandled: isHandled,
       ),
     );
 
-    _selectedNodeIds.clear();
+    selectedNodeIds.clear();
   }
+
+  /////////////////////////////////////////////////////////////////////
+  /// Miscellaneous helpers useful for node editors.
+  /////////////////////////////////////////////////////////////////////
 
   /// This method is used to focus the viweport on a set of nodes by their IDs.
   ///
@@ -758,7 +800,7 @@ class FlNodeEditorController {
   void focusNodesById(Set<String> ids) {
     final encompassingRect = calculateEncompassingRect(
       ids,
-      _nodes,
+      nodes,
       margin: 256,
     );
 
@@ -786,25 +828,12 @@ class FlNodeEditorController {
 
     final regex = RegExp(name, caseSensitive: false);
 
-    for (final node in _nodes.values) {
+    for (final node in nodes.values) {
       if (regex.hasMatch(node.prototype.displayName)) {
         results.add(node.id);
       }
     }
 
     return results;
-  }
-
-  /// Callback function that is called when a node is rendered.
-  ///
-  /// This function is used to update the spatial hash grid with the new bounds
-  /// of the node after it has been rendered. This is necessary to keep the grid
-  /// up to date with the latest positions of the nodes.
-  ///
-  /// See [SpatialHashGrid] and [getNodeBoundsInWorld] for more information.
-  void onRenderedCallback(NodeInstance node) {
-    _spatialHashGrid.update(
-      (id: node.id, rect: getNodeBoundsInWorld(node)!),
-    );
   }
 }
