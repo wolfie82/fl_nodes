@@ -1,3 +1,4 @@
+import 'dart:developer';
 import 'dart:ui' as ui;
 import 'dart:ui';
 
@@ -34,6 +35,16 @@ class LinkDrawData {
     required this.outPortOffset,
     required this.inPortOffset,
     required this.linkStyle,
+  });
+}
+
+class PortDrawData {
+  final Offset offset;
+  final FlPortStyle style;
+
+  PortDrawData({
+    required this.offset,
+    required this.style,
   });
 }
 
@@ -276,6 +287,11 @@ class NodeEditorRenderBox extends RenderBox
   Set<String> visibleNodes = {};
 
   void updateNodes(List<NodeDiffCheckData> nodesData) {
+    if (!_controller.nodesDataDirty) {
+      markNeedsPaint();
+      return;
+    }
+
     _nodesDiffCheckData = nodesData;
 
     _childrenById.clear();
@@ -314,6 +330,8 @@ class NodeEditorRenderBox extends RenderBox
     } else {
       markNeedsPaint();
     }
+
+    _controller.nodesDataDirty = false;
   }
 
   @override
@@ -424,7 +442,7 @@ class NodeEditorRenderBox extends RenderBox
       _paintGrid(canvas, viewport, startX, startY);
     }
 
-    _paintLinks(canvas);
+    _paintLinksAndPorts(canvas);
 
     final List<RenderBox> selectedChildren = [];
     final List<RenderBox> unselectedChildren = [];
@@ -576,86 +594,145 @@ class NodeEditorRenderBox extends RenderBox
     );
   }
 
-  final Map<FlLinkStyle, (Path, Paint)> batchByStyle = {};
+  final Map<FlPortStyle, (Path, Paint)> batchByPortStyle = {};
+  final Map<FlLinkStyle, (Path, Paint)> batchByLinkStyle = {};
 
-  void _paintLinks(Canvas canvas) {
-    final Set<LinkDrawData> linkDrawData = {};
+  void _paintLinksAndPorts(Canvas canvas) {
+    Timeline.startSync('NodeEditorRenderBox.linksAndPortsDrawDataCalculation');
 
-    for (final nodeId in visibleNodes) {
-      for (final port in _controller.nodes[nodeId]!.ports.values) {
-        for (final link in port.links) {
-          final outNode = _controller.nodes[link.fromTo.from]!;
-          final inNode = _controller.nodes[link.fromTo.fromPort]!;
-          final outPort = outNode.ports[link.fromTo.to]!;
-          final inPort = inNode.ports[link.fromTo.toPort]!;
+    if (_controller.nodesDataDirty || _controller.linksDataDirty) {
+      final Set<PortDrawData> portDrawData = {};
+      final Set<LinkDrawData> linkDrawData = {};
 
-          // NOTE: The port offset is relative to the node
-          linkDrawData.add(
-            LinkDrawData(
-              outPortOffset: outNode.offset + outPort.offset,
-              inPortOffset: inNode.offset + inPort.offset,
-              linkStyle: outPort.prototype.style.linkStyleBuilder(link.state),
-            ),
-          );
+      for (final value in batchByPortStyle.values) {
+        value.$1.reset();
+      }
+
+      for (final value in batchByLinkStyle.values) {
+        value.$1.reset();
+      }
+
+      for (final nodeId in visibleNodes) {
+        for (final port in _controller.nodes[nodeId]!.ports.values) {
+          for (final link in port.links) {
+            final outNode = _controller.nodes[link.fromTo.from]!;
+            final inNode = _controller.nodes[link.fromTo.fromPort]!;
+            final outPort = outNode.ports[link.fromTo.to]!;
+            final inPort = inNode.ports[link.fromTo.toPort]!;
+
+            portDrawData.addAll(
+              [
+                PortDrawData(
+                  offset: outNode.offset + outPort.offset,
+                  style: outPort.prototype.style,
+                ),
+                PortDrawData(
+                  offset: inNode.offset + inPort.offset,
+                  style: inPort.prototype.style,
+                ),
+              ],
+            );
+
+            // NOTE: The port offset is relative to the node
+            linkDrawData.add(
+              LinkDrawData(
+                outPortOffset: outNode.offset + outPort.offset,
+                inPortOffset: inNode.offset + inPort.offset,
+                linkStyle: outPort.prototype.style.linkStyleBuilder(link.state),
+              ),
+            );
+          }
         }
       }
-    }
 
-    // We don't draw the temporary link here because it should be on top of the nodes
+      // We don't draw the temporary link here because it should be on top of the nodes
 
-    for (final drawData in linkDrawData) {
-      if (drawData.linkStyle.useGradient) {
-        switch (drawData.linkStyle.curveType) {
-          case FlLinkCurveType.straight:
-            _paintStraightLink(
-              canvas,
-              drawData,
+      for (final drawData in linkDrawData) {
+        if (drawData.linkStyle.useGradient) {
+          switch (drawData.linkStyle.curveType) {
+            case FlLinkCurveType.straight:
+              _paintStraightLink(
+                canvas,
+                drawData,
+              );
+              break;
+            case FlLinkCurveType.bezier:
+              _paintBezierLink(
+                canvas,
+                drawData,
+              );
+              break;
+            case FlLinkCurveType.ninetyDegree:
+              _paintNinetyDegreesLink(
+                canvas,
+                drawData,
+              );
+              break;
+          }
+        } else {
+          final style = drawData.linkStyle;
+          batchByLinkStyle.putIfAbsent(style, () {
+            return (
+              Path(),
+              Paint()
+                ..color = style.color!
+                ..style = PaintingStyle.stroke
+                ..strokeWidth = style.lineWidth
             );
-            break;
-          case FlLinkCurveType.bezier:
-            _paintBezierLink(
-              canvas,
-              drawData,
-            );
-            break;
-          case FlLinkCurveType.ninetyDegree:
-            _paintNinetyDegreesLink(
-              canvas,
-              drawData,
-            );
-            break;
+          });
+
+          final (path, paint) = batchByLinkStyle[style]!;
+
+          switch (style.curveType) {
+            case FlLinkCurveType.straight:
+              _batchPaintStraightLink(path, paint, drawData);
+              break;
+            case FlLinkCurveType.bezier:
+              _batchPaintBezierLink(path, paint, drawData);
+              break;
+            case FlLinkCurveType.ninetyDegree:
+              _batchPaintNinetyDegreesLink(path, paint, drawData);
+              break;
+          }
         }
-      } else {
-        final style = drawData.linkStyle;
-        batchByStyle.putIfAbsent(style, () {
+      }
+
+      for (final drawData in portDrawData) {
+        final style = drawData.style;
+        batchByPortStyle.putIfAbsent(style, () {
           return (
             Path(),
             Paint()
-              ..color = style.color!
-              ..style = PaintingStyle.stroke
-              ..strokeWidth = style.lineWidth
+              ..color = style.color
+              ..style = PaintingStyle.fill,
           );
         });
 
-        final (path, paint) = batchByStyle[style]!;
-        switch (style.curveType) {
-          case FlLinkCurveType.straight:
-            _batchPaintStraightLink(path, paint, drawData);
+        final (path, paint) = batchByPortStyle[style]!;
+
+        switch (style.shape) {
+          case FlPortShape.circle:
+            _batchPaintCirclePort(path, paint, drawData);
             break;
-          case FlLinkCurveType.bezier:
-            _batchPaintBezierLink(path, paint, drawData);
-            break;
-          case FlLinkCurveType.ninetyDegree:
-            _batchPaintNinetyDegreesLink(path, paint, drawData);
+          case FlPortShape.triangle:
+            _batchPaintTrianglePort(path, paint, drawData);
             break;
         }
       }
     }
 
-    for (final entry in batchByStyle.entries) {
+    Timeline.finishSync();
+
+    for (final entry in batchByLinkStyle.entries) {
       final (path, paint) = entry.value;
       canvas.drawPath(path, paint);
-      path.reset();
+    }
+
+    if (lodLevel < 3) return;
+
+    for (final entry in batchByPortStyle.entries) {
+      final (path, paint) = entry.value;
+      canvas.drawPath(path, paint);
     }
   }
 
@@ -845,6 +922,42 @@ class NodeEditorRenderBox extends RenderBox
       ..lineTo(midX, drawData.outPortOffset.dy)
       ..lineTo(midX, drawData.inPortOffset.dy)
       ..lineTo(drawData.inPortOffset.dx, drawData.inPortOffset.dy);
+  }
+
+  void _batchPaintCirclePort(
+    Path path,
+    Paint paint,
+    PortDrawData drawData,
+  ) {
+    path.addOval(
+      Rect.fromCircle(
+        center: drawData.offset,
+        radius: drawData.style.radius,
+      ),
+    );
+  }
+
+  void _batchPaintTrianglePort(
+    Path path,
+    Paint paint,
+    PortDrawData drawData,
+  ) {
+    final trianglePath = Path()
+      ..moveTo(
+        drawData.offset.dx - drawData.style.radius,
+        drawData.offset.dy - drawData.style.radius,
+      ) // Top-left
+      ..lineTo(
+        drawData.offset.dx + drawData.style.radius,
+        drawData.offset.dy,
+      ) // Middle-right (apex)
+      ..lineTo(
+        drawData.offset.dx - drawData.style.radius,
+        drawData.offset.dy + drawData.style.radius,
+      ) // Bottom-left
+      ..close();
+
+    path.addPath(trianglePath, Offset.zero);
   }
 
   void _paintSelectionArea(Canvas canvas, Rect viewport) {

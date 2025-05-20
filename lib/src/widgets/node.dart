@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
@@ -719,9 +718,6 @@ class _NodeWidgetState extends State<NodeWidget> {
                       )
                     : widget.node.builtStyle.decoration,
               ),
-              ...widget.node.ports.entries.map(
-                (entry) => _buildPortIndicator(entry.value),
-              ),
               Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -764,19 +760,6 @@ class _NodeWidgetState extends State<NodeWidget> {
     );
   }
 
-  Widget _buildPortIndicator(PortInstance port) {
-    return Positioned.fill(
-      child: CustomPaint(
-        painter: _PortSymbolPainter(
-          lodLevel: widget.controller.lodLevel,
-          position: port.offset,
-          style: port.prototype.style,
-          direction: port.prototype.direction,
-        ),
-      ),
-    );
-  }
-
   void _updatePortsPosition() {
     if (!mounted) return;
 
@@ -789,7 +772,6 @@ class _NodeWidgetState extends State<NodeWidget> {
     if (nodeBox == null) return;
 
     final nodeOffset = nodeBox.localToGlobal(Offset.zero);
-    final updatedPorts = <PortInstance>[];
 
     for (final port in widget.node.ports.values) {
       final portKey = port.key;
@@ -818,11 +800,6 @@ class _NodeWidgetState extends State<NodeWidget> {
       );
 
       port.offset = newOffset;
-      updatedPorts.add(port);
-    }
-
-    if (updatedPorts.isNotEmpty) {
-      setState(() {}); // Just triggers a rebuild
     }
   }
 }
@@ -869,89 +846,5 @@ class _NodeHeaderWidget extends StatelessWidget {
         ],
       ),
     );
-  }
-}
-
-class _PortSymbolPainter extends CustomPainter {
-  final int lodLevel;
-  final Offset position;
-  final FlPortStyle style;
-  final PortDirection direction;
-  static const double portSize = 4;
-  static const double hitBoxSize = 16;
-
-  _PortSymbolPainter({
-    required this.lodLevel,
-    required this.position,
-    required this.style,
-    required this.direction,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (lodLevel <= 2) return;
-
-    final paint = Paint()
-      ..color = style.color
-      ..style = PaintingStyle.fill;
-
-    switch (style.shape) {
-      case FlPortShape.circle:
-        _paintCircle(canvas, paint);
-        break;
-      case FlPortShape.triangle:
-        _paintTriangle(canvas, paint);
-        break;
-    }
-
-    if (kDebugMode) {
-      _paintDebugHitBox(canvas);
-    }
-  }
-
-  void _paintCircle(Canvas canvas, Paint paint) {
-    canvas.drawCircle(position, portSize, paint);
-  }
-
-  void _paintTriangle(Canvas canvas, Paint paint) {
-    final path = Path();
-
-    path.moveTo(position.dx - portSize, position.dy - portSize);
-    path.lineTo(position.dx + portSize, position.dy);
-    path.lineTo(position.dx - portSize, position.dy + portSize);
-
-    path.close();
-    canvas.drawPath(path, paint);
-  }
-
-  void _paintDebugHitBox(Canvas canvas) {
-    final hitBoxPaint = Paint()
-      ..color = Colors.red
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1;
-
-    final hitBoxRect = Rect.fromCenter(
-      center: position,
-      width: hitBoxSize,
-      height: hitBoxSize,
-    );
-
-    canvas.drawRect(hitBoxRect, hitBoxPaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant _PortSymbolPainter oldDelegate) {
-    return oldDelegate.position != position;
-  }
-
-  @override
-  bool hitTest(Offset position) {
-    final hitBoxRect = Rect.fromCenter(
-      center: this.position,
-      width: hitBoxSize,
-      height: hitBoxSize,
-    );
-
-    return hitBoxRect.contains(position);
   }
 }

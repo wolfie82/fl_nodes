@@ -112,11 +112,13 @@ enum FlPortShape {
 class FlPortStyle {
   final FlPortShape shape;
   final Color color;
+  final double radius;
   final FlLinkStyleBuilder linkStyleBuilder;
 
   const FlPortStyle({
     this.shape = FlPortShape.circle,
     this.color = Colors.blue,
+    this.radius = 4,
     this.linkStyleBuilder = defaultLinkStyle,
   });
 
@@ -124,10 +126,12 @@ class FlPortStyle {
     FlPortShape? shape,
     Color? color,
     FlLinkStyleBuilder? linkStyleBuilder,
+    double? radius,
   }) {
     return FlPortStyle(
       shape: shape ?? this.shape,
       color: color ?? this.color,
+      radius: radius ?? this.radius,
       linkStyleBuilder: linkStyleBuilder ?? this.linkStyleBuilder,
     );
   }
