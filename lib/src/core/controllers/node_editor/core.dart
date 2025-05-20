@@ -792,7 +792,7 @@ class FlNodeEditorController {
   ///
   /// See [selectNodesById] for more information.
   void selectNodesByArea({bool holdSelection = false}) async {
-    final containedNodes = spatialHashGrid.queryNodeIdsInArea(selectionArea);
+    final containedNodes = spatialHashGrid.queryArea(selectionArea);
     selectNodesById(containedNodes, holdSelection: holdSelection);
     selectionArea = Rect.zero;
   }

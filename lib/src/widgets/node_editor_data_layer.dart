@@ -257,8 +257,7 @@ class _NodeEditorDataLayerState extends State<NodeEditorDataLayer>
       height: kSpatialHashingCellSize,
     );
 
-    final nearNodeIds =
-        widget.controller.spatialHashGrid.queryNodeIdsInArea(near);
+    final nearNodeIds = widget.controller.spatialHashGrid.queryArea(near);
 
     for (final nodeId in nearNodeIds) {
       final node = widget.controller.nodes[nodeId]!;

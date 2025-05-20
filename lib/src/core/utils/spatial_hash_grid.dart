@@ -135,7 +135,7 @@ class SpatialHashGrid {
   /// whose rectangles overlap with a given bounding rectangle (`bounds`).
   ///
   /// Returns a set of node identifiers that are within or overlap the bounds.
-  Set<String> queryNodeIdsInArea(Rect bounds) {
+  Set<String> queryArea(Rect bounds) {
     final Set<String> nodeIds = {};
 
     final Set<({int x, int y})> cells = _getCoveredCells(bounds);
@@ -157,7 +157,7 @@ class SpatialHashGrid {
   /// to the given point.
   ///
   /// Returns a set of nodes that overlap with the point.
-  Set<String> queryNodesAtCoords(Offset point) {
+  Set<String> queryCoords(Offset point) {
     final ({int x, int y}) cell = _getGridIndex(point);
 
     if (grid.containsKey(cell)) {

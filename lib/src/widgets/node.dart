@@ -9,13 +9,15 @@ import 'package:flutter/services.dart';
 import 'package:flutter_context_menu/flutter_context_menu.dart';
 import 'package:os_detect/os_detect.dart' as os_detect;
 
-import 'package:fl_nodes/fl_nodes.dart';
+import 'package:fl_nodes/src/core/utils/renderbox.dart';
 import 'package:fl_nodes/src/widgets/context_menu.dart';
 import 'package:fl_nodes/src/widgets/improved_listener.dart';
 
 import '../constants.dart';
+import '../core/controllers/node_editor/core.dart';
 import '../core/models/entities.dart';
-import '../core/utils/renderbox.dart';
+import '../core/models/events.dart';
+import '../core/models/styles.dart';
 
 import 'builders.dart';
 
@@ -190,13 +192,14 @@ class _NodeWidgetState extends State<NodeWidget> {
 
   _TempLink? _isNearPort(Offset position) {
     final worldPosition = screenToWorld(position, viewportOffset, viewportZoom);
+
     final near = Rect.fromCenter(
       center: worldPosition!,
       width: kSpatialHashingCellSize,
       height: kSpatialHashingCellSize,
     );
-    final nearNodeIds =
-        widget.controller.spatialHashGrid.queryNodeIdsInArea(near);
+
+    final nearNodeIds = widget.controller.spatialHashGrid.queryArea(near);
 
     for (final nodeId in nearNodeIds) {
       final node = widget.controller.nodes[nodeId]!;

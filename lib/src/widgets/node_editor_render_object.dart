@@ -416,7 +416,7 @@ class NodeEditorRenderBox extends RenderBox
 
     // Performing the visibility update here ensures all layout operations are done.
     if (_lastOffset != offset || _lastZoom != zoom) {
-      visibleNodes = _controller.spatialHashGrid.queryNodeIdsInArea(
+      visibleNodes = _controller.spatialHashGrid.queryArea(
         // Inflate the viewport to include nodes that are close to the edges
         _calculateViewport().inflate(300),
       );
@@ -876,7 +876,7 @@ class NodeEditorRenderBox extends RenderBox
     final Offset scaledPosition = centeredPosition.scale(1 / zoom, 1 / zoom);
     final Offset transformedPosition = scaledPosition - _offset;
 
-    for (final nodeId in _controller.spatialHashGrid.queryNodesAtCoords(
+    for (final nodeId in _controller.spatialHashGrid.queryCoords(
       transformedPosition,
     )) {
       final child = _childrenById[nodeId]!;
