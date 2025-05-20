@@ -168,6 +168,8 @@ class FlNodeEditorController {
   ////////////////////////////////////////////////////////////////////////////////
 
   int lodLevel = 0;
+  bool nodesDataDirty = false;
+  bool linksDataDirty = false;
 
   /// This method is used to compute the level of detail (LOD) based on the zoom level and
   /// it's called automatically by the controller when the zoom level is changed.
@@ -310,6 +312,8 @@ class FlNodeEditorController {
     nodes.putIfAbsent(instance.id, () => instance);
     _unboundNodeOffsets.putIfAbsent(instance.id, () => instance.offset);
 
+    nodesDataDirty = true;
+
     eventBus.emit(
       AddNodeEvent(id: const Uuid().v4(), instance),
     );
@@ -341,6 +345,8 @@ class FlNodeEditorController {
 
     nodes.putIfAbsent(node.id, () => node.copyWith(offset: offset));
     _unboundNodeOffsets.putIfAbsent(node.id, () => node.offset);
+
+    nodesDataDirty = true;
 
     eventBus.emit(
       AddNodeEvent(
@@ -379,6 +385,9 @@ class FlNodeEditorController {
 
     spatialHashGrid.remove(id);
     nodes.remove(id);
+
+    // The links data is set to dirty by the removeLinkById method.
+    nodesDataDirty = true;
 
     eventBus.emit(
       RemoveNodeEvent(
@@ -514,6 +523,8 @@ class FlNodeEditorController {
       () => link,
     );
 
+    linksDataDirty = true;
+
     eventBus.emit(
       AddLinkEvent(id: eventId ?? const Uuid().v4(), link),
     );
@@ -556,6 +567,8 @@ class FlNodeEditorController {
       () => link,
     );
 
+    linksDataDirty = true;
+
     eventBus.emit(
       AddLinkEvent(
         id: eventId ?? const Uuid().v4(),
@@ -589,6 +602,8 @@ class FlNodeEditorController {
 
     linksById.remove(id);
 
+    linksDataDirty = true;
+
     eventBus.emit(
       RemoveLinkEvent(
         id: eventId ?? const Uuid().v4(),
@@ -609,6 +624,9 @@ class FlNodeEditorController {
   /// Emits a [DrawTempLinkEvent] event.
   void drawTempLink(FlLinkStyle style, Offset from, Offset to) {
     _tempLink = TempLink(style: style, from: from, to: to);
+
+    // The temp link is treated differently from regular links, so we don't need to mark the links data as dirty.
+
     eventBus.emit(DrawTempLinkEvent(id: const Uuid().v4(), from, to));
   }
 
@@ -617,6 +635,9 @@ class FlNodeEditorController {
   /// Emits a [DrawTempLinkEvent] event.
   void clearTempLink() {
     _tempLink = null;
+
+    // The temp link is treated differently from regular links, so we don't need to mark the links data as dirty.
+
     eventBus.emit(
       DrawTempLinkEvent(id: const Uuid().v4(), Offset.zero, Offset.zero),
     );
@@ -635,6 +656,8 @@ class FlNodeEditorController {
     for (final linkId in linksToRemove) {
       removeLinkById(linkId, isHandled: linkId != linksToRemove.last);
     }
+
+    linksDataDirty = true;
   }
 
   /// This method is used to set the data of a field in a node.
@@ -670,6 +693,9 @@ class FlNodeEditorController {
       final node = nodes[id];
       node?.state.isCollapsed = collapse;
     }
+
+    linksDataDirty = true;
+    nodesDataDirty = true;
 
     eventBus.emit(
       CollapseEvent(id: const Uuid().v4(), collapse, selectedNodeIds),
@@ -709,6 +735,9 @@ class FlNodeEditorController {
         node.offset += delta / _viewportZoom;
       }
     }
+
+    linksDataDirty = true;
+    nodesDataDirty = true;
 
     eventBus.emit(
       DragSelectionEvent(
