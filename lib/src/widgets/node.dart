@@ -61,6 +61,12 @@ class _NodeWidgetState extends State<NodeWidget> {
   // Temporary link locator used during linking.
   _TempLink? _tempLink;
 
+  late Color fakeTransparentColor;
+
+  late List<PortInstance> inPorts;
+  late List<PortInstance> outPorts;
+  late List<FieldInstance> fields;
+
   double get viewportZoom => widget.controller.viewportZoom;
   Offset get viewportOffset => widget.controller.viewportOffset;
 
@@ -68,14 +74,26 @@ class _NodeWidgetState extends State<NodeWidget> {
   void initState() {
     super.initState();
 
-    widget.controller.eventBus.events.listen(_handleControllerEvents);
-
     // First initialization of the node's style and insertion in the spatial hash grid.
 
     widget.node.builtStyle =
         widget.node.prototype.styleBuilder(widget.node.state);
     widget.node.builtHeaderStyle =
         widget.node.prototype.headerStyleBuilder(widget.node.state);
+
+    fakeTransparentColor = Color.alphaBlend(
+      widget.node.builtStyle.decoration.color!.withAlpha(255),
+      widget.controller.style.decoration.color!,
+    );
+
+    inPorts = widget.node.ports.values
+        .where((port) => port.prototype.direction == PortDirection.input)
+        .toList();
+    outPorts = widget.node.ports.values
+        .where((port) => port.prototype.direction == PortDirection.output)
+        .toList();
+
+    fields = widget.node.fields.values.toList();
 
     SchedulerBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
@@ -103,49 +121,32 @@ class _NodeWidgetState extends State<NodeWidget> {
       widget.node.builtHeaderStyle =
           widget.node.prototype.headerStyleBuilder(widget.node.state);
 
+      fakeTransparentColor = Color.alphaBlend(
+        widget.node.builtStyle.decoration.color!.withAlpha(255),
+        widget.controller.style.decoration.color!,
+      );
+
       SchedulerBinding.instance.addPostFrameCallback((_) async {
         if (!mounted) return;
         widget.node.onRendered(widget.node);
         _updatePortsPosition();
       });
     }
-  }
 
-  void _handleControllerEvents(NodeEditorEvent event) {
-    if (!mounted || event.isHandled) return;
+    if (widget.node.id != oldWidget.node.id || widget.node.forceRecompute) {
+      fakeTransparentColor = Color.alphaBlend(
+        widget.node.builtStyle.decoration.color!.withAlpha(255),
+        widget.controller.style.decoration.color!,
+      );
 
-    if (event is SelectionEvent) {
-      if (event.nodeIds.contains(widget.node.id)) {
-        setState(() {
-          widget.node.builtStyle =
-              widget.node.prototype.styleBuilder(widget.node.state);
-          widget.node.builtHeaderStyle =
-              widget.node.prototype.headerStyleBuilder(widget.node.state);
-        });
-      }
-    } else if (event is CollapseEvent) {
-      if (event.nodeIds.contains(widget.node.id)) {
-        setState(() {
-          SchedulerBinding.instance.addPostFrameCallback((_) async {
-            if (!mounted) return;
-            widget.node.onRendered(widget.node);
-            _updatePortsPosition();
-          });
+      inPorts = widget.node.ports.values
+          .where((port) => port.prototype.direction == PortDirection.input)
+          .toList();
+      outPorts = widget.node.ports.values
+          .where((port) => port.prototype.direction == PortDirection.output)
+          .toList();
 
-          widget.node.builtStyle =
-              widget.node.prototype.styleBuilder(widget.node.state);
-          widget.node.builtHeaderStyle =
-              widget.node.prototype.headerStyleBuilder(widget.node.state);
-        });
-      }
-    } else if (event is DragSelectionEvent) {
-      if (event.nodeIds.contains(widget.node.id)) {
-        setState(() {});
-      }
-    } else if (event is NodeFieldEvent &&
-        event.nodeId == widget.node.id &&
-        event.eventType == FieldEventType.submit) {
-      setState(() {});
+      fields = widget.node.fields.values.toList();
     }
   }
 
@@ -307,6 +308,7 @@ class _NodeWidgetState extends State<NodeWidget> {
     }
 
     final isInput = port.prototype.direction == PortDirection.input;
+
     return Row(
       mainAxisAlignment:
           isInput ? MainAxisAlignment.start : MainAxisAlignment.end,
@@ -326,14 +328,6 @@ class _NodeWidgetState extends State<NodeWidget> {
   }
 
   List<Widget> _generateLayout() {
-    final inPorts = widget.node.ports.values
-        .where((port) => port.prototype.direction == PortDirection.input)
-        .toList();
-    final outPorts = widget.node.ports.values
-        .where((port) => port.prototype.direction == PortDirection.output)
-        .toList();
-    final fields = widget.node.fields.values.toList();
-
     return [
       Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -717,11 +711,7 @@ class _NodeWidgetState extends State<NodeWidget> {
               Container(
                 decoration: widget.controller.lodLevel <= 2
                     ? widget.node.builtStyle.decoration.copyWith(
-                        color: Color.alphaBlend(
-                          widget.node.builtStyle.decoration.color!
-                              .withAlpha(255),
-                          widget.controller.style.decoration.color!,
-                        ),
+                        color: fakeTransparentColor,
                         borderRadius: BorderRadius.zero,
                       )
                     : widget.node.builtStyle.decoration,
@@ -775,6 +765,7 @@ class _NodeWidgetState extends State<NodeWidget> {
     return Positioned.fill(
       child: CustomPaint(
         painter: _PortSymbolPainter(
+          lodLevel: widget.controller.lodLevel,
           position: port.offset,
           style: port.prototype.style,
           direction: port.prototype.direction,
@@ -879,6 +870,7 @@ class _NodeHeaderWidget extends StatelessWidget {
 }
 
 class _PortSymbolPainter extends CustomPainter {
+  final int lodLevel;
   final Offset position;
   final FlPortStyle style;
   final PortDirection direction;
@@ -886,6 +878,7 @@ class _PortSymbolPainter extends CustomPainter {
   static const double hitBoxSize = 16;
 
   _PortSymbolPainter({
+    required this.lodLevel,
     required this.position,
     required this.style,
     required this.direction,
@@ -893,6 +886,8 @@ class _PortSymbolPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    if (lodLevel <= 2) return;
+
     final paint = Paint()
       ..color = style.color
       ..style = PaintingStyle.fill;
