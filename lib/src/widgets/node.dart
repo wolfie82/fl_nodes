@@ -98,7 +98,6 @@ class _NodeWidgetState extends State<NodeWidget> {
 
     SchedulerBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
-      widget.node.onRendered(widget.node);
       _updatePortsPosition();
     });
   }
@@ -129,7 +128,6 @@ class _NodeWidgetState extends State<NodeWidget> {
 
       SchedulerBinding.instance.addPostFrameCallback((_) async {
         if (!mounted) return;
-        widget.node.onRendered(widget.node);
         _updatePortsPosition();
       });
     }
@@ -829,11 +827,17 @@ class _NodeHeaderWidget extends StatelessWidget {
           : style.decoration,
       child: Row(
         children: [
-          InkWell(
-            splashColor: Colors.transparent,
-            highlightColor: Colors.transparent,
-            onTap: onToggleCollapse,
-            child: Icon(style.icon, color: Colors.white, size: 20),
+          Visibility(
+            visible: lodLevel >= 3,
+            maintainState: true,
+            maintainSize: true,
+            maintainAnimation: true,
+            child: InkWell(
+              splashColor: Colors.transparent,
+              highlightColor: Colors.transparent,
+              onTap: onToggleCollapse,
+              child: Icon(style.icon, color: Colors.white, size: 20),
+            ),
           ),
           const SizedBox(width: 8),
           Flexible(

@@ -374,7 +374,6 @@ final class NodeInstance {
   final Map<String, PortInstance> ports;
   final Map<String, FieldInstance> fields;
   final NodeState state = NodeState();
-  final Function(NodeInstance node) onRendered;
   Offset offset; // User or system defined offset
   final GlobalKey key = GlobalKey(); // Determined by Flutter
 
@@ -383,7 +382,6 @@ final class NodeInstance {
     required this.prototype,
     required this.ports,
     required this.fields,
-    required this.onRendered,
     this.forceRecompute = true,
     this.offset = Offset.zero,
   });
@@ -402,7 +400,6 @@ final class NodeInstance {
       prototype: prototype,
       ports: ports ?? this.ports,
       fields: fields ?? this.fields,
-      onRendered: onRendered ?? this.onRendered,
       offset: offset ?? this.offset,
     );
   }
@@ -421,7 +418,6 @@ final class NodeInstance {
   factory NodeInstance.fromJson(
     Map<String, dynamic> json, {
     required Map<String, NodePrototype> nodePrototypes,
-    required Function(NodeInstance node) onRenderedCallback,
     required Map<String, DataHandler> dataHandlers,
   }) {
     if (!nodePrototypes.containsKey(json['idName'].toString())) {
@@ -465,7 +461,6 @@ final class NodeInstance {
       prototype: prototype,
       ports: ports,
       fields: fields,
-      onRendered: onRenderedCallback,
       offset: Offset(json['offset'][0], json['offset'][1]),
     );
 
@@ -506,7 +501,6 @@ NodeInstance createNode(
         return MapEntry(prototype.idName, instance);
       }),
     ),
-    onRendered: controller.onRenderedCallback,
     offset: offset,
   );
 }

@@ -178,7 +178,6 @@ class FlNodeEditorProject {
       return NodeInstance.fromJson(
         node,
         nodePrototypes: controller.nodePrototypes,
-        onRenderedCallback: controller.onRenderedCallback,
         dataHandlers: dataHandlers,
       );
     }).toSet();

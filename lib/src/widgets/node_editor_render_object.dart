@@ -1,10 +1,10 @@
-import 'dart:developer';
 import 'dart:ui' as ui;
 import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/scheduler.dart';
 
 import 'package:fl_nodes/src/widgets/node.dart';
 
@@ -39,10 +39,12 @@ class LinkDrawData {
 }
 
 class PortDrawData {
+  final bool isSelected;
   final Offset offset;
   final FlPortStyle style;
 
   PortDrawData({
+    required this.isSelected,
     required this.offset,
     required this.style,
   });
@@ -205,22 +207,18 @@ class NodeEditorRenderBox extends RenderBox
   }
 
   Offset _offset;
-  Offset _lastOffset = Offset.zero;
   Offset get offset => _offset;
   set offset(Offset value) {
     if (_offset == value) return;
-    _lastOffset = _offset;
     _offset = value;
     _transformMatrixDirty = true;
     markNeedsPaint();
   }
 
   double _zoom;
-  double _lastZoom = 1.0;
   double get zoom => _zoom;
   set zoom(double value) {
     if (_zoom == value) return;
-    _lastZoom = _zoom;
     _zoom = value;
     _transformMatrixDirty = true;
     markNeedsPaint();
@@ -330,8 +328,6 @@ class NodeEditorRenderBox extends RenderBox
     } else {
       markNeedsPaint();
     }
-
-    _controller.nodesDataDirty = false;
   }
 
   @override
@@ -395,12 +391,16 @@ class NodeEditorRenderBox extends RenderBox
         parentUsesSize: true,
       );
 
-      childParentData.rect = Rect.fromLTWH(
+      final renderBoxRect = Rect.fromLTWH(
         childParentData.offset.dx,
         childParentData.offset.dy,
         child.size.width,
         child.size.height,
       );
+
+      childParentData.rect = renderBoxRect;
+
+      _controller.spatialHashGrid.update((id: nodeId, rect: renderBoxRect));
     }
 
     _childrenNotLaidOut.clear();
@@ -418,7 +418,7 @@ class NodeEditorRenderBox extends RenderBox
     );
   }
 
-  /// We need to manually mark the transform matrix as dirty when the window too.
+  /// We need to manually mark the transform matrix when the viewport resizes
   Size _lastViewportSize = Size.zero;
 
   @override
@@ -428,97 +428,33 @@ class NodeEditorRenderBox extends RenderBox
       _transformMatrixDirty = true;
     }
 
-    final Canvas canvas = context.canvas;
-
-    final (viewport, startX, startY) = _prepareCanvas(canvas, size);
+    final (viewport, startX, startY) = _prepareCanvas(context.canvas, size);
 
     // Performing the visibility update here ensures all layout operations are done.
-    if (_lastOffset != offset || _lastZoom != zoom) {
-      visibleNodes = _controller.spatialHashGrid.queryArea(
-        // Inflate the viewport to include nodes that are close to the edges
-        _calculateViewport().inflate(300),
-      );
 
-      _paintGrid(canvas, viewport, startX, startY);
-    }
+    visibleNodes = _controller.spatialHashGrid.queryArea(
+      // Inflate the viewport to include nodes that are close to the edges
+      _calculateViewport().inflate(300),
+    );
 
-    _paintLinksAndPorts(canvas);
+    _paintGrid(context.canvas, viewport, startX, startY);
 
-    final List<RenderBox> selectedChildren = [];
-    final List<RenderBox> unselectedChildren = [];
+    _paintLinks(context.canvas, viewport);
 
-    final Path selectedShadowPath = Path();
-    final Path unselectedShadowPath = Path();
+    _paintChildren(context);
 
-    // Only process children within the viewport.
-    for (final nodeId in visibleNodes) {
-      final child = _childrenById[nodeId];
+    _paintTemporaryLink(context.canvas);
 
-      final childParentData = child!.parentData as _ParentData;
-
-      if (childParentData.state.isSelected) {
-        selectedChildren.add(child);
-
-        selectedShadowPath.addRRect(
-          RRect.fromRectAndRadius(
-            childParentData.rect.inflate(4),
-            const Radius.circular(4),
-          ),
-        );
-      } else {
-        unselectedChildren.add(child);
-
-        unselectedShadowPath.addRRect(
-          RRect.fromRectAndRadius(
-            childParentData.rect.inflate(4),
-            const Radius.circular(4),
-          ),
-        );
-      }
-    }
-
-    // Batch paint shadows for unselected nodes
-    if (unselectedShadowPath.computeMetrics().isNotEmpty && lodLevel == 4) {
-      canvas.drawShadow(
-        unselectedShadowPath,
-        const ui.Color(0xC8000000),
-        4,
-        true,
-      );
-    }
-
-    // Paint all unselected nodes first so they appear below the selected ones.
-    for (final unselectedChild in unselectedChildren) {
-      final childParentData = unselectedChild.parentData! as _ParentData;
-      context.paintChild(unselectedChild, childParentData.offset);
-    }
-
-    // Batch paint shadows for selected nodes
-    if (selectedShadowPath.computeMetrics().isNotEmpty && lodLevel == 4) {
-      canvas.drawShadow(
-        selectedShadowPath,
-        const ui.Color(0xC8000000),
-        4,
-        true,
-      );
-    }
-
-    // Now paint all selected nodes so they appear over the others.
-    for (final selectedChild in selectedChildren) {
-      final childParentData = selectedChild.parentData! as _ParentData;
-      context.paintChild(selectedChild, childParentData.offset);
-    }
-
-    // We paint this after the nodes so that the temporary link is always on top
-    _paintTemporaryLink(canvas);
-
-    // Same as above, we paint this after the nodes so that the selection area is always on top
-    _paintSelectionArea(canvas, viewport);
+    _paintSelectionArea(context.canvas, viewport);
 
     if (kDebugMode) {
-      paintDebugViewport(canvas, viewport);
-      paintDebugOffset(canvas, size);
+      paintDebugViewport(context.canvas, viewport);
+      paintDebugOffset(context.canvas, size);
     }
+
+    _controller.nodesDataDirty = false;
+    _controller.linksDataDirty = false;
+    _transformMatrixDirty = false;
   }
 
   Matrix4 _getTransformMatrix() {
@@ -531,7 +467,6 @@ class NodeEditorRenderBox extends RenderBox
       ..scale(zoom, zoom, 1.0)
       ..translate(offset.dx, offset.dy);
 
-    _transformMatrixDirty = false;
     return _transformMatrix!;
   }
 
@@ -555,94 +490,54 @@ class NodeEditorRenderBox extends RenderBox
     return (viewportEdge / gridSpacing).floor() * gridSpacing;
   }
 
-  @visibleForTesting
-  void paintDebugViewport(Canvas canvas, Rect viewport) {
-    final Paint debugPaint = Paint()
-      ..color = Colors.red
-      ..style = PaintingStyle.stroke;
-
-    // Draw the viewport rect
-    canvas.drawRect(viewport, debugPaint);
-  }
-
-  @visibleForTesting
-  void paintDebugOffset(Canvas canvas, Size size) {
-    final Paint debugPaint = Paint()
-      ..color = Colors.green.withAlpha(200)
-      ..style = PaintingStyle.fill;
-
-    // Draw the offset point
-    canvas.drawCircle(Offset.zero, 5, debugPaint);
-  }
+  ////////////////////////////////////////////////////////////////////
+  /// Painting methods
+  ////////////////////////////////////////////////////////////////////
 
   void _paintGrid(Canvas canvas, Rect viewport, double startX, double startY) {
     if (!style.gridStyle.showGrid) return;
 
     gridShader.setFloat(2, startX);
     gridShader.setFloat(3, startY);
-
     gridShader.setFloat(14, viewport.left);
     gridShader.setFloat(15, viewport.top);
     gridShader.setFloat(16, viewport.right);
     gridShader.setFloat(17, viewport.bottom);
 
-    canvas.drawRect(
-      viewport,
-      Paint()
-        ..shader = gridShader
-        ..isAntiAlias = true,
-    );
+    canvas.drawRect(viewport, Paint()..shader = gridShader);
   }
 
-  final Map<FlPortStyle, (Path, Paint)> batchByPortStyle = {};
+  bool _portsPositionsDirty = true;
+
   final Map<FlLinkStyle, (Path, Paint)> batchByLinkStyle = {};
 
-  void _paintLinksAndPorts(Canvas canvas) {
-    Timeline.startSync('NodeEditorRenderBox.linksAndPortsDrawDataCalculation');
+  void _paintLinks(Canvas canvas, Rect viewport) {
+    // Here we collect data also for ports and children to avoid multiple loops
 
-    if (_controller.nodesDataDirty || _controller.linksDataDirty) {
-      final Set<PortDrawData> portDrawData = {};
+    if (_controller.linksDataDirty ||
+        _controller.nodesDataDirty ||
+        _transformMatrixDirty ||
+        _portsPositionsDirty) {
       final Set<LinkDrawData> linkDrawData = {};
-
-      for (final value in batchByPortStyle.values) {
-        value.$1.reset();
-      }
 
       for (final value in batchByLinkStyle.values) {
         value.$1.reset();
       }
 
-      for (final nodeId in visibleNodes) {
-        for (final port in _controller.nodes[nodeId]!.ports.values) {
-          for (final link in port.links) {
-            final outNode = _controller.nodes[link.fromTo.from]!;
-            final inNode = _controller.nodes[link.fromTo.fromPort]!;
-            final outPort = outNode.ports[link.fromTo.to]!;
-            final inPort = inNode.ports[link.fromTo.toPort]!;
+      for (final link in _controller.linksById.values) {
+        final outNode = _controller.nodes[link.fromTo.from]!;
+        final inNode = _controller.nodes[link.fromTo.fromPort]!;
+        final outPort = outNode.ports[link.fromTo.to]!;
+        final inPort = inNode.ports[link.fromTo.toPort]!;
 
-            portDrawData.addAll(
-              [
-                PortDrawData(
-                  offset: outNode.offset + outPort.offset,
-                  style: outPort.prototype.style,
-                ),
-                PortDrawData(
-                  offset: inNode.offset + inPort.offset,
-                  style: inPort.prototype.style,
-                ),
-              ],
-            );
-
-            // NOTE: The port offset is relative to the node
-            linkDrawData.add(
-              LinkDrawData(
-                outPortOffset: outNode.offset + outPort.offset,
-                inPortOffset: inNode.offset + inPort.offset,
-                linkStyle: outPort.prototype.style.linkStyleBuilder(link.state),
-              ),
-            );
-          }
-        }
+        // NOTE: The port offset is relative to the node
+        linkDrawData.add(
+          LinkDrawData(
+            outPortOffset: outNode.offset + outPort.offset,
+            inPortOffset: inNode.offset + inPort.offset,
+            linkStyle: outPort.prototype.style.linkStyleBuilder(link.state),
+          ),
+        );
       }
 
       // We don't draw the temporary link here because it should be on top of the nodes
@@ -696,10 +591,101 @@ class NodeEditorRenderBox extends RenderBox
           }
         }
       }
+    }
+
+    for (final entry in batchByLinkStyle.entries) {
+      final (path, paint) = entry.value;
+      canvas.drawPath(path, paint);
+    }
+  }
+
+  final List<RenderBox> selectedChildren = [];
+  final Path selectedShadowPath = Path();
+  final Map<FlPortStyle, (Path, Paint)> batchSelectedPortByStyle = {};
+
+  final List<RenderBox> unselectedChildren = [];
+  final Path unselectedShadowPath = Path();
+  final Map<FlPortStyle, (Path, Paint)> batchUnselectedPortByStyle = {};
+
+  void _paintChildren(PaintingContext context) {
+    if (_controller.nodesDataDirty ||
+        _controller.linksDataDirty ||
+        _transformMatrixDirty ||
+        _portsPositionsDirty) {
+      // Clear the old frame data
+
+      for (final value in batchSelectedPortByStyle.values) {
+        value.$1.reset();
+      }
+
+      for (final value in batchUnselectedPortByStyle.values) {
+        value.$1.reset();
+      }
+
+      selectedChildren.clear();
+      selectedShadowPath.reset();
+
+      unselectedChildren.clear();
+      unselectedShadowPath.reset();
+
+      // Acquire new frame data
+
+      final Set<PortDrawData> portDrawData = {};
+
+      for (final nodeId in visibleNodes) {
+        final child = _childrenById[nodeId];
+
+        final childParentData = child!.parentData as _ParentData;
+
+        if (childParentData.state.isSelected) {
+          selectedChildren.add(child);
+
+          selectedShadowPath.addRRect(
+            RRect.fromRectAndRadius(
+              childParentData.rect.inflate(4),
+              const Radius.circular(4),
+            ),
+          );
+
+          for (final port in _controller.nodes[nodeId]!.ports.values) {
+            portDrawData.add(
+              PortDrawData(
+                isSelected: childParentData.state.isSelected,
+                offset: childParentData.offset + port.offset,
+                style: port.prototype.style,
+              ),
+            );
+          }
+        } else {
+          unselectedChildren.add(child);
+
+          unselectedShadowPath.addRRect(
+            RRect.fromRectAndRadius(
+              childParentData.rect.inflate(4),
+              const Radius.circular(4),
+            ),
+          );
+
+          for (final port in _controller.nodes[nodeId]!.ports.values) {
+            portDrawData.add(
+              PortDrawData(
+                isSelected: childParentData.state.isSelected,
+                offset: childParentData.offset + port.offset,
+                style: port.prototype.style,
+              ),
+            );
+          }
+        }
+      }
 
       for (final drawData in portDrawData) {
         final style = drawData.style;
-        batchByPortStyle.putIfAbsent(style, () {
+
+        final batchPortByStyle = drawData.isSelected
+            ? batchSelectedPortByStyle
+            : batchUnselectedPortByStyle;
+
+        batchPortByStyle.putIfAbsent(style, () {
           return (
             Path(),
             Paint()
@@ -708,7 +694,7 @@ class NodeEditorRenderBox extends RenderBox
           );
         });
 
-        final (path, paint) = batchByPortStyle[style]!;
+        final (path, paint) = batchPortByStyle[style]!;
 
         switch (style.shape) {
           case FlPortShape.circle:
@@ -719,20 +705,62 @@ class NodeEditorRenderBox extends RenderBox
             break;
         }
       }
+
+      if (!_portsPositionsDirty) {
+        _portsPositionsDirty = true;
+
+        SchedulerBinding.instance.addPostFrameCallback((_) {
+          markNeedsPaint();
+        });
+      } else {
+        _portsPositionsDirty = false;
+      }
     }
 
-    Timeline.finishSync();
+    // First we paint the unselected nodes, so they appear below the selected ones.
 
-    for (final entry in batchByLinkStyle.entries) {
-      final (path, paint) = entry.value;
-      canvas.drawPath(path, paint);
+    if (lodLevel == 4) {
+      context.canvas.drawShadow(
+        unselectedShadowPath,
+        const ui.Color(0xC8000000),
+        4,
+        true,
+      );
     }
 
-    if (lodLevel < 3) return;
+    for (final unselectedChild in unselectedChildren) {
+      final childParentData = unselectedChild.parentData! as _ParentData;
+      context.paintChild(unselectedChild, childParentData.offset);
+    }
 
-    for (final entry in batchByPortStyle.entries) {
-      final (path, paint) = entry.value;
-      canvas.drawPath(path, paint);
+    if (lodLevel >= 3) {
+      for (final entry in batchUnselectedPortByStyle.entries) {
+        final (path, paint) = entry.value;
+        context.canvas.drawPath(path, paint);
+      }
+    }
+
+    // Then we paint the selected nodes, so they appear above the unselected ones.
+
+    if (lodLevel == 4) {
+      context.canvas.drawShadow(
+        selectedShadowPath,
+        const ui.Color(0xC8000000),
+        4,
+        true,
+      );
+    }
+
+    for (final selectedChild in selectedChildren) {
+      final childParentData = selectedChild.parentData! as _ParentData;
+      context.paintChild(selectedChild, childParentData.offset);
+    }
+
+    if (lodLevel >= 3) {
+      for (final entry in batchSelectedPortByStyle.entries) {
+        final (path, paint) = entry.value;
+        context.canvas.drawPath(path, paint);
+      }
     }
   }
 
@@ -976,6 +1004,34 @@ class NodeEditorRenderBox extends RenderBox
 
     canvas.drawRect(selectionArea, borderPaint);
   }
+
+  ///////////////////////////////////////////////////////////////////
+  /// Debug methods
+  ///////////////////////////////////////////////////////////////////
+
+  @visibleForTesting
+  void paintDebugViewport(Canvas canvas, Rect viewport) {
+    final Paint debugPaint = Paint()
+      ..color = Colors.red
+      ..style = PaintingStyle.stroke;
+
+    // Draw the viewport rect
+    canvas.drawRect(viewport, debugPaint);
+  }
+
+  @visibleForTesting
+  void paintDebugOffset(Canvas canvas, Size size) {
+    final Paint debugPaint = Paint()
+      ..color = Colors.green.withAlpha(200)
+      ..style = PaintingStyle.fill;
+
+    // Draw the offset point
+    canvas.drawCircle(Offset.zero, 5, debugPaint);
+  }
+
+  //////////////////////////////////////////////////////////////////
+  /// Hit testing methods
+  //////////////////////////////////////////////////////////////////
 
   @override
   bool hitTestSelf(Offset position) {

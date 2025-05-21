@@ -221,6 +221,9 @@ class FlNodeEditorController {
         }
       }
     }
+
+    nodesDataDirty = true;
+    linksDataDirty = true;
   }
 
   /// Set the size of the grid to snap to in the node editor.
@@ -246,19 +249,6 @@ class FlNodeEditorController {
 
   /// This map holds the raw nodes offsets before they are snapped to the grid.
   final Map<String, Offset> _unboundNodeOffsets = {};
-
-  /// Callback function that is called when a node is rendered.
-  ///
-  /// This function is used to update the spatial hash grid with the new bounds
-  /// of the node after it has been rendered. This is necessary to keep the grid
-  /// up to date with the latest positions of the nodes.
-  ///
-  /// See [SpatialHashGrid] and [getNodeBoundsInWorld] for more information.
-  void onRenderedCallback(NodeInstance node) {
-    spatialHashGrid.update(
-      (id: node.id, rect: getNodeBoundsInWorld(node)!),
-    );
-  }
 
   /// This method is used to register a node prototype with the node editor.
   ///

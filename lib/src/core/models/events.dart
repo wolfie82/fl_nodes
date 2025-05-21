@@ -177,7 +177,6 @@ final class AddNodeEvent extends NodeEditorEvent {
       NodeInstance.fromJson(
         json['node'] as Map<String, dynamic>,
         nodePrototypes: controller.nodePrototypes,
-        onRenderedCallback: controller.onRenderedCallback,
         dataHandlers: controller.project.dataHandlers,
       ),
       id: json['id'] as String,
@@ -206,7 +205,6 @@ final class RemoveNodeEvent extends NodeEditorEvent {
       NodeInstance.fromJson(
         json['node'] as Map<String, dynamic>,
         nodePrototypes: controller.nodePrototypes,
-        onRenderedCallback: controller.onRenderedCallback,
         dataHandlers: controller.project.dataHandlers,
       ),
       id: json['id'] as String,

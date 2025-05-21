@@ -152,7 +152,6 @@ class FlNodeEditorClipboard {
       return NodeInstance.fromJson(
         node,
         nodePrototypes: controller.nodePrototypes,
-        onRenderedCallback: controller.onRenderedCallback,
         dataHandlers: controller.project.dataHandlers,
       );
     }).toList();
