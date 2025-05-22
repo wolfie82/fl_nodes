@@ -26,24 +26,26 @@ class NodeDiffCheckData {
   });
 }
 
-class LinkDrawData {
+class LinkData {
+  final String id;
   final Offset outPortOffset;
   final Offset inPortOffset;
   final FlLinkStyle linkStyle;
 
-  LinkDrawData({
+  LinkData({
+    required this.id,
     required this.outPortOffset,
     required this.inPortOffset,
     required this.linkStyle,
   });
 }
 
-class PortDrawData {
+class PortData {
   final bool isSelected;
   final Offset offset;
   final FlPortStyle style;
 
-  PortDrawData({
+  PortData({
     required this.isSelected,
     required this.offset,
     required this.style,
@@ -109,7 +111,7 @@ class NodeEditorRenderObjectWidget extends MultiChildRenderObjectWidget {
       offset: controller.viewportOffset,
       zoom: controller.viewportZoom,
       lodLevel: controller.lodLevel,
-      tmpLinkDrawData: _getTmpLinkDrawData(),
+      tmpLinkDrawData: _getTmpLinkData(),
       selectionArea: controller.selectionArea,
       nodesData: _getNodeDrawData(),
     );
@@ -125,7 +127,7 @@ class NodeEditorRenderObjectWidget extends MultiChildRenderObjectWidget {
       ..offset = controller.viewportOffset
       ..zoom = controller.viewportZoom
       ..lodLevel = controller.lodLevel
-      ..tmpLinkDrawData = _getTmpLinkDrawData()
+      ..tmpLinkDrawData = _getTmpLinkData()
       ..selectionArea = controller.selectionArea
       ..updateNodes(_getNodeDrawData());
   }
@@ -142,12 +144,13 @@ class NodeEditorRenderObjectWidget extends MultiChildRenderObjectWidget {
         .toList();
   }
 
-  LinkDrawData? _getTmpLinkDrawData() {
+  LinkData? _getTmpLinkData() {
     if (controller.tempLink == null) return null;
 
     final link = controller.tempLink!;
 
-    return LinkDrawData(
+    return LinkData(
+      id: "", // Temporary link doesn't need an ID
       outPortOffset: link.from,
       inPortOffset: link.to,
       linkStyle: link.style,
@@ -166,7 +169,7 @@ class NodeEditorRenderBox extends RenderBox
     required Offset offset,
     required double zoom,
     required int lodLevel,
-    required LinkDrawData? tmpLinkDrawData,
+    required LinkData? tmpLinkDrawData,
     required Rect selectionArea,
     required List<NodeDiffCheckData> nodesData,
   })  : _controller = controller,
@@ -235,9 +238,9 @@ class NodeEditorRenderBox extends RenderBox
   Matrix4? _transformMatrix;
   bool _transformMatrixDirty = true;
 
-  LinkDrawData? _tmpLinkDrawData;
-  LinkDrawData? get tmpLinkDrawData => _tmpLinkDrawData;
-  set tmpLinkDrawData(LinkDrawData? value) {
+  LinkData? _tmpLinkDrawData;
+  LinkData? get tmpLinkDrawData => _tmpLinkDrawData;
+  set tmpLinkDrawData(LinkData? value) {
     if (_tmpLinkDrawData == value) return;
     _tmpLinkDrawData = value;
     markNeedsPaint();
@@ -511,6 +514,8 @@ class NodeEditorRenderBox extends RenderBox
 
   final Map<FlLinkStyle, (Path, Paint)> batchByLinkStyle = {};
 
+  final List<(String, Path)> _linksHitTestData = [];
+
   void _paintLinks(Canvas canvas, Rect viewport) {
     // Here we collect data also for ports and children to avoid multiple loops
 
@@ -518,11 +523,13 @@ class NodeEditorRenderBox extends RenderBox
         _controller.nodesDataDirty ||
         _transformMatrixDirty ||
         _portsPositionsDirty) {
-      final Set<LinkDrawData> linkDrawData = {};
+      final Set<LinkData> linkDrawData = {};
 
       for (final value in batchByLinkStyle.values) {
         value.$1.reset();
       }
+
+      _linksHitTestData.clear();
 
       for (final link in _controller.linksById.values) {
         final outNode = _controller.nodes[link.fromTo.from]!;
@@ -532,7 +539,8 @@ class NodeEditorRenderBox extends RenderBox
 
         // NOTE: The port offset is relative to the node
         linkDrawData.add(
-          LinkDrawData(
+          LinkData(
+            id: link.id,
             outPortOffset: outNode.offset + outPort.offset,
             inPortOffset: inNode.offset + inPort.offset,
             linkStyle: outPort.prototype.style.linkStyleBuilder(link.state),
@@ -542,30 +550,36 @@ class NodeEditorRenderBox extends RenderBox
 
       // We don't draw the temporary link here because it should be on top of the nodes
 
-      for (final drawData in linkDrawData) {
-        if (drawData.linkStyle.useGradient) {
-          switch (drawData.linkStyle.curveType) {
+      for (final data in linkDrawData) {
+        if (data.linkStyle.useGradient) {
+          late Path path;
+
+          switch (data.linkStyle.curveType) {
             case FlLinkCurveType.straight:
-              _paintStraightLink(
-                canvas,
-                drawData,
-              );
+              path = _computeStraightLinkPath(data);
               break;
             case FlLinkCurveType.bezier:
-              _paintBezierLink(
-                canvas,
-                drawData,
-              );
+              path = _computeBezierLinkPath(data);
               break;
             case FlLinkCurveType.ninetyDegree:
-              _paintNinetyDegreesLink(
-                canvas,
-                drawData,
-              );
+              path = _computeNinetyDegreesLinkPath(data);
               break;
           }
+
+          _linksHitTestData.add((data.id, path));
+
+          final shader = data.linkStyle.gradient!.createShader(
+            Rect.fromPoints(data.outPortOffset, data.inPortOffset),
+          );
+
+          final Paint paint = Paint()
+            ..shader = shader
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = data.linkStyle.lineWidth;
+
+          canvas.drawPath(path, paint);
         } else {
-          final style = drawData.linkStyle;
+          final style = data.linkStyle;
           batchByLinkStyle.putIfAbsent(style, () {
             return (
               Path(),
@@ -576,19 +590,23 @@ class NodeEditorRenderBox extends RenderBox
             );
           });
 
-          final (path, paint) = batchByLinkStyle[style]!;
+          late Path path;
 
           switch (style.curveType) {
             case FlLinkCurveType.straight:
-              _batchPaintStraightLink(path, paint, drawData);
+              path = _computeStraightLinkPath(data);
               break;
             case FlLinkCurveType.bezier:
-              _batchPaintBezierLink(path, paint, drawData);
+              path = _computeBezierLinkPath(data);
               break;
             case FlLinkCurveType.ninetyDegree:
-              _batchPaintNinetyDegreesLink(path, paint, drawData);
+              path = _computeNinetyDegreesLinkPath(data);
               break;
           }
+
+          _linksHitTestData.add((data.id, path));
+
+          batchByLinkStyle[style]!.$1.addPath(path, Offset.zero);
         }
       }
     }
@@ -630,7 +648,7 @@ class NodeEditorRenderBox extends RenderBox
 
       // Acquire new frame data
 
-      final Set<PortDrawData> portDrawData = {};
+      final Set<PortData> portDrawData = {};
 
       for (final nodeId in visibleNodes) {
         final child = _childrenById[nodeId];
@@ -649,7 +667,7 @@ class NodeEditorRenderBox extends RenderBox
 
           for (final port in _controller.nodes[nodeId]!.ports.values) {
             portDrawData.add(
-              PortDrawData(
+              PortData(
                 isSelected: childParentData.state.isSelected,
                 offset: childParentData.offset + port.offset,
                 style: port.prototype.style,
@@ -668,7 +686,7 @@ class NodeEditorRenderBox extends RenderBox
 
           for (final port in _controller.nodes[nodeId]!.ports.values) {
             portDrawData.add(
-              PortDrawData(
+              PortData(
                 isSelected: childParentData.state.isSelected,
                 offset: childParentData.offset + port.offset,
                 style: port.prototype.style,
@@ -678,10 +696,10 @@ class NodeEditorRenderBox extends RenderBox
         }
       }
 
-      for (final drawData in portDrawData) {
-        final style = drawData.style;
+      for (final data in portDrawData) {
+        final style = data.style;
 
-        final batchPortByStyle = drawData.isSelected
+        final batchPortByStyle = data.isSelected
             ? batchSelectedPortByStyle
             : batchUnselectedPortByStyle;
 
@@ -698,10 +716,10 @@ class NodeEditorRenderBox extends RenderBox
 
         switch (style.shape) {
           case FlPortShape.circle:
-            _batchPaintCirclePort(path, paint, drawData);
+            _batchPaintCirclePort(path, paint, data);
             break;
           case FlPortShape.triangle:
-            _batchPaintTrianglePort(path, paint, drawData);
+            _batchPaintTrianglePort(path, paint, data);
             break;
         }
       }
@@ -767,42 +785,64 @@ class NodeEditorRenderBox extends RenderBox
   void _paintTemporaryLink(Canvas canvas) {
     if (_tmpLinkDrawData == null) return;
 
+    late Path path;
+
     switch (_tmpLinkDrawData!.linkStyle.curveType) {
       case FlLinkCurveType.straight:
-        _paintStraightLink(canvas, _tmpLinkDrawData!);
+        path = _computeStraightLinkPath(_tmpLinkDrawData!);
         break;
       case FlLinkCurveType.bezier:
-        _paintBezierLink(canvas, _tmpLinkDrawData!);
+        path = _computeBezierLinkPath(_tmpLinkDrawData!);
         break;
       case FlLinkCurveType.ninetyDegree:
-        _paintNinetyDegreesLink(canvas, _tmpLinkDrawData!);
+        path = _computeNinetyDegreesLinkPath(_tmpLinkDrawData!);
         break;
     }
+
+    final Paint paint = Paint();
+
+    if (_tmpLinkDrawData!.linkStyle.useGradient) {
+      final shader = _tmpLinkDrawData!.linkStyle.gradient!.createShader(
+        Rect.fromPoints(
+          _tmpLinkDrawData!.outPortOffset,
+          _tmpLinkDrawData!.inPortOffset,
+        ),
+      );
+
+      paint
+        ..shader = shader
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = _tmpLinkDrawData!.linkStyle.lineWidth;
+    } else {
+      paint
+        ..color = _tmpLinkDrawData!.linkStyle.color!
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = _tmpLinkDrawData!.linkStyle.lineWidth;
+    }
+
+    canvas.drawPath(path, paint);
   }
 
-  void _paintBezierLink(Canvas canvas, LinkDrawData drawData) {
-    final path = Path()
-      ..moveTo(
-        drawData.outPortOffset.dx,
-        drawData.outPortOffset.dy,
-      );
+  Path _computeBezierLinkPath(LinkData data) {
+    final Path path = Path()
+      ..moveTo(data.outPortOffset.dx, data.outPortOffset.dy);
 
     const double defaultOffset = 400.0;
 
     //  How far the bezier follows the horizontal direction before curving based on the distance between ports
-    final dx = (drawData.inPortOffset.dx - drawData.outPortOffset.dx).abs();
+    final dx = (data.inPortOffset.dx - data.outPortOffset.dx).abs();
     final controlOffset = dx < defaultOffset * 2 ? dx / 2 : defaultOffset;
 
     // First control point: a few pixels to the right of the output port.
     final cp1 = Offset(
-      drawData.outPortOffset.dx + controlOffset,
-      drawData.outPortOffset.dy,
+      data.outPortOffset.dx + controlOffset,
+      data.outPortOffset.dy,
     );
 
     // Second control point: a few pixels to the left of the input port.
     final cp2 = Offset(
-      drawData.inPortOffset.dx - controlOffset,
-      drawData.inPortOffset.dy,
+      data.inPortOffset.dx - controlOffset,
+      data.inPortOffset.dy,
     );
 
     path.cubicTo(
@@ -810,157 +850,38 @@ class NodeEditorRenderBox extends RenderBox
       cp1.dy,
       cp2.dx,
       cp2.dy,
-      drawData.inPortOffset.dx,
-      drawData.inPortOffset.dy,
+      data.inPortOffset.dx,
+      data.inPortOffset.dy,
     );
 
-    final Paint paint = Paint();
-
-    if (drawData.linkStyle.useGradient) {
-      final shader = drawData.linkStyle.gradient!.createShader(
-        Rect.fromPoints(drawData.outPortOffset, drawData.inPortOffset),
-      );
-
-      paint
-        ..shader = shader
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = drawData.linkStyle.lineWidth;
-    } else {
-      paint
-        ..color = drawData.linkStyle.color!
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = drawData.linkStyle.lineWidth;
-    }
-
-    canvas.drawPath(path, paint);
+    return path;
   }
 
-  void _batchPaintBezierLink(
-    Path path,
-    Paint paint,
-    LinkDrawData drawData,
-  ) {
-    path.moveTo(drawData.outPortOffset.dx, drawData.outPortOffset.dy);
-
-    const double defaultOffset = 400.0;
-
-    //  How far the bezier follows the horizontal direction before curving based on the distance between ports
-    final dx = (drawData.inPortOffset.dx - drawData.outPortOffset.dx).abs();
-    final controlOffset = dx < defaultOffset * 2 ? dx / 2 : defaultOffset;
-
-    // First control point: a few pixels to the right of the output port.
-    final cp1 = Offset(
-      drawData.outPortOffset.dx + controlOffset,
-      drawData.outPortOffset.dy,
-    );
-
-    // Second control point: a few pixels to the left of the input port.
-    final cp2 = Offset(
-      drawData.inPortOffset.dx - controlOffset,
-      drawData.inPortOffset.dy,
-    );
-
-    path.cubicTo(
-      cp1.dx,
-      cp1.dy,
-      cp2.dx,
-      cp2.dy,
-      drawData.inPortOffset.dx,
-      drawData.inPortOffset.dy,
-    );
+  Path _computeStraightLinkPath(LinkData data) {
+    return Path()
+      ..moveTo(data.outPortOffset.dx, data.outPortOffset.dy)
+      ..lineTo(data.inPortOffset.dx, data.inPortOffset.dy);
   }
 
-  void _paintStraightLink(
-    Canvas canvas,
-    LinkDrawData drawData,
-  ) {
-    final Paint paint = Paint();
+  Path _computeNinetyDegreesLinkPath(LinkData data) {
+    final midX = (data.outPortOffset.dx + data.inPortOffset.dx) / 2;
 
-    if (drawData.linkStyle.useGradient) {
-      final shader = drawData.linkStyle.gradient!.createShader(
-        Rect.fromPoints(drawData.outPortOffset, drawData.inPortOffset),
-      );
-
-      paint
-        ..shader = shader
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = drawData.linkStyle.lineWidth;
-    } else {
-      paint
-        ..color = drawData.linkStyle.color!
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = drawData.linkStyle.lineWidth;
-    }
-
-    canvas.drawLine(
-      drawData.outPortOffset,
-      drawData.inPortOffset,
-      paint,
-    );
-  }
-
-  void _batchPaintStraightLink(Path path, Paint paint, LinkDrawData drawData) {
-    path
-      ..moveTo(drawData.outPortOffset.dx, drawData.outPortOffset.dy)
-      ..lineTo(drawData.inPortOffset.dx, drawData.inPortOffset.dy);
-  }
-
-  void _paintNinetyDegreesLink(
-    Canvas canvas,
-    LinkDrawData drawData,
-  ) {
-    final midX = (drawData.outPortOffset.dx + drawData.inPortOffset.dx) / 2;
-
-    final path = Path()
-      ..moveTo(drawData.outPortOffset.dx, drawData.outPortOffset.dy)
-      ..lineTo(midX, drawData.outPortOffset.dy)
-      ..lineTo(midX, drawData.inPortOffset.dy)
-      ..lineTo(drawData.inPortOffset.dx, drawData.inPortOffset.dy);
-
-    final Paint paint = Paint();
-
-    if (drawData.linkStyle.useGradient) {
-      final shader = drawData.linkStyle.gradient!.createShader(
-        Rect.fromPoints(drawData.outPortOffset, drawData.inPortOffset),
-      );
-
-      paint
-        ..shader = shader
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = drawData.linkStyle.lineWidth;
-    } else {
-      paint
-        ..color = drawData.linkStyle.color!
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = drawData.linkStyle.lineWidth;
-    }
-
-    canvas.drawPath(path, paint);
-  }
-
-  void _batchPaintNinetyDegreesLink(
-    Path path,
-    Paint paint,
-    LinkDrawData drawData,
-  ) {
-    final midX = (drawData.outPortOffset.dx + drawData.inPortOffset.dx) / 2;
-
-    path
-      ..moveTo(drawData.outPortOffset.dx, drawData.outPortOffset.dy)
-      ..lineTo(midX, drawData.outPortOffset.dy)
-      ..lineTo(midX, drawData.inPortOffset.dy)
-      ..lineTo(drawData.inPortOffset.dx, drawData.inPortOffset.dy);
+    return Path()
+      ..moveTo(data.outPortOffset.dx, data.outPortOffset.dy)
+      ..lineTo(midX, data.outPortOffset.dy)
+      ..lineTo(midX, data.inPortOffset.dy)
+      ..lineTo(data.inPortOffset.dx, data.inPortOffset.dy);
   }
 
   void _batchPaintCirclePort(
     Path path,
     Paint paint,
-    PortDrawData drawData,
+    PortData data,
   ) {
     path.addOval(
       Rect.fromCircle(
-        center: drawData.offset,
-        radius: drawData.style.radius,
+        center: data.offset,
+        radius: data.style.radius,
       ),
     );
   }
@@ -968,20 +889,20 @@ class NodeEditorRenderBox extends RenderBox
   void _batchPaintTrianglePort(
     Path path,
     Paint paint,
-    PortDrawData drawData,
+    PortData data,
   ) {
     final trianglePath = Path()
       ..moveTo(
-        drawData.offset.dx - drawData.style.radius,
-        drawData.offset.dy - drawData.style.radius,
+        data.offset.dx - data.style.radius,
+        data.offset.dy - data.style.radius,
       ) // Top-left
       ..lineTo(
-        drawData.offset.dx + drawData.style.radius,
-        drawData.offset.dy,
+        data.offset.dx + data.style.radius,
+        data.offset.dy,
       ) // Middle-right (apex)
       ..lineTo(
-        drawData.offset.dx - drawData.style.radius,
-        drawData.offset.dy + drawData.style.radius,
+        data.offset.dx - data.style.radius,
+        data.offset.dy + data.style.radius,
       ) // Bottom-left
       ..close();
 
@@ -1060,6 +981,12 @@ class NodeEditorRenderBox extends RenderBox
       );
 
       if (isHit) {
+        return true;
+      }
+    }
+
+    for (final (_, path) in _linksHitTestData) {
+      if (path.contains(transformedPosition)) {
         return true;
       }
     }
