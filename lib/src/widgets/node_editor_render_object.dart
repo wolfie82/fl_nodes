@@ -2,6 +2,7 @@ import 'dart:ui' as ui;
 import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
@@ -178,7 +179,7 @@ class NodeEditorRenderBox extends RenderBox
         _offset = offset,
         _zoom = zoom,
         _lodLevel = lodLevel,
-        _tmpLinkDrawData = tmpLinkDrawData,
+        _tmpLinkData = tmpLinkDrawData,
         _selectionArea = selectionArea {
     _loadGridShader();
     updateNodes(nodesData);
@@ -238,11 +239,11 @@ class NodeEditorRenderBox extends RenderBox
   Matrix4? _transformMatrix;
   bool _transformMatrixDirty = true;
 
-  LinkData? _tmpLinkDrawData;
-  LinkData? get tmpLinkDrawData => _tmpLinkDrawData;
+  LinkData? _tmpLinkData;
+  LinkData? get tmpLinkDrawData => _tmpLinkData;
   set tmpLinkDrawData(LinkData? value) {
-    if (_tmpLinkDrawData == value) return;
-    _tmpLinkDrawData = value;
+    if (_tmpLinkData == value) return;
+    _tmpLinkData = value;
     markNeedsPaint();
   }
 
@@ -437,7 +438,7 @@ class NodeEditorRenderBox extends RenderBox
 
     visibleNodes = _controller.spatialHashGrid.queryArea(
       // Inflate the viewport to include nodes that are close to the edges
-      _calculateViewport().inflate(300),
+      viewport.inflate(300),
     );
 
     _paintGrid(context.canvas, viewport, startX, startY);
@@ -512,7 +513,7 @@ class NodeEditorRenderBox extends RenderBox
 
   bool _portsPositionsDirty = true;
 
-  final Map<FlLinkStyle, (Path, Paint)> batchByLinkStyle = {};
+  final Map<FlLinkStyle, (Path, Paint)> _batchByLinkStyle = {};
 
   final List<(String, Path)> _linksHitTestData = [];
 
@@ -523,12 +524,10 @@ class NodeEditorRenderBox extends RenderBox
         _controller.nodesDataDirty ||
         _transformMatrixDirty ||
         _portsPositionsDirty) {
-      final Set<LinkData> linkDrawData = {};
+      final Set<LinkData> linkData = {};
 
-      for (final value in batchByLinkStyle.values) {
-        value.$1.reset();
-      }
-
+      // We cannot just reset the paths because the link styles are stateful that change hash code
+      _batchByLinkStyle.clear();
       _linksHitTestData.clear();
 
       for (final link in _controller.linksById.values) {
@@ -537,8 +536,15 @@ class NodeEditorRenderBox extends RenderBox
         final outPort = outNode.ports[link.fromTo.to]!;
         final inPort = inNode.ports[link.fromTo.toPort]!;
 
+        final Rect pathBounds = Rect.fromPoints(
+          outNode.offset + outPort.offset,
+          inNode.offset + inPort.offset,
+        );
+
+        if (!viewport.overlaps(pathBounds)) continue;
+
         // NOTE: The port offset is relative to the node
-        linkDrawData.add(
+        linkData.add(
           LinkData(
             id: link.id,
             outPortOffset: outNode.offset + outPort.offset,
@@ -550,7 +556,7 @@ class NodeEditorRenderBox extends RenderBox
 
       // We don't draw the temporary link here because it should be on top of the nodes
 
-      for (final data in linkDrawData) {
+      for (final data in linkData) {
         if (data.linkStyle.useGradient) {
           late Path path;
 
@@ -580,7 +586,7 @@ class NodeEditorRenderBox extends RenderBox
           canvas.drawPath(path, paint);
         } else {
           final style = data.linkStyle;
-          batchByLinkStyle.putIfAbsent(style, () {
+          _batchByLinkStyle.putIfAbsent(style, () {
             return (
               Path(),
               Paint()
@@ -606,12 +612,12 @@ class NodeEditorRenderBox extends RenderBox
 
           _linksHitTestData.add((data.id, path));
 
-          batchByLinkStyle[style]!.$1.addPath(path, Offset.zero);
+          _batchByLinkStyle[style]!.$1.addPath(path, Offset.zero);
         }
       }
     }
 
-    for (final entry in batchByLinkStyle.entries) {
+    for (final entry in _batchByLinkStyle.entries) {
       final (path, paint) = entry.value;
       canvas.drawPath(path, paint);
     }
@@ -648,7 +654,7 @@ class NodeEditorRenderBox extends RenderBox
 
       // Acquire new frame data
 
-      final Set<PortData> portDrawData = {};
+      final Set<PortData> portData = {};
 
       for (final nodeId in visibleNodes) {
         final child = _childrenById[nodeId];
@@ -666,7 +672,7 @@ class NodeEditorRenderBox extends RenderBox
           );
 
           for (final port in _controller.nodes[nodeId]!.ports.values) {
-            portDrawData.add(
+            portData.add(
               PortData(
                 isSelected: childParentData.state.isSelected,
                 offset: childParentData.offset + port.offset,
@@ -685,7 +691,7 @@ class NodeEditorRenderBox extends RenderBox
           );
 
           for (final port in _controller.nodes[nodeId]!.ports.values) {
-            portDrawData.add(
+            portData.add(
               PortData(
                 isSelected: childParentData.state.isSelected,
                 offset: childParentData.offset + port.offset,
@@ -696,7 +702,7 @@ class NodeEditorRenderBox extends RenderBox
         }
       }
 
-      for (final data in portDrawData) {
+      for (final data in portData) {
         final style = data.style;
 
         final batchPortByStyle = data.isSelected
@@ -783,41 +789,41 @@ class NodeEditorRenderBox extends RenderBox
   }
 
   void _paintTemporaryLink(Canvas canvas) {
-    if (_tmpLinkDrawData == null) return;
+    if (_tmpLinkData == null) return;
 
     late Path path;
 
-    switch (_tmpLinkDrawData!.linkStyle.curveType) {
+    switch (_tmpLinkData!.linkStyle.curveType) {
       case FlLinkCurveType.straight:
-        path = _computeStraightLinkPath(_tmpLinkDrawData!);
+        path = _computeStraightLinkPath(_tmpLinkData!);
         break;
       case FlLinkCurveType.bezier:
-        path = _computeBezierLinkPath(_tmpLinkDrawData!);
+        path = _computeBezierLinkPath(_tmpLinkData!);
         break;
       case FlLinkCurveType.ninetyDegree:
-        path = _computeNinetyDegreesLinkPath(_tmpLinkDrawData!);
+        path = _computeNinetyDegreesLinkPath(_tmpLinkData!);
         break;
     }
 
     final Paint paint = Paint();
 
-    if (_tmpLinkDrawData!.linkStyle.useGradient) {
-      final shader = _tmpLinkDrawData!.linkStyle.gradient!.createShader(
+    if (_tmpLinkData!.linkStyle.useGradient) {
+      final shader = _tmpLinkData!.linkStyle.gradient!.createShader(
         Rect.fromPoints(
-          _tmpLinkDrawData!.outPortOffset,
-          _tmpLinkDrawData!.inPortOffset,
+          _tmpLinkData!.outPortOffset,
+          _tmpLinkData!.inPortOffset,
         ),
       );
 
       paint
         ..shader = shader
         ..style = PaintingStyle.stroke
-        ..strokeWidth = _tmpLinkDrawData!.linkStyle.lineWidth;
+        ..strokeWidth = _tmpLinkData!.linkStyle.lineWidth;
     } else {
       paint
-        ..color = _tmpLinkDrawData!.linkStyle.color!
+        ..color = _tmpLinkData!.linkStyle.color!
         ..style = PaintingStyle.stroke
-        ..strokeWidth = _tmpLinkDrawData!.linkStyle.lineWidth;
+        ..strokeWidth = _tmpLinkData!.linkStyle.lineWidth;
     }
 
     canvas.drawPath(path, paint);
@@ -955,9 +961,7 @@ class NodeEditorRenderBox extends RenderBox
   //////////////////////////////////////////////////////////////////
 
   @override
-  bool hitTestSelf(Offset position) {
-    return true;
-  }
+  bool hitTestSelf(Offset position) => true;
 
   @override
   bool hitTestChildren(BoxHitTestResult result, {required Offset position}) {
@@ -985,12 +989,69 @@ class NodeEditorRenderBox extends RenderBox
       }
     }
 
-    for (final (_, path) in _linksHitTestData) {
-      if (path.contains(transformedPosition)) {
-        return true;
+    return false;
+  }
+
+  bool isPointNearPath(Path path, Offset point, double tolerance) {
+    for (final metric in path.computeMetrics()) {
+      for (double t = 0; t < metric.length; t += 1.0) {
+        final pos = metric.getTangentForOffset(t)?.position;
+        if (pos != null && (point - pos).distance <= tolerance) {
+          return true;
+        }
       }
     }
 
     return false;
   }
+
+  @override
+  void handleEvent(PointerEvent event, BoxHitTestEntry entry) {
+    super.handleEvent(event, entry);
+
+    bool isHit = false;
+    String? hitLinkId;
+
+    final Offset centeredPosition =
+        event.localPosition - Offset(size.width / 2, size.height / 2);
+    final Offset scaledPosition = centeredPosition.scale(1 / zoom, 1 / zoom);
+    final Offset transformedPosition = scaledPosition - _offset;
+
+    if (event is PointerDownEvent && event.buttons == kMiddleMouseButton ||
+        event is PointerHoverEvent) {
+      return;
+    }
+
+    final Rect checkRect = Rect.fromCircle(
+      center: transformedPosition,
+      radius: 6.0,
+    );
+
+    for (final (id, path) in _linksHitTestData) {
+      if (checkRect.overlaps(path.getBounds())) {
+        if (isPointNearPath(path, transformedPosition, 6.0)) {
+          hitLinkId = id;
+          isHit = true;
+          break;
+        }
+      }
+    }
+
+    if (isHit) {
+      if (event is PointerDownEvent) {
+      } else if (event is PointerUpEvent) {
+      } else if (event is PointerMoveEvent) {
+      } else {}
+    }
+  }
+
+  //////////////////////////////////////////////////////////////////
+  /// Misc methods
+  //////////////////////////////////////////////////////////////////
+
+  @override
+  bool get isRepaintBoundary => true;
+
+  @override
+  bool get alwaysNeedsCompositing => false;
 }
