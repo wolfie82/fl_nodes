@@ -11,48 +11,58 @@ enum Operator { add, subtract, multiply, divide }
 enum Comparator { equal, notEqual, greater, greaterEqual, less, lessEqual }
 
 final FlPortStyle outputDataPortStyle = FlPortStyle(
-  color: Colors.orange,
+  color: Colors.deepOrange,
   shape: FlPortShape.circle,
-  linkStyleBuilder: (state) => const FlLinkStyle(
-    useGradient: false, // <-- Try setting this to true
-    color: Colors.orange,
-    gradient: LinearGradient(
-      colors: [Colors.orange, Colors.purple],
+  linkStyleBuilder: (state) => FlLinkStyle(
+    useGradient: false,
+    color: state.isSelected
+        ? Colors.orangeAccent
+        : state.isHovered
+            ? Colors.limeAccent
+            : Colors.deepOrange,
+    gradient: const LinearGradient(
+      colors: [Colors.deepOrange, Colors.purple],
       begin: Alignment.centerLeft,
       end: Alignment.centerRight,
     ),
-    lineWidth: 3.0,
+    lineWidth: state.isSelected
+        ? 3.5
+        : state.isHovered
+            ? 4.5
+            : 2.5,
     drawMode: FlLinkDrawMode.solid,
     curveType: FlLinkCurveType.bezier,
   ),
 );
 
-const FlPortStyle inputDataPortStyle = FlPortStyle(
-  color: Colors.purple,
-  shape: FlPortShape.circle,
-);
+final FlPortStyle inputDataPortStyle = outputDataPortStyle;
 
 final FlPortStyle controlOutputPortStyle = FlPortStyle(
   color: Colors.green,
   shape: FlPortShape.triangle,
-  linkStyleBuilder: (state) => const FlLinkStyle(
-    useGradient: false, // <-- Try setting this to true
-    color: Colors.green,
-    gradient: LinearGradient(
-      colors: [Colors.green, Colors.blue],
+  linkStyleBuilder: (state) => FlLinkStyle(
+    useGradient: false,
+    color: state.isSelected
+        ? Colors.lightGreen
+        : state.isHovered
+            ? Colors.limeAccent
+            : Colors.green,
+    gradient: const LinearGradient(
+      colors: [Colors.lightGreenAccent, Colors.green],
       begin: Alignment.centerLeft,
       end: Alignment.centerRight,
     ),
-    lineWidth: 3.0,
+    lineWidth: state.isSelected
+        ? 3.5
+        : state.isHovered
+            ? 4.5
+            : 2.5,
     drawMode: FlLinkDrawMode.solid,
     curveType: FlLinkCurveType.bezier,
   ),
 );
 
-const FlPortStyle controlInputPortStyle = FlPortStyle(
-  color: Colors.blue,
-  shape: FlPortShape.triangle,
-);
+final FlPortStyle controlInputPortStyle = controlOutputPortStyle;
 
 NodePrototype createValueNode<T>({
   required String idName,

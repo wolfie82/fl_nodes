@@ -10,10 +10,12 @@ typedef FromTo = ({String from, String to, String fromPort, String toPort});
 
 /// A class representing the state of a link.
 class LinkState {
-  final bool isHovered; // Not saved as it is only used during rendering
+  bool isHovered; // Not saved as it is only used during rendering
+  bool isSelected; // Not saved as it is only used during rendering
 
   LinkState({
     this.isHovered = false,
+    this.isSelected = false,
   });
 
   @override
@@ -21,10 +23,11 @@ class LinkState {
       identical(this, other) ||
       other is LinkState &&
           runtimeType == other.runtimeType &&
-          isHovered == other.isHovered;
+          isHovered == other.isHovered &&
+          isSelected == other.isSelected;
 
   @override
-  int get hashCode => isHovered.hashCode;
+  int get hashCode => isHovered.hashCode ^ isSelected.hashCode;
 }
 
 /// A link is a connection between two ports.
