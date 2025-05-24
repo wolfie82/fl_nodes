@@ -1,8 +1,8 @@
 # **FlNodes**
 
-🚀 **We're Participating in the OnlyDust Open Source Hackathon!**  
+🚀 **We're Participating in the OnlyDust Open Source Hackathon!**
 
-The `fl_nodes` project is taking part in the  **[OnlyDust](https://onlydust.com) Open Source Hackathon starting** May 28th, 2025!
+The `fl_nodes` project is taking part in the **[OnlyDust](https://onlydust.com) Open Source Hackathon starting** May 28th, 2025!
 
 If you're interested in Flutter, visual programming, or node-based interfaces, this is a great chance to contribute, learn, and collaborate. We’ll soon tag beginner-friendly issues and update documentation. We are ready to support contributors of all experience levels.
 
@@ -78,15 +78,13 @@ We're iterating fast, thanks to community adoption, forks, and feedback. Here's 
 
 ### 🎛 General-Purpose Flexibility
 
-- **Dynamic Node Parameters** – Add/remove inputs, outputs, or fields at runtime.
+- 🤖 **Node Configuration State Machine** – Dynamically add or remove ports and fields on nodes at runtime, allowing node structure to adapt automatically based on current links and input data.
 
-- **Node Grouping** – Select and group nodes for organization and batch operations.
+- 🧑‍🤝‍🧑 **Node Grouping** – Enable users to select multiple nodes and group them together for easier organization, movement, and management within complex graphs.
 
-- **Reusable Graph Macros** – Define templates or functions composed of reusable node sets.
+- ♻️ **Reusable Graph Macros** – Allow users to define, save, and reuse templates or functions made up of multiple nodes, streamlining the creation of common patterns and workflows.
 
-- **Field Editors 2.0** – Make custom fields more composable, interactive, and inline-editable.
-
-Click [here](https://hackmd.io/@l7G0TmToRX-GFgwRUOHloA/Byi53IwFyx) for a detailed and updated TODO list for the project.
+- 🎩 **Enhanced Editor Mode** – Introduce advanced, opt-in editing tools and keyboard shortcuts to improve productivity and provide a more powerful graph editing experience.
 
 ---
 
@@ -142,6 +140,29 @@ Explore fully working examples:
 
 ---
 
+### 🕹️ Current input support
+
+**Legend:**
+
+- ✅ Supported
+- ❌ Unsupported
+- ⚠️ Partial
+- 🧪 Untested
+
+| 🖥️Desktop and 💻 laptop: | Windows | Linux | macOS |
+| ------------------------ | ------- | ----- | ----- |
+| **native/mouse**         | ✅      | ✅    | ✅    |
+| **native/trackpad**      | ✅      | ⚠️    | ✅    |
+| **web/mouse**            | ✅      | ✅    | ✅    |
+| **web/trackpad**         | ❌      | ❌    | ❌    |
+
+| 📱Mobile   | Android | iOS |
+| ---------- | ------- | --- |
+| **native** | ✅      | ❌  |
+| **web**    | ❌      | 🧪  |
+
+---
+
 ## 📜 **License**
 
 **FlNodes** is open-source and released under the [MIT License](LICENSE.md).
@@ -154,8 +175,11 @@ Contributions are welcome!
 We’d love your help in making **FlNodes** even better! You can contribute by:
 
 - 💡 Suggesting new features
+
 - 🐛 Reporting bugs
+
 - 🔧 Submitting pull requests
+
 - 👏 [**Sharing what you've built**](https://github.com/WilliamKarolDiCioccio/fl_nodes/discussions/49)
 
 Feel free to file an issue or contribute directly on [GitHub](https://github.com/WilliamKarolDiCioccio/fl_nodes).
