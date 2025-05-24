@@ -148,10 +148,16 @@ final class DragSelectionEndEvent extends NodeEditorEvent {
   }
 }
 
-final class SelectionEvent extends NodeEditorEvent {
+final class NodeSelectionEvent extends NodeEditorEvent {
   final Set<String> nodeIds;
 
-  const SelectionEvent(this.nodeIds, {required super.id, super.isHandled});
+  const NodeSelectionEvent(this.nodeIds, {required super.id, super.isHandled});
+}
+
+final class LinkSelectionEvent extends NodeEditorEvent {
+  final Set<String> linkIds;
+
+  const LinkSelectionEvent(this.linkIds, {required super.id, super.isHandled});
 }
 
 final class AddNodeEvent extends NodeEditorEvent {

@@ -1,3 +1,5 @@
+import 'package:fl_nodes/src/core/models/entities.dart';
+
 import '../../../constants.dart';
 import '../../models/events.dart';
 import '../../utils/stack.dart';
@@ -83,7 +85,7 @@ class FlNodeEditorHistory {
         controller.dragSelection(-event.delta, eventId: event.id);
         controller.clearSelection();
       } else if (event is AddNodeEvent) {
-        controller.removeNode(event.node.id, eventId: event.id);
+        controller.removeNodeById(event.node.id, eventId: event.id);
       } else if (event is RemoveNodeEvent) {
         controller.addNodeFromExisting(event.node, eventId: event.id);
       } else if (event is AddLinkEvent) {
@@ -110,11 +112,21 @@ class FlNodeEditorHistory {
         controller.dragSelection(event.delta, eventId: event.id);
         controller.clearSelection();
       } else if (event is AddNodeEvent) {
-        controller.addNodeFromExisting(event.node, eventId: event.id);
+        controller.addNodeFromExisting(
+          event.node.copyWith(
+            state: NodeState(isSelected: true),
+          ),
+          eventId: event.id,
+        );
       } else if (event is RemoveNodeEvent) {
-        controller.removeNode(event.node.id, eventId: event.id);
+        controller.removeNodeById(event.node.id, eventId: event.id);
       } else if (event is AddLinkEvent) {
-        controller.addLinkFromExisting(event.link, eventId: event.id);
+        controller.addLinkFromExisting(
+          event.link.copyWith(
+            state: LinkState(isSelected: true),
+          ),
+          eventId: event.id,
+        );
       } else if (event is RemoveLinkEvent) {
         controller.removeLinkById(
           event.link.id,

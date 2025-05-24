@@ -335,7 +335,7 @@ class NodeEditorExampleScreenState extends State<NodeEditorExampleScreen> {
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
-                                    Text(' - Left Click: Select Node'),
+                                    Text(' - Left Click: Select Node/Link'),
                                     Text(' - Right Click: Open Context Menu'),
                                     Text(' - Scroll: Zoom In/Out'),
                                     Text(' - Middle Click: Pan'),

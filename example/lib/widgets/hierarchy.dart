@@ -26,7 +26,7 @@ class _HierarchyWidgetState extends State<HierarchyWidget> {
 
   void _subscribeToControllerEvents() {
     widget.controller.eventBus.events.listen((event) {
-      if (event is SelectionEvent ||
+      if (event is NodeSelectionEvent ||
           event is DragSelectionEvent ||
           event is AddNodeEvent ||
           event is RemoveNodeEvent) {

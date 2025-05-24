@@ -170,6 +170,7 @@ class FlNodeEditorClipboard {
             port.copyWith(
               links: port.links.map((link) {
                 return link.copyWith(
+                  state: LinkState(),
                   id: newIds[link.id],
                   fromTo: (
                     from: newIds[link.fromTo.from]!,
@@ -205,7 +206,7 @@ class FlNodeEditorClipboard {
   void cutSelection() async {
     final clipboardContent = await copySelection();
     for (final id in selectedNodeIds) {
-      controller.removeNode(id, isHandled: true);
+      controller.removeNodeById(id, isHandled: true);
     }
     controller.clearSelection(isHandled: true);
 

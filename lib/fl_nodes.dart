@@ -17,7 +17,8 @@ export 'package:fl_nodes/src/core/models/events.dart' show FieldEventType;
 export 'package:fl_nodes/src/core/models/events.dart'
     show
         NodeEditorEvent,
-        SelectionEvent,
+        NodeSelectionEvent,
+        LinkSelectionEvent,
         DragSelectionEvent,
         CollapseEvent,
         AddNodeEvent,

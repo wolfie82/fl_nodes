@@ -34,21 +34,24 @@ class LinkState {
 final class Link {
   final String id;
   final FromTo fromTo;
-  final LinkState state = LinkState();
+  final LinkState state;
 
   Link({
     required this.id,
     required this.fromTo,
+    required this.state,
   });
 
   Link copyWith({
     String? id,
     FromTo? fromTo,
+    LinkState? state,
     List<Offset>? joints,
   }) {
     return Link(
       id: id ?? this.id,
       fromTo: fromTo ?? this.fromTo,
+      state: state ?? this.state,
     );
   }
 
@@ -71,6 +74,7 @@ final class Link {
         fromPort: json['fromPort'],
         toPort: json['toPort'],
       ),
+      state: LinkState(),
     );
   }
 
@@ -325,7 +329,7 @@ final class NodePrototype {
 /// The state of a node widget.
 final class NodeState {
   bool isSelected; // Not saved as it is only used during rendering
-  bool isCollapsed; // Saved
+  bool isCollapsed;
 
   NodeState({
     this.isSelected = false,
@@ -376,7 +380,7 @@ final class NodeInstance {
   final NodePrototype prototype;
   final Map<String, PortInstance> ports;
   final Map<String, FieldInstance> fields;
-  final NodeState state = NodeState();
+  final NodeState state;
   Offset offset; // User or system defined offset
   final GlobalKey key = GlobalKey(); // Determined by Flutter
 
@@ -385,6 +389,7 @@ final class NodeInstance {
     required this.prototype,
     required this.ports,
     required this.fields,
+    required this.state,
     this.forceRecompute = true,
     this.offset = Offset.zero,
   });
@@ -402,6 +407,7 @@ final class NodeInstance {
       id: id ?? this.id,
       prototype: prototype,
       ports: ports ?? this.ports,
+      state: state ?? this.state,
       fields: fields ?? this.fields,
       offset: offset ?? this.offset,
     );
@@ -464,13 +470,9 @@ final class NodeInstance {
       prototype: prototype,
       ports: ports,
       fields: fields,
+      state: NodeState(isCollapsed: json['state']['isCollapsed']),
       offset: Offset(json['offset'][0], json['offset'][1]),
     );
-
-    final state = NodeState.fromJson(json['state']);
-
-    instance.state.isSelected = state.isSelected;
-    instance.state.isCollapsed = state.isCollapsed;
 
     return instance;
   }
@@ -504,6 +506,7 @@ NodeInstance createNode(
         return MapEntry(prototype.idName, instance);
       }),
     ),
+    state: NodeState(),
     offset: offset,
   );
 }

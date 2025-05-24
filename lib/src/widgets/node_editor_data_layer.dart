@@ -4,7 +4,6 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 
 import 'package:flutter_context_menu/flutter_context_menu.dart';
@@ -149,10 +148,6 @@ class _NodeEditorDataLayerState extends State<NodeEditorDataLayer>
             (event.eventType == FieldEventType.submit ||
                 event.eventType == FieldEventType.cancel)) {
       setState(() {});
-      // We delay the second setState to ensure that the UI has been built and  the keys updated
-      SchedulerBinding.instance.addPostFrameCallback((_) {
-        setState(() {});
-      });
     }
   }
 
@@ -794,12 +789,18 @@ class _NodeEditorDataLayerState extends State<NodeEditorDataLayer>
                   "Remove selected nodes",
                   () {
                     for (final nodeId in widget.controller.selectedNodeIds) {
-                      widget.controller.removeNode(
+                      widget.controller.removeNodeById(
                         nodeId,
                         isHandled:
                             nodeId != widget.controller.selectedNodeIds.last,
                       );
                     }
+
+                    for (final link in widget.controller.selectedLinkIds) {
+                      widget.controller.removeLinkById(link);
+                    }
+
+                    widget.controller.clearSelection();
                   },
                 ),
                 KeyAction(
@@ -807,12 +808,17 @@ class _NodeEditorDataLayerState extends State<NodeEditorDataLayer>
                   "Remove selected nodes",
                   () {
                     for (final nodeId in widget.controller.selectedNodeIds) {
-                      widget.controller.removeNode(
+                      widget.controller.removeNodeById(
                         nodeId,
                         isHandled:
                             nodeId != widget.controller.selectedNodeIds.last,
                       );
                     }
+
+                    for (final link in widget.controller.selectedLinkIds) {
+                      widget.controller.removeLinkById(link);
+                    }
+
                     widget.controller.clearSelection();
                   },
                 ),

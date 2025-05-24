@@ -64,7 +64,11 @@ class FlNodeEditorController {
     nodes.clear();
     spatialHashGrid.clear();
     selectedNodeIds.clear();
+    selectedLinkIds.clear();
     _linksById.clear();
+
+    linksDataDirty = true;
+    nodesDataDirty = true;
   }
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -334,7 +338,10 @@ class FlNodeEditorController {
     }
 
     nodes.putIfAbsent(node.id, () => node.copyWith(offset: offset));
+
     _unboundNodeOffsets.putIfAbsent(node.id, () => node.offset);
+
+    if (node.state.isSelected) selectedNodeIds.add(node.id);
 
     nodesDataDirty = true;
 
@@ -356,7 +363,7 @@ class FlNodeEditorController {
   /// This method is used to remove a node by its ID.
   ///
   /// Emits a [RemoveNodeEvent] event.
-  void removeNode(
+  void removeNodeById(
     String id, {
     String? eventId,
     bool isHandled = false,
@@ -375,6 +382,8 @@ class FlNodeEditorController {
 
     spatialHashGrid.remove(id);
     nodes.remove(id);
+
+    // selectedNodeIds.remove(id); We don't remove the node from the selected nodes because you might be iterating over them.
 
     // The links data is set to dirty by the removeLinkById method.
     nodesDataDirty = true;
@@ -503,7 +512,11 @@ class FlNodeEditorController {
 
     if (!canConnect(fromTo)) return null;
 
-    final link = Link(id: const Uuid().v4(), fromTo: fromTo);
+    final link = Link(
+      id: const Uuid().v4(),
+      fromTo: fromTo,
+      state: LinkState(),
+    );
 
     port1.links.add(link);
     port2.links.add(link);
@@ -557,6 +570,8 @@ class FlNodeEditorController {
       () => link,
     );
 
+    if (link.state.isSelected) selectedLinkIds.add(link.id);
+
     linksDataDirty = true;
 
     eventBus.emit(
@@ -591,6 +606,8 @@ class FlNodeEditorController {
     toPort?.links.remove(link);
 
     linksById.remove(id);
+
+    // selectedLinkIds.remove(id); We don't remove the link from the selected links because you might be iterating over them.
 
     linksDataDirty = true;
 
@@ -697,6 +714,7 @@ class FlNodeEditorController {
   ///////////////////////////////////////////////////////////////////////////
 
   final Set<String> selectedNodeIds = {};
+  final Set<String> selectedLinkIds = {};
   Rect selectionArea = Rect.zero;
 
   /// This method is used to drag the selected nodes by a given delta affecting their offsets.
@@ -750,7 +768,7 @@ class FlNodeEditorController {
 
   /// This method is used to select nodes by their IDs.
   ///
-  /// Emits a [SelectionEvent] event.
+  /// Emits a [NodeSelectionEvent] event.
   void selectNodesById(
     Set<String> ids, {
     bool holdSelection = false,
@@ -769,9 +787,9 @@ class FlNodeEditorController {
       node?.state.isSelected = true;
     }
 
-    eventBus.emit(
-      SelectionEvent(id: const Uuid().v4(), selectedNodeIds.toSet()),
-    );
+    // eventBus.emit(
+    //   SelectionEvent(id: const Uuid().v4(), selectedNodeIds.toSet()),
+    // );
   }
 
   /// This method is used to select nodes that are contained within the selection area.
@@ -787,6 +805,34 @@ class FlNodeEditorController {
     selectionArea = Rect.zero;
   }
 
+  /// This method is used to select a link by its ID.
+  ///
+  /// Emits a [NodeSelectionEvent] event.
+  void selectLinkById(
+    String id, {
+    bool holdSelection = false,
+    bool isHandled = false,
+  }) async {
+    if (id.isEmpty) {
+      return clearSelection();
+    } else if (!holdSelection) {
+      clearSelection();
+    }
+
+    selectedLinkIds.add(id);
+
+    for (final id in selectedLinkIds) {
+      final link = linksById[id];
+      link?.state.isSelected = true;
+    }
+
+    linksDataDirty = true;
+
+    eventBus.emit(
+      LinkSelectionEvent(id: const Uuid().v4(), selectedLinkIds.toSet()),
+    );
+  }
+
   /// This method is used to deselect all selected nodes.
   void clearSelection({bool isHandled = false}) {
     for (final id in selectedNodeIds) {
@@ -794,15 +840,32 @@ class FlNodeEditorController {
       node?.state.isSelected = false;
     }
 
+    for (final id in selectedLinkIds) {
+      final link = linksById[id];
+      link?.state.isSelected = false;
+    }
+
+    linksDataDirty = true;
+    nodesDataDirty = true;
+
     eventBus.emit(
-      SelectionEvent(
+      NodeSelectionEvent(
         id: const Uuid().v4(),
         selectedNodeIds.toSet(),
         isHandled: isHandled,
       ),
     );
 
+    eventBus.emit(
+      LinkSelectionEvent(
+        id: const Uuid().v4(),
+        selectedLinkIds.toSet(),
+        isHandled: isHandled,
+      ),
+    );
+
     selectedNodeIds.clear();
+    selectedLinkIds.clear();
   }
 
   /////////////////////////////////////////////////////////////////////

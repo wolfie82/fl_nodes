@@ -6,6 +6,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:flutter/services.dart';
 
 import 'package:fl_nodes/src/widgets/node.dart';
 
@@ -1005,6 +1006,8 @@ class NodeEditorRenderBox extends RenderBox
     return false;
   }
 
+  String? lastHoveredLinkId;
+
   @override
   void handleEvent(PointerEvent event, BoxHitTestEntry entry) {
     super.handleEvent(event, entry);
@@ -1017,8 +1020,7 @@ class NodeEditorRenderBox extends RenderBox
     final Offset scaledPosition = centeredPosition.scale(1 / zoom, 1 / zoom);
     final Offset transformedPosition = scaledPosition - _offset;
 
-    if (event is PointerDownEvent && event.buttons == kMiddleMouseButton ||
-        event is PointerHoverEvent) {
+    if (event is PointerDownEvent && event.buttons == kMiddleMouseButton) {
       return;
     }
 
@@ -1037,11 +1039,41 @@ class NodeEditorRenderBox extends RenderBox
       }
     }
 
+    // The code for managing hover state doesn't really belong in the controller
+    // as it doesn't trigger events and can't be set externally.
+
     if (isHit) {
       if (event is PointerDownEvent) {
+        _controller.selectLinkById(
+          hitLinkId!,
+          holdSelection: HardwareKeyboard.instance.isControlPressed,
+        );
       } else if (event is PointerUpEvent) {
-      } else if (event is PointerMoveEvent) {
-      } else {}
+      } else if (event is PointerHoverEvent) {
+        if (lastHoveredLinkId != null &&
+            lastHoveredLinkId != hitLinkId &&
+            _controller.linksById.containsKey(lastHoveredLinkId!)) {
+          _controller.linksById[lastHoveredLinkId!]!.state.isHovered = false;
+        }
+
+        _controller.linksById[hitLinkId!]!.state.isHovered = true;
+        _controller.linksDataDirty = true;
+
+        lastHoveredLinkId = hitLinkId;
+
+        markNeedsPaint();
+      }
+    }
+
+    if (event is PointerHoverEvent) {
+      if (lastHoveredLinkId != null &&
+          lastHoveredLinkId != hitLinkId &&
+          _controller.linksById.containsKey(lastHoveredLinkId!)) {
+        _controller.linksById[lastHoveredLinkId!]!.state.isHovered = false;
+        _controller.linksDataDirty = true;
+
+        markNeedsPaint();
+      }
     }
   }
 

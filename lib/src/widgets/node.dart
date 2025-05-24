@@ -587,13 +587,14 @@ class _NodeWidgetState extends State<NodeWidget> {
         onSelected: () {
           if (widget.node.state.isSelected) {
             for (final nodeId in widget.controller.selectedNodeIds) {
-              widget.controller.removeNode(nodeId);
+              widget.controller.removeNodeById(nodeId);
             }
           } else {
             for (final nodeId in widget.controller.selectedNodeIds) {
-              widget.controller.removeNode(nodeId);
+              widget.controller.removeNodeById(nodeId);
             }
           }
+
           widget.controller.clearSelection();
         },
       ),

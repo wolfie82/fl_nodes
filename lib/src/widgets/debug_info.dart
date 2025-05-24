@@ -27,7 +27,7 @@ class _DebugInfoWidgetState extends State<DebugInfoWidget> {
     widget.controller.eventBus.events.listen((event) {
       if (event is ViewportOffsetEvent ||
           event is ViewportZoomEvent ||
-          event is SelectionEvent) {
+          event is NodeSelectionEvent) {
         setState(() {});
       }
     });
