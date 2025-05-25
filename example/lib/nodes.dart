@@ -30,7 +30,7 @@ final FlPortStyle outputDataPortStyle = FlPortStyle(
         : state.isHovered
             ? 4.5
             : 2.5,
-    drawMode: FlLinkDrawMode.solid,
+    drawMode: FlLineDrawMode.solid,
     curveType: FlLinkCurveType.bezier,
   ),
 );
@@ -57,7 +57,7 @@ final FlPortStyle controlOutputPortStyle = FlPortStyle(
         : state.isHovered
             ? 4.5
             : 2.5,
-    drawMode: FlLinkDrawMode.solid,
+    drawMode: FlLineDrawMode.solid,
     curveType: FlLinkCurveType.bezier,
   ),
 );

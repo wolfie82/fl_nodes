@@ -210,12 +210,12 @@ class _NodeWidgetState extends State<NodeWidget> {
     return null;
   }
 
-  void _onLinkStart(_TempLink locator) {
+  void _onTmpLinkStart(_TempLink locator) {
     _tempLink = (nodeId: locator.nodeId, portId: locator.portId);
     _isLinking = true;
   }
 
-  void _onLinkUpdate(Offset position) {
+  void _onTmpLinkUpdate(Offset position) {
     final worldPosition = screenToWorld(position, viewportOffset, viewportZoom);
     final node = widget.controller.nodes[_tempLink!.nodeId]!;
     final port = node.ports[_tempLink!.portId]!;
@@ -228,13 +228,13 @@ class _NodeWidgetState extends State<NodeWidget> {
     );
   }
 
-  void _onLinkCancel() {
+  void _onTmpLinkCancel() {
     _isLinking = false;
     _tempLink = null;
     widget.controller.clearTempLink();
   }
 
-  void _onLinkEnd(_TempLink locator) {
+  void _onTmpLinkEnd(_TempLink locator) {
     widget.controller.addLink(
       _tempLink!.nodeId,
       _tempLink!.portId,
@@ -440,7 +440,7 @@ class _NodeWidgetState extends State<NodeWidget> {
               final locator = _isNearPort(position);
               if (locator != null) {
                 _isLinking = true;
-                _onLinkStart(locator);
+                _onTmpLinkStart(locator);
               } else {
                 if (!widget.node.state.isSelected) {
                   widget.controller.selectNodesById({widget.node.id});
@@ -450,7 +450,7 @@ class _NodeWidgetState extends State<NodeWidget> {
             onPanUpdate: (details) {
               _lastPanPosition = details.globalPosition;
               if (_isLinking) {
-                _onLinkUpdate(details.globalPosition);
+                _onTmpLinkUpdate(details.globalPosition);
               } else {
                 _startEdgeTimer(details.globalPosition);
                 widget.controller.dragSelection(details.delta);
@@ -460,13 +460,13 @@ class _NodeWidgetState extends State<NodeWidget> {
               if (_isLinking) {
                 final locator = _isNearPort(_lastPanPosition!);
                 if (locator != null) {
-                  _onLinkEnd(locator);
+                  _onTmpLinkEnd(locator);
                 } else {
                   createAndShowContextMenu(
                     context,
                     entries: _createSubmenuEntries(_lastPanPosition!),
                     position: _lastPanPosition!,
-                    onDismiss: (value) => _onLinkCancel(),
+                    onDismiss: (value) => _onTmpLinkCancel(),
                   );
                 }
                 _isLinking = false;
@@ -509,7 +509,7 @@ class _NodeWidgetState extends State<NodeWidget> {
                 }
               } else if (event.buttons == kPrimaryMouseButton) {
                 if (locator != null && !_isLinking && _tempLink == null) {
-                  _onLinkStart(locator);
+                  _onTmpLinkStart(locator);
                 } else if (!widget.node.state.isSelected) {
                   widget.controller.selectNodesById(
                     {widget.node.id},
@@ -520,7 +520,7 @@ class _NodeWidgetState extends State<NodeWidget> {
             },
             onPointerMoved: (event) async {
               if (_isLinking) {
-                _onLinkUpdate(event.position);
+                _onTmpLinkUpdate(event.position);
               } else if (event.buttons == kPrimaryMouseButton) {
                 _startEdgeTimer(event.position);
                 widget.controller.dragSelection(event.delta);
@@ -530,13 +530,13 @@ class _NodeWidgetState extends State<NodeWidget> {
               if (_isLinking) {
                 final locator = _isNearPort(event.position);
                 if (locator != null) {
-                  _onLinkEnd(locator);
+                  _onTmpLinkEnd(locator);
                 } else {
                   createAndShowContextMenu(
                     context,
                     entries: _createSubmenuEntries(event.position),
                     position: event.position,
-                    onDismiss: (value) => _onLinkCancel(),
+                    onDismiss: (value) => _onTmpLinkCancel(),
                   );
                 }
               } else {

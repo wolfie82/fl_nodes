@@ -2,6 +2,12 @@ import 'package:flutter/material.dart';
 
 import 'package:fl_nodes/src/core/models/entities.dart';
 
+enum FlLineDrawMode {
+  solid,
+  dashed,
+  dotted,
+}
+
 class FlGridStyle {
   final double gridSpacingX;
   final double gridSpacingY;
@@ -42,16 +48,38 @@ class FlGridStyle {
   }
 }
 
+class FlSelectionAreaStyle {
+  final Color color;
+  final double borderWidth;
+  final Color borderColor;
+  final FlLineDrawMode borderDrawMode;
+
+  const FlSelectionAreaStyle({
+    this.color = const Color.fromARGB(25, 33, 150, 243),
+    this.borderWidth = 1.0,
+    this.borderColor = const Color.fromARGB(255, 33, 150, 243),
+    this.borderDrawMode = FlLineDrawMode.solid,
+  });
+
+  FlSelectionAreaStyle copyWith({
+    Color? color,
+    double? borderWidth,
+    Color? borderColor,
+    FlLineDrawMode? borderDrawMode,
+  }) {
+    return FlSelectionAreaStyle(
+      color: color ?? this.color,
+      borderWidth: borderWidth ?? this.borderWidth,
+      borderColor: borderColor ?? this.borderColor,
+      borderDrawMode: borderDrawMode ?? this.borderDrawMode,
+    );
+  }
+}
+
 enum FlLinkCurveType {
   straight,
   bezier,
   ninetyDegree,
-}
-
-enum FlLinkDrawMode {
-  solid,
-  dashed,
-  dotted,
 }
 
 class FlLinkStyle {
@@ -59,7 +87,7 @@ class FlLinkStyle {
   final bool useGradient;
   final LinearGradient? gradient;
   final double lineWidth;
-  final FlLinkDrawMode drawMode;
+  final FlLineDrawMode drawMode;
   final FlLinkCurveType curveType;
 
   const FlLinkStyle({
@@ -77,7 +105,7 @@ class FlLinkStyle {
   FlLinkStyle copyWith({
     LinearGradient? gradient,
     double? lineWidth,
-    FlLinkDrawMode? drawMode,
+    FlLineDrawMode? drawMode,
     FlLinkCurveType? curveType,
   }) {
     return FlLinkStyle(
@@ -99,7 +127,7 @@ FlLinkStyle defaultLinkStyle(LinkState state) {
       end: Alignment.centerRight,
     ),
     lineWidth: 2.0,
-    drawMode: FlLinkDrawMode.solid,
+    drawMode: FlLineDrawMode.solid,
     curveType: FlLinkCurveType.bezier,
   );
 }
@@ -245,6 +273,7 @@ class FlNodeEditorStyle {
   final BoxDecoration decoration;
   final EdgeInsetsGeometry padding;
   final FlGridStyle gridStyle;
+  final FlSelectionAreaStyle selectionAreaStyle;
 
   const FlNodeEditorStyle({
     this.decoration = const BoxDecoration(
@@ -252,17 +281,20 @@ class FlNodeEditorStyle {
     ),
     this.padding = const EdgeInsets.all(8.0),
     this.gridStyle = const FlGridStyle(),
+    this.selectionAreaStyle = const FlSelectionAreaStyle(),
   });
 
   FlNodeEditorStyle copyWith({
     BoxDecoration? decoration,
     EdgeInsetsGeometry? padding,
     FlGridStyle? gridStyle,
+    FlSelectionAreaStyle? selectionAreaStyle,
   }) {
     return FlNodeEditorStyle(
       decoration: decoration ?? this.decoration,
       padding: padding ?? this.padding,
       gridStyle: gridStyle ?? this.gridStyle,
+      selectionAreaStyle: selectionAreaStyle ?? this.selectionAreaStyle,
     );
   }
 }

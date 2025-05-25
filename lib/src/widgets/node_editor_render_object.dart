@@ -919,16 +919,18 @@ class NodeEditorRenderBox extends RenderBox
   void _paintSelectionArea(Canvas canvas, Rect viewport) {
     if (selectionArea.isEmpty) return;
 
+    final style = _controller.style.selectionAreaStyle;
+
     final Paint selectionPaint = Paint()
-      ..color = Colors.blue.withAlpha(50)
+      ..color = style.color
       ..style = PaintingStyle.fill;
 
     canvas.drawRect(selectionArea, selectionPaint);
 
     final Paint borderPaint = Paint()
-      ..color = Colors.blue
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.5;
+      ..color = style.borderColor
+      ..strokeWidth = style.borderWidth
+      ..style = PaintingStyle.stroke;
 
     canvas.drawRect(selectionArea, borderPaint);
   }
