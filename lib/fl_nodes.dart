@@ -12,6 +12,7 @@ export 'package:fl_nodes/src/core/models/entities.dart'
         FieldPrototype,
         PortInstance,
         FieldInstance,
+        PortState,
         NodeInstance;
 export 'package:fl_nodes/src/core/models/events.dart' show FieldEventType;
 export 'package:fl_nodes/src/core/models/events.dart'

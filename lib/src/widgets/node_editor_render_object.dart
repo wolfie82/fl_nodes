@@ -43,11 +43,13 @@ class LinkData {
 }
 
 class PortData {
+  final (String, String) locator;
   final bool isSelected;
   final Offset offset;
   final FlPortStyle style;
 
   PortData({
+    required this.locator,
     required this.isSelected,
     required this.offset,
     required this.style,
@@ -514,9 +516,9 @@ class NodeEditorRenderBox extends RenderBox
 
   bool _portsPositionsDirty = true;
 
-  final Map<FlLinkStyle, (Path, Paint)> _batchByLinkStyle = {};
+  final Map<FlLinkStyle, (Path, Paint)> batchByLinkStyle = {};
 
-  final List<(String, Path)> _linksHitTestData = [];
+  final List<(String, Path)> linksHitTestData = [];
 
   void _paintLinks(Canvas canvas, Rect viewport) {
     // Here we collect data also for ports and children to avoid multiple loops
@@ -528,8 +530,8 @@ class NodeEditorRenderBox extends RenderBox
       final Set<LinkData> linkData = {};
 
       // We cannot just reset the paths because the link styles are stateful that change hash code
-      _batchByLinkStyle.clear();
-      _linksHitTestData.clear();
+      batchByLinkStyle.clear();
+      linksHitTestData.clear();
 
       for (final link in _controller.linksById.values) {
         final outNode = _controller.nodes[link.fromTo.from]!;
@@ -550,7 +552,9 @@ class NodeEditorRenderBox extends RenderBox
             id: link.id,
             outPortOffset: outNode.offset + outPort.offset,
             inPortOffset: inNode.offset + inPort.offset,
-            linkStyle: outPort.prototype.style.linkStyleBuilder(link.state),
+            linkStyle: outPort.prototype
+                .styleBuilder(outPort.state)
+                .linkStyleBuilder(link.state),
           ),
         );
       }
@@ -573,7 +577,7 @@ class NodeEditorRenderBox extends RenderBox
               break;
           }
 
-          _linksHitTestData.add((data.id, path));
+          linksHitTestData.add((data.id, path));
 
           final shader = data.linkStyle.gradient!.createShader(
             Rect.fromPoints(data.outPortOffset, data.inPortOffset),
@@ -587,7 +591,7 @@ class NodeEditorRenderBox extends RenderBox
           canvas.drawPath(path, paint);
         } else {
           final style = data.linkStyle;
-          _batchByLinkStyle.putIfAbsent(style, () {
+          batchByLinkStyle.putIfAbsent(style, () {
             return (
               Path(),
               Paint()
@@ -611,14 +615,14 @@ class NodeEditorRenderBox extends RenderBox
               break;
           }
 
-          _linksHitTestData.add((data.id, path));
+          linksHitTestData.add((data.id, path));
 
-          _batchByLinkStyle[style]!.$1.addPath(path, Offset.zero);
+          batchByLinkStyle[style]!.$1.addPath(path, Offset.zero);
         }
       }
     }
 
-    for (final entry in _batchByLinkStyle.entries) {
+    for (final entry in batchByLinkStyle.entries) {
       final (path, paint) = entry.value;
       canvas.drawPath(path, paint);
     }
@@ -632,6 +636,8 @@ class NodeEditorRenderBox extends RenderBox
   final Path unselectedShadowPath = Path();
   final Map<FlPortStyle, (Path, Paint)> batchUnselectedPortByStyle = {};
 
+  final List<((String, String), Rect)> portsHitTestData = [];
+
   void _paintChildren(PaintingContext context) {
     if (_controller.nodesDataDirty ||
         _controller.linksDataDirty ||
@@ -639,19 +645,15 @@ class NodeEditorRenderBox extends RenderBox
         _portsPositionsDirty) {
       // Clear the old frame data
 
-      for (final value in batchSelectedPortByStyle.values) {
-        value.$1.reset();
-      }
-
-      for (final value in batchUnselectedPortByStyle.values) {
-        value.$1.reset();
-      }
-
       selectedChildren.clear();
       selectedShadowPath.reset();
 
       unselectedChildren.clear();
       unselectedShadowPath.reset();
+
+      batchSelectedPortByStyle.clear();
+      batchUnselectedPortByStyle.clear();
+      portsHitTestData.clear();
 
       // Acquire new frame data
 
@@ -675,9 +677,10 @@ class NodeEditorRenderBox extends RenderBox
           for (final port in _controller.nodes[nodeId]!.ports.values) {
             portData.add(
               PortData(
+                locator: (nodeId, port.prototype.idName),
                 isSelected: childParentData.state.isSelected,
                 offset: childParentData.offset + port.offset,
-                style: port.prototype.style,
+                style: port.prototype.styleBuilder(port.state),
               ),
             );
           }
@@ -694,9 +697,10 @@ class NodeEditorRenderBox extends RenderBox
           for (final port in _controller.nodes[nodeId]!.ports.values) {
             portData.add(
               PortData(
+                locator: (nodeId, port.prototype.idName),
                 isSelected: childParentData.state.isSelected,
                 offset: childParentData.offset + port.offset,
-                style: port.prototype.style,
+                style: port.prototype.styleBuilder(port.state),
               ),
             );
           }
@@ -719,16 +723,20 @@ class NodeEditorRenderBox extends RenderBox
           );
         });
 
-        final (path, paint) = batchPortByStyle[style]!;
+        late Path path;
 
         switch (style.shape) {
           case FlPortShape.circle:
-            _batchPaintCirclePort(path, paint, data);
+            path = _batchPaintCirclePort(data);
             break;
           case FlPortShape.triangle:
-            _batchPaintTrianglePort(path, paint, data);
+            path = _batchPaintTrianglePort(data);
             break;
         }
+
+        portsHitTestData.add((data.locator, path.getBounds()));
+
+        batchPortByStyle[style]!.$1.addPath(path, Offset.zero);
       }
 
       if (!_portsPositionsDirty) {
@@ -880,25 +888,18 @@ class NodeEditorRenderBox extends RenderBox
       ..lineTo(data.inPortOffset.dx, data.inPortOffset.dy);
   }
 
-  void _batchPaintCirclePort(
-    Path path,
-    Paint paint,
-    PortData data,
-  ) {
-    path.addOval(
-      Rect.fromCircle(
-        center: data.offset,
-        radius: data.style.radius,
-      ),
-    );
+  Path _batchPaintCirclePort(PortData data) {
+    return Path()
+      ..addOval(
+        Rect.fromCircle(
+          center: data.offset,
+          radius: data.style.radius,
+        ),
+      );
   }
 
-  void _batchPaintTrianglePort(
-    Path path,
-    Paint paint,
-    PortData data,
-  ) {
-    final trianglePath = Path()
+  Path _batchPaintTrianglePort(PortData data) {
+    return Path()
       ..moveTo(
         data.offset.dx - data.style.radius,
         data.offset.dy - data.style.radius,
@@ -912,8 +913,6 @@ class NodeEditorRenderBox extends RenderBox
         data.offset.dy + data.style.radius,
       ) // Bottom-left
       ..close();
-
-    path.addPath(trianglePath, Offset.zero);
   }
 
   void _paintSelectionArea(Canvas canvas, Rect viewport) {
@@ -1008,14 +1007,139 @@ class NodeEditorRenderBox extends RenderBox
     return false;
   }
 
+  // The code for managing hover state doesn't really belong in the controller
+  // as it doesn't trigger events and can't be set externally.
+
   String? lastHoveredLinkId;
+  (String, String)? lastHoveredPortLocator;
+
+  bool hitTestLinks(
+    Offset transformedPosition,
+    Rect checkRect,
+    PointerEvent event,
+  ) {
+    if (event is! PointerDownEvent && event is! PointerHoverEvent) return false;
+
+    final hitLinkId = _findHitLink(transformedPosition, checkRect);
+    final isHit = hitLinkId != null;
+
+    if (isHit) {
+      _handleLinkHit(hitLinkId, event);
+    } else if (event is PointerHoverEvent) {
+      _clearLinkHover();
+    }
+
+    return isHit;
+  }
+
+  bool hitTestPorts(
+    Offset transformedPosition,
+    Rect checkRect,
+    PointerEvent event,
+  ) {
+    if (event is! PointerHoverEvent) return false;
+
+    final hitPortLocator = _findHitPort(transformedPosition, checkRect);
+    final isHit = hitPortLocator != null;
+
+    if (isHit) {
+      _handlePortHover(hitPortLocator);
+      // Clear link hover when port is hovered (ports have higher priority)
+      _clearLinkHover();
+    } else {
+      _clearPortHover();
+    }
+
+    return isHit;
+  }
+
+  String? _findHitLink(Offset transformedPosition, Rect checkRect) {
+    const tolerance = 4.0;
+
+    for (final (id, path) in linksHitTestData) {
+      if (checkRect.overlaps(path.getBounds())) {
+        if (isPointNearPath(path, transformedPosition, tolerance)) {
+          return id;
+        }
+      }
+    }
+    return null;
+  }
+
+  (String, String)? _findHitPort(Offset transformedPosition, Rect checkRect) {
+    const tolerance = 4.0;
+
+    for (final (locator, rect) in portsHitTestData) {
+      if (checkRect.overlaps(rect.inflate(tolerance))) {
+        return locator;
+      }
+    }
+    return null;
+  }
+
+  void _handleLinkHit(String linkId, PointerEvent event) {
+    if (event is PointerDownEvent) {
+      _controller.selectLinkById(
+        linkId,
+        holdSelection: HardwareKeyboard.instance.isControlPressed,
+      );
+    } else if (event is PointerHoverEvent) {
+      _setLinkHover(linkId);
+    }
+  }
+
+  void _handlePortHover((String, String) portLocator) {
+    if (lastHoveredPortLocator != portLocator) {
+      _clearPortHover();
+      _setPortHover(portLocator);
+    }
+  }
+
+  void _setLinkHover(String linkId) {
+    if (lastHoveredLinkId != linkId) {
+      _clearLinkHover();
+
+      _controller.linksById[linkId]!.state.isHovered = true;
+      _controller.linksDataDirty = true;
+      lastHoveredLinkId = linkId;
+
+      markNeedsPaint();
+    }
+  }
+
+  void _clearLinkHover() {
+    if (lastHoveredLinkId != null) {
+      _controller.linksById[lastHoveredLinkId!]!.state.isHovered = false;
+      _controller.linksDataDirty = true;
+      lastHoveredLinkId = null;
+
+      markNeedsPaint();
+    }
+  }
+
+  void _setPortHover((String, String) portLocator) {
+    _controller.nodes[portLocator.$1]!.ports[portLocator.$2]!.state.isHovered =
+        true;
+    _controller.nodesDataDirty = true;
+    lastHoveredPortLocator = portLocator;
+
+    markNeedsPaint();
+  }
+
+  void _clearPortHover() {
+    if (lastHoveredPortLocator != null) {
+      _controller.nodes[lastHoveredPortLocator!.$1]!
+          .ports[lastHoveredPortLocator!.$2]!.state.isHovered = false;
+      _controller.nodesDataDirty = true;
+      lastHoveredPortLocator = null;
+
+      markNeedsPaint();
+    }
+  }
 
   @override
   void handleEvent(PointerEvent event, BoxHitTestEntry entry) {
     super.handleEvent(event, entry);
-
-    bool isHit = false;
-    String? hitLinkId;
 
     final Offset centeredPosition =
         event.localPosition - Offset(size.width / 2, size.height / 2);
@@ -1031,51 +1155,9 @@ class NodeEditorRenderBox extends RenderBox
       radius: 6.0,
     );
 
-    for (final (id, path) in _linksHitTestData) {
-      if (checkRect.overlaps(path.getBounds())) {
-        if (isPointNearPath(path, transformedPosition, 6.0)) {
-          hitLinkId = id;
-          isHit = true;
-          break;
-        }
-      }
-    }
-
-    // The code for managing hover state doesn't really belong in the controller
-    // as it doesn't trigger events and can't be set externally.
-
-    if (isHit) {
-      if (event is PointerDownEvent) {
-        _controller.selectLinkById(
-          hitLinkId!,
-          holdSelection: HardwareKeyboard.instance.isControlPressed,
-        );
-      } else if (event is PointerUpEvent) {
-      } else if (event is PointerHoverEvent) {
-        if (lastHoveredLinkId != null &&
-            lastHoveredLinkId != hitLinkId &&
-            _controller.linksById.containsKey(lastHoveredLinkId!)) {
-          _controller.linksById[lastHoveredLinkId!]!.state.isHovered = false;
-        }
-
-        _controller.linksById[hitLinkId!]!.state.isHovered = true;
-        _controller.linksDataDirty = true;
-
-        lastHoveredLinkId = hitLinkId;
-
-        markNeedsPaint();
-      }
-    }
-
-    if (event is PointerHoverEvent) {
-      if (lastHoveredLinkId != null &&
-          lastHoveredLinkId != hitLinkId &&
-          _controller.linksById.containsKey(lastHoveredLinkId!)) {
-        _controller.linksById[lastHoveredLinkId!]!.state.isHovered = false;
-        _controller.linksDataDirty = true;
-
-        markNeedsPaint();
-      }
+    // Test ports first (higher priority), then links
+    if (!hitTestPorts(transformedPosition, checkRect, event)) {
+      hitTestLinks(transformedPosition, checkRect, event);
     }
   }
 

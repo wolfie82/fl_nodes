@@ -202,11 +202,12 @@ class _NodeWidgetState extends State<NodeWidget> {
       final node = widget.controller.nodes[nodeId]!;
       for (final port in node.ports.values) {
         final absolutePortPosition = node.offset + port.offset;
-        if ((worldPosition - absolutePortPosition).distance < 12) {
+        if ((worldPosition - absolutePortPosition).distance < 4) {
           return (nodeId: node.id, portId: port.prototype.idName);
         }
       }
     }
+
     return null;
   }
 
@@ -222,7 +223,7 @@ class _NodeWidgetState extends State<NodeWidget> {
     final absolutePortOffset = node.offset + port.offset;
 
     widget.controller.drawTempLink(
-      port.prototype.style.linkStyleBuilder(LinkState()),
+      port.prototype.styleBuilder(port.state).linkStyleBuilder(LinkState()),
       absolutePortOffset,
       worldPosition!,
     );

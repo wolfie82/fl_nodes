@@ -287,7 +287,7 @@ class _NodeEditorDataLayerState extends State<NodeEditorDataLayer>
     final absolutePortOffset = node.offset + port.offset;
 
     widget.controller.drawTempLink(
-      port.prototype.style.linkStyleBuilder(LinkState()),
+      port.prototype.styleBuilder(port.state).linkStyleBuilder(LinkState()),
       absolutePortOffset,
       worldPosition!,
     );

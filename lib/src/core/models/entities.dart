@@ -8,7 +8,7 @@ import 'package:fl_nodes/src/core/controllers/node_editor/runner.dart';
 
 typedef FromTo = ({String from, String to, String fromPort, String toPort});
 
-/// A class representing the state of a link.
+/// The state of a link painted on the canvas.
 class LinkState {
   bool isHovered; // Not saved as it is only used during rendering
   bool isSelected; // Not saved as it is only used during rendering
@@ -112,7 +112,7 @@ enum PortType { data, control }
 abstract class PortPrototype {
   final String idName;
   final String displayName;
-  final FlPortStyle style;
+  final FlPortStyleBuilder styleBuilder;
   final Type dataType;
   final PortDirection direction;
   final PortType type;
@@ -120,7 +120,7 @@ abstract class PortPrototype {
   PortPrototype({
     required this.idName,
     required this.displayName,
-    this.style = const FlPortStyle(),
+    this.styleBuilder = defaultPortStyle,
     this.dataType = dynamic,
     required this.direction,
     required this.type,
@@ -131,7 +131,7 @@ class DataInputPortPrototype extends PortPrototype {
   DataInputPortPrototype({
     required super.idName,
     required super.displayName,
-    super.style,
+    super.styleBuilder,
     super.dataType,
   }) : super(direction: PortDirection.input, type: PortType.data);
 }
@@ -140,7 +140,7 @@ class DataOutputPortPrototype extends PortPrototype {
   DataOutputPortPrototype({
     required super.idName,
     required super.displayName,
-    super.style,
+    super.styleBuilder,
     super.dataType,
   }) : super(direction: PortDirection.output, type: PortType.data);
 }
@@ -149,7 +149,7 @@ class ControlInputPortPrototype extends PortPrototype {
   ControlInputPortPrototype({
     required super.idName,
     required super.displayName,
-    super.style,
+    super.styleBuilder,
   }) : super(direction: PortDirection.input, type: PortType.control);
 }
 
@@ -157,8 +157,39 @@ class ControlOutputPortPrototype extends PortPrototype {
   ControlOutputPortPrototype({
     required super.idName,
     required super.displayName,
-    super.style,
+    super.styleBuilder,
   }) : super(direction: PortDirection.output, type: PortType.control);
+}
+
+/// The state of a port painted on the canvas.
+class PortState {
+  bool isHovered; // Not saved as it is only used during rendering
+
+  PortState({
+    this.isHovered = false,
+  });
+
+  factory PortState.fromJson(Map<String, dynamic> json) {
+    return PortState(
+      isHovered: json['isHovered'] ?? false,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'isHovered': isHovered,
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is PortState &&
+          runtimeType == other.runtimeType &&
+          isHovered == other.isHovered;
+
+  @override
+  int get hashCode => isHovered.hashCode;
 }
 
 /// A port is a connection point on a node.
@@ -168,11 +199,13 @@ final class PortInstance {
   final PortPrototype prototype;
   dynamic data; // Not saved as it is only used during in graph execution
   Set<Link> links = {};
+  final PortState state;
   Offset offset; // Determined by Flutter
   final GlobalKey key = GlobalKey(); // Determined by Flutter
 
   PortInstance({
     required this.prototype,
+    required this.state,
     this.offset = Offset.zero,
   });
 
@@ -193,7 +226,10 @@ final class PortInstance {
 
     final prototype = portPrototypes[json['idName'].toString()]!;
 
-    final instance = PortInstance(prototype: prototype);
+    final instance = PortInstance(
+      prototype: prototype,
+      state: PortState.fromJson(json['state'] ?? {}),
+    );
 
     instance.links = (json['links'] as List<dynamic>)
         .map((linkJson) => Link.fromJson(linkJson))
@@ -205,10 +241,12 @@ final class PortInstance {
   PortInstance copyWith({
     dynamic data,
     Set<Link>? links,
+    PortState? state,
     Offset? offset,
   }) {
     final instance = PortInstance(
       prototype: prototype,
+      state: state ?? this.state,
       offset: offset ?? this.offset,
     );
 
@@ -479,7 +517,7 @@ final class NodeInstance {
 }
 
 PortInstance createPort(String idName, PortPrototype prototype) {
-  return PortInstance(prototype: prototype);
+  return PortInstance(prototype: prototype, state: PortState());
 }
 
 FieldInstance createField(String idName, FieldPrototype prototype) {

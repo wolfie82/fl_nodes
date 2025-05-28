@@ -10,59 +10,59 @@ enum Operator { add, subtract, multiply, divide }
 
 enum Comparator { equal, notEqual, greater, greaterEqual, less, lessEqual }
 
-final FlPortStyle outputDataPortStyle = FlPortStyle(
-  color: Colors.deepOrange,
-  shape: FlPortShape.circle,
-  linkStyleBuilder: (state) => FlLinkStyle(
-    useGradient: false,
-    color: state.isSelected
-        ? Colors.orangeAccent
-        : state.isHovered
-            ? Colors.limeAccent
-            : Colors.deepOrange,
-    gradient: const LinearGradient(
-      colors: [Colors.deepOrange, Colors.purple],
-      begin: Alignment.centerLeft,
-      end: Alignment.centerRight,
-    ),
-    lineWidth: state.isSelected
-        ? 3.5
-        : state.isHovered
-            ? 4.5
-            : 2.5,
-    drawMode: FlLineDrawMode.solid,
-    curveType: FlLinkCurveType.bezier,
-  ),
-);
+FlPortStyle outputDataPortStyle(state) => FlPortStyle(
+      color: state.isHovered ? Colors.limeAccent : Colors.deepOrange,
+      shape: FlPortShape.circle,
+      linkStyleBuilder: (state) => FlLinkStyle(
+        useGradient: false,
+        color: state.isSelected
+            ? Colors.orangeAccent
+            : state.isHovered
+                ? Colors.limeAccent
+                : Colors.deepOrange,
+        gradient: const LinearGradient(
+          colors: [Colors.deepOrange, Colors.purple],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ),
+        lineWidth: state.isSelected
+            ? 3.5
+            : state.isHovered
+                ? 4.5
+                : 2.5,
+        drawMode: FlLineDrawMode.solid,
+        curveType: FlLinkCurveType.bezier,
+      ),
+    );
 
-final FlPortStyle inputDataPortStyle = outputDataPortStyle;
+FlPortStyle inputDataPortStyle(state) => outputDataPortStyle(state);
 
-final FlPortStyle controlOutputPortStyle = FlPortStyle(
-  color: Colors.green,
-  shape: FlPortShape.triangle,
-  linkStyleBuilder: (state) => FlLinkStyle(
-    useGradient: false,
-    color: state.isSelected
-        ? Colors.lightGreen
-        : state.isHovered
-            ? Colors.limeAccent
-            : Colors.green,
-    gradient: const LinearGradient(
-      colors: [Colors.lightGreenAccent, Colors.green],
-      begin: Alignment.centerLeft,
-      end: Alignment.centerRight,
-    ),
-    lineWidth: state.isSelected
-        ? 3.5
-        : state.isHovered
-            ? 4.5
-            : 2.5,
-    drawMode: FlLineDrawMode.solid,
-    curveType: FlLinkCurveType.bezier,
-  ),
-);
+FlPortStyle controlOutputPortStyle(state) => FlPortStyle(
+      color: state.isHovered ? Colors.limeAccent : Colors.green,
+      shape: FlPortShape.triangle,
+      linkStyleBuilder: (state) => FlLinkStyle(
+        useGradient: false,
+        color: state.isSelected
+            ? Colors.lightGreen
+            : state.isHovered
+                ? Colors.limeAccent
+                : Colors.green,
+        gradient: const LinearGradient(
+          colors: [Colors.lightGreenAccent, Colors.green],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ),
+        lineWidth: state.isSelected
+            ? 3.5
+            : state.isHovered
+                ? 4.5
+                : 2.5,
+        drawMode: FlLineDrawMode.solid,
+        curveType: FlLinkCurveType.bezier,
+      ),
+    );
 
-final FlPortStyle controlInputPortStyle = controlOutputPortStyle;
+FlPortStyle controlInputPortStyle(state) => controlOutputPortStyle(state);
 
 NodePrototype createValueNode<T>({
   required String idName,
@@ -102,13 +102,13 @@ NodePrototype createValueNode<T>({
       ControlOutputPortPrototype(
         idName: 'completed',
         displayName: 'Completed',
-        style: controlOutputPortStyle,
+        styleBuilder: controlOutputPortStyle,
       ),
       DataOutputPortPrototype(
         idName: 'value',
         displayName: 'Value',
         dataType: T,
-        style: outputDataPortStyle,
+        styleBuilder: outputDataPortStyle,
       ),
     ],
     fields: [
@@ -340,30 +340,30 @@ void registerNodes(BuildContext context, FlNodeEditorController controller) {
         ControlInputPortPrototype(
           idName: 'exec',
           displayName: 'Exec',
-          style: controlInputPortStyle,
+          styleBuilder: controlInputPortStyle,
         ),
         DataInputPortPrototype(
           idName: 'a',
           displayName: 'A',
           dataType: double,
-          style: inputDataPortStyle,
+          styleBuilder: inputDataPortStyle,
         ),
         DataInputPortPrototype(
           idName: 'b',
           displayName: 'B',
           dataType: double,
-          style: inputDataPortStyle,
+          styleBuilder: inputDataPortStyle,
         ),
         ControlOutputPortPrototype(
           idName: 'completed',
           displayName: 'Completed',
-          style: controlOutputPortStyle,
+          styleBuilder: controlOutputPortStyle,
         ),
         DataOutputPortPrototype(
           idName: 'result',
           displayName: 'Result',
           dataType: double,
-          style: outputDataPortStyle,
+          styleBuilder: outputDataPortStyle,
         ),
       ],
       fields: [
@@ -437,13 +437,13 @@ void registerNodes(BuildContext context, FlNodeEditorController controller) {
         ControlOutputPortPrototype(
           idName: 'completed',
           displayName: 'Completed',
-          style: controlOutputPortStyle,
+          styleBuilder: controlOutputPortStyle,
         ),
         DataOutputPortPrototype(
           idName: 'value',
           displayName: 'Value',
           dataType: double,
-          style: outputDataPortStyle,
+          styleBuilder: outputDataPortStyle,
         ),
       ],
       onExecute: (ports, fields, state, f, p) async {
@@ -477,23 +477,23 @@ void registerNodes(BuildContext context, FlNodeEditorController controller) {
         ControlInputPortPrototype(
           idName: 'exec',
           displayName: 'Exec',
-          style: controlInputPortStyle,
+          styleBuilder: controlInputPortStyle,
         ),
         DataInputPortPrototype(
           idName: 'condition',
           displayName: 'Condition',
           dataType: bool,
-          style: inputDataPortStyle,
+          styleBuilder: inputDataPortStyle,
         ),
         ControlOutputPortPrototype(
           idName: 'trueBranch',
           displayName: 'True',
-          style: controlOutputPortStyle,
+          styleBuilder: controlOutputPortStyle,
         ),
         ControlOutputPortPrototype(
           idName: 'falseBranch',
           displayName: 'False',
-          style: controlOutputPortStyle,
+          styleBuilder: controlOutputPortStyle,
         ),
       ],
       onExecute: (ports, fields, state, f, p) async {
@@ -529,30 +529,30 @@ void registerNodes(BuildContext context, FlNodeEditorController controller) {
         ControlInputPortPrototype(
           idName: 'exec',
           displayName: 'Exec',
-          style: controlInputPortStyle,
+          styleBuilder: controlInputPortStyle,
         ),
         DataInputPortPrototype(
           idName: 'a',
           displayName: 'A',
           dataType: dynamic,
-          style: inputDataPortStyle,
+          styleBuilder: inputDataPortStyle,
         ),
         DataInputPortPrototype(
           idName: 'b',
           displayName: 'B',
           dataType: dynamic,
-          style: inputDataPortStyle,
+          styleBuilder: inputDataPortStyle,
         ),
         ControlOutputPortPrototype(
           idName: 'completed',
           displayName: 'Completed',
-          style: controlOutputPortStyle,
+          styleBuilder: controlOutputPortStyle,
         ),
         DataOutputPortPrototype(
           idName: 'result',
           displayName: 'Result',
           dataType: bool,
-          style: outputDataPortStyle,
+          styleBuilder: outputDataPortStyle,
         ),
       ],
       fields: [
@@ -632,18 +632,18 @@ void registerNodes(BuildContext context, FlNodeEditorController controller) {
         ControlInputPortPrototype(
           idName: 'exec',
           displayName: 'Exec',
-          style: controlInputPortStyle,
+          styleBuilder: controlInputPortStyle,
         ),
         DataInputPortPrototype(
           idName: 'value',
           displayName: 'Value',
           dataType: dynamic,
-          style: inputDataPortStyle,
+          styleBuilder: inputDataPortStyle,
         ),
         ControlOutputPortPrototype(
           idName: 'completed',
           displayName: 'Completed',
-          style: controlOutputPortStyle,
+          styleBuilder: controlOutputPortStyle,
         ),
       ],
       onExecute: (ports, fields, state, f, p) async {
@@ -685,24 +685,24 @@ void registerNodes(BuildContext context, FlNodeEditorController controller) {
         ControlInputPortPrototype(
           idName: 'exec',
           displayName: 'Exec',
-          style: controlInputPortStyle,
+          styleBuilder: controlInputPortStyle,
         ),
         DataInputPortPrototype(
           idName: 'value',
           displayName: 'Value',
           dataType: double,
-          style: inputDataPortStyle,
+          styleBuilder: inputDataPortStyle,
         ),
         ControlOutputPortPrototype(
           idName: 'completed',
           displayName: 'Completed',
-          style: controlOutputPortStyle,
+          styleBuilder: controlOutputPortStyle,
         ),
         DataOutputPortPrototype(
           idName: 'rounded',
           displayName: 'Rounded',
           dataType: int,
-          style: outputDataPortStyle,
+          styleBuilder: outputDataPortStyle,
         ),
       ],
       fields: [
@@ -772,35 +772,35 @@ void registerNodes(BuildContext context, FlNodeEditorController controller) {
         ControlInputPortPrototype(
           idName: 'exec',
           displayName: 'Exec',
-          style: controlInputPortStyle,
+          styleBuilder: controlInputPortStyle,
         ),
         DataInputPortPrototype(
           idName: 'list',
           displayName: 'List',
           dataType: dynamic,
-          style: inputDataPortStyle,
+          styleBuilder: inputDataPortStyle,
         ),
         ControlOutputPortPrototype(
           idName: 'loopBody',
           displayName: 'Loop Body',
-          style: controlOutputPortStyle,
+          styleBuilder: controlOutputPortStyle,
         ),
         ControlOutputPortPrototype(
           idName: 'completed',
           displayName: 'Completed',
-          style: controlOutputPortStyle,
+          styleBuilder: controlOutputPortStyle,
         ),
         DataOutputPortPrototype(
           idName: 'listElem',
           displayName: 'List Element',
           dataType: dynamic,
-          style: outputDataPortStyle,
+          styleBuilder: outputDataPortStyle,
         ),
         DataOutputPortPrototype(
           idName: 'listIdx',
           displayName: 'List Index',
           dataType: int,
-          style: outputDataPortStyle,
+          styleBuilder: outputDataPortStyle,
         ),
       ],
       onExecute: (ports, fields, state, f, p) async {

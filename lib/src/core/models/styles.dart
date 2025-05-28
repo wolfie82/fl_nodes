@@ -165,6 +165,17 @@ class FlPortStyle {
   }
 }
 
+typedef FlPortStyleBuilder = FlPortStyle Function(PortState style);
+
+FlPortStyle defaultPortStyle(PortState state) {
+  return FlPortStyle(
+    shape: FlPortShape.circle,
+    color: state.isHovered ? Colors.red : Colors.blue,
+    radius: 4,
+    linkStyleBuilder: defaultLinkStyle,
+  );
+}
+
 class FlFieldStyle {
   final BoxDecoration decoration;
   final EdgeInsetsGeometry padding;
