@@ -6,7 +6,7 @@ The `fl_nodes` project is taking part in the **[OnlyDust](https://onlydust.com) 
 
 If you're interested in Flutter, visual programming, or node-based interfaces, this is a great chance to contribute, learn, and collaborate. We’ll soon tag beginner-friendly issues and update documentation. We are ready to support contributors of all experience levels.
 
-👉 Check out the [Issues](https://github.com/wilielmus/fl_nodes/issues) to get started.
+👉 Check out the [Issues](https://github.com/WilliamKarolDiCioccio/fl_nodes/issues) to get started.
 
 ---
 
