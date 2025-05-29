@@ -7,7 +7,7 @@
 
 - Fixed input system issues (partially resolved input-related problems).
 
-## 0.2.0 (Feature Update)
+## 0.2.0
 
 - **Custom Builders**: Introduced support for general-purpose node-based UIs.
   - A guide will be provided in the future as the API stabilizes.
@@ -21,3 +21,10 @@
 ## 0.2.0+1 (Hotfix)
 
 - Fixed node rendering after creation and deletion
+
+## 0.3.0
+
+- **Better Interaction and Feedback**: Links can now be selected and, along with ports, are now highlighted on hover.
+- **Performance Improvements**: Significantly optimized performance, especially
+  when handling large numbers of nodes.
+- **Fixed Bugs**: offset restoration in undo/redo system and project loading failure when the editor is not empty (#59 #57).
