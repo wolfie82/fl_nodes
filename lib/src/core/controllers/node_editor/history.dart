@@ -82,7 +82,12 @@ class FlNodeEditorHistory {
     try {
       if (event is DragSelectionEvent) {
         controller.selectNodesById(event.nodeIds, isHandled: true);
-        controller.dragSelection(-event.delta, eventId: event.id);
+        controller.dragSelection(
+          -event.delta,
+          eventId: event.id,
+          isWorldDelta: true,
+          resetUnboundOffset: true,
+        );
         controller.clearSelection();
       } else if (event is AddNodeEvent) {
         controller.removeNodeById(event.node.id, eventId: event.id);
@@ -109,7 +114,12 @@ class FlNodeEditorHistory {
     try {
       if (event is DragSelectionEvent) {
         controller.selectNodesById(event.nodeIds, isHandled: true);
-        controller.dragSelection(event.delta, eventId: event.id);
+        controller.dragSelection(
+          event.delta,
+          eventId: event.id,
+          isWorldDelta: true,
+          resetUnboundOffset: true,
+        );
         controller.clearSelection();
       } else if (event is AddNodeEvent) {
         controller.addNodeFromExisting(

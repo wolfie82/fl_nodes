@@ -720,19 +720,35 @@ class FlNodeEditorController {
   /// This method is used to drag the selected nodes by a given delta affecting their offsets.
   ///
   /// Emits a [DragSelectionEvent] event.
-  void dragSelection(Offset delta, {String? eventId}) async {
+  void dragSelection(
+    Offset delta, {
+    String? eventId,
+    bool isWorldDelta = false,
+    bool resetUnboundOffset = false,
+  }) async {
     if (selectedNodeIds.isEmpty) return;
+
+    // If the delta is not already in world coordinates,
+    // convert it by dividing by the viewport zoom.
+    final Offset effectiveDelta = isWorldDelta ? delta : delta / _viewportZoom;
 
     for (final id in selectedNodeIds) {
       final node = nodes[id]!;
 
-      _unboundNodeOffsets.putIfAbsent(id, () => node.offset);
-      _unboundNodeOffsets[id] =
-          _unboundNodeOffsets[id]! + delta / _viewportZoom;
+      // Reset the unbound offset if requested (e.g. during undo/redo)
+      if (resetUnboundOffset) {
+        _unboundNodeOffsets[id] = node.offset;
+      } else {
+        _unboundNodeOffsets.putIfAbsent(id, () => node.offset);
+      }
+
+      // Update the unbound offset by adding the effective delta.
+      _unboundNodeOffsets[id] = _unboundNodeOffsets[id]! + effectiveDelta;
 
       if (config.enableSnapToGrid) {
         final unboundOffset = _unboundNodeOffsets[id]!;
 
+        // Snap the node's offset to the grid using rounding.
         node.offset = Offset(
           (unboundOffset.dx / config.snapToGridSize).round() *
               config.snapToGridSize,
@@ -740,18 +756,20 @@ class FlNodeEditorController {
               config.snapToGridSize,
         );
       } else {
-        node.offset += delta / _viewportZoom;
+        // Apply the effective delta directly to the node's offset.
+        node.offset += effectiveDelta;
       }
     }
 
     linksDataDirty = true;
     nodesDataDirty = true;
 
+    // Emit a DragSelectionEvent with the effective delta (in world coordinates).
     eventBus.emit(
       DragSelectionEvent(
         id: eventId ?? const Uuid().v4(),
         selectedNodeIds.toSet(),
-        delta / _viewportZoom,
+        effectiveDelta,
       ),
     );
   }
