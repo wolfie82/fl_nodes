@@ -8,7 +8,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 
-import 'package:fl_nodes/src/widgets/node.dart';
+import 'package:fl_nodes/src/widgets/deafult_node_widget.dart';
 
 import '../core/controllers/node_editor/core.dart';
 import '../core/models/entities.dart';
@@ -93,7 +93,7 @@ class NodeEditorRenderObjectWidget extends MultiChildRenderObjectWidget {
   }) : super(
           children: controller.nodesAsList
               .map(
-                (node) => NodeWidget(
+                (node) => DefaultNodeWidget(
                   controller: controller,
                   node: node,
                   headerBuilder: headerBuilder,

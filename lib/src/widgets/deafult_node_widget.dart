@@ -25,7 +25,7 @@ typedef _TempLink = ({String nodeId, String portId});
 /// The main NodeWidget which represents a node in the editor.
 /// It now ensures that fields (regardless of whether a custom fieldBuilder is used)
 /// still respond to tap events in the same way as before.
-class NodeWidget extends StatefulWidget {
+class DefaultNodeWidget extends StatefulWidget {
   final FlNodeEditorController controller;
   final NodeInstance node;
   final FlNodeHeaderBuilder? headerBuilder;
@@ -34,7 +34,7 @@ class NodeWidget extends StatefulWidget {
   final FlNodeContextMenuBuilder? contextMenuBuilder;
   final FlNodeBuilder? nodeBuilder;
 
-  const NodeWidget({
+  const DefaultNodeWidget({
     super.key,
     required this.controller,
     required this.node,
@@ -46,10 +46,10 @@ class NodeWidget extends StatefulWidget {
   });
 
   @override
-  State<NodeWidget> createState() => _NodeWidgetState();
+  State<DefaultNodeWidget> createState() => _DefaultNodeWidgetState();
 }
 
-class _NodeWidgetState extends State<NodeWidget> {
+class _DefaultNodeWidgetState extends State<DefaultNodeWidget> {
   // Interaction state for linking ports.
   bool _isLinking = false;
 
@@ -109,7 +109,7 @@ class _NodeWidgetState extends State<NodeWidget> {
   }
 
   @override
-  void didUpdateWidget(NodeWidget oldWidget) {
+  void didUpdateWidget(DefaultNodeWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
 
     // Subsequent style and spatial hash grid updates are triggered by changes in the node's state or offset.
