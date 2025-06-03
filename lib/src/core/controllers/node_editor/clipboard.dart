@@ -98,6 +98,13 @@ class FlNodeEditorClipboard {
       SnackbarType.success,
     );
 
+    eventBus.emit(
+      CopySelectionEvent(
+        id: const Uuid().v4(),
+        base64Data,
+      ),
+    );
+
     return base64Data;
   }
 
